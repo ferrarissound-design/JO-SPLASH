@@ -8,6 +8,7 @@
   --clr-panel-border: rgba(255, 255, 255, 0.14);
   --clr-text: #eef3f8;
   --clr-text-dim: #9aa7b8;
+  --touch-controls-height: 176px;
   font-family: 'Segoe UI', 'Hiragino Sans', 'Yu Gothic', system-ui, sans-serif;
 }
 
@@ -18,17 +19,21 @@ html, body {
   padding: 0;
   width: 100%;
   height: 100%;
+  height: 100dvh;
   background: var(--clr-bg);
   color: var(--clr-text);
   overflow: hidden;
+  overscroll-behavior: none;
   -webkit-user-select: none;
   user-select: none;
+  -webkit-touch-callout: none;
 }
 
 #app {
   position: relative;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -48,11 +53,19 @@ html, body {
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: center;
+  align-items: safe center;
   justify-content: center;
   z-index: 20;
   background: radial-gradient(ellipse at center, rgba(11, 14, 20, 0.35) 0%, rgba(11, 14, 20, 0.92) 75%);
   pointer-events: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding:
+    max(1rem, env(safe-area-inset-top))
+    max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom))
+    max(1rem, env(safe-area-inset-left));
 }
 
 .title-card, .result-card {
@@ -65,6 +78,7 @@ html, body {
   text-align: center;
   box-shadow: 0 20px 60px rgba(0,0,0,0.55), inset 0 0 40px rgba(47,184,255,0.06);
   backdrop-filter: blur(6px);
+  margin: auto;
 }
 
 .game-logo {
@@ -193,8 +207,11 @@ html, body {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: 1rem 1.2rem 0;
-  gap: 1.2rem;
+  flex-wrap: wrap;
+  padding-top: max(1rem, env(safe-area-inset-top));
+  padding-left: max(1.2rem, env(safe-area-inset-left));
+  padding-right: max(1.2rem, env(safe-area-inset-right));
+  gap: 0.6rem 1.2rem;
 }
 
 .coverage-bar-wrap {
@@ -279,7 +296,16 @@ html, body {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  padding: 0 1.2rem 1rem;
+  padding-left: max(1.2rem, env(safe-area-inset-left));
+  padding-right: max(1.2rem, env(safe-area-inset-right));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  transition: bottom 0.2s ease;
+}
+
+/* Touch mode reserves a control band at the bottom of the screen (joystick /
+   fire-jump-surf buttons); lift the gauges and KO counters clear of it. */
+#hud.touch-mode .hud-bottom {
+  bottom: var(--touch-controls-height, 0px);
 }
 
 .gauge-cluster {
@@ -424,8 +450,161 @@ html, body {
 #debug-fps { font-weight: 700; margin-bottom: 0.3rem; }
 #debug-info { margin: 0; white-space: pre-wrap; }
 
+/* ============ Touch controls ============ */
+#touch-controls {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+}
+
+.touch-look-zone {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 58%;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.touch-joystick-zone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 42%;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.touch-joystick-base {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.touch-joystick-base.active { opacity: 1; }
+
+.touch-joystick-nub {
+  position: absolute;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(47, 184, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.touch-joystick-nub.active { opacity: 1; }
+
+.touch-buttons {
+  position: absolute;
+  right: max(1.2rem, env(safe-area-inset-right));
+  bottom: max(0.9rem, env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  grid-template-areas:
+    "surf jump"
+    "fire fire";
+  gap: 0.7rem;
+  align-items: end;
+  justify-items: center;
+  pointer-events: none;
+}
+
+.touch-btn {
+  pointer-events: auto;
+  touch-action: none;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  color: var(--clr-text);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.touch-btn:active,
+.touch-btn.pressed {
+  filter: brightness(1.35);
+  transform: scale(0.94);
+}
+
+.touch-btn-fire {
+  grid-area: fire;
+  width: 84px;
+  height: 84px;
+  background: radial-gradient(circle at 35% 30%, rgba(47, 184, 255, 0.75), rgba(15, 111, 184, 0.55));
+  box-shadow: 0 6px 18px rgba(47, 184, 255, 0.35);
+}
+.touch-btn-jump {
+  grid-area: jump;
+  width: 56px;
+  height: 56px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.touch-btn-surf {
+  grid-area: surf;
+  width: 56px;
+  height: 56px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
 @media (max-width: 720px) {
   .coverage-bar-wrap { min-width: 220px; }
   .gauge-cluster { min-width: 160px; }
   .key-list { grid-template-columns: 1fr; }
+}
+
+/* ============ Compact mobile layout (iPhone / narrow iPad split-view) ============ */
+@media (max-width: 480px) {
+  .title-card, .result-card { padding: 1.5rem 1.2rem; }
+  .game-logo { font-size: clamp(1.9rem, 9vw, 2.8rem); margin-bottom: 0.2rem; }
+  .game-tagline { font-size: 0.82rem; margin-bottom: 1rem; }
+  .panel.how-to-play { padding: 0.8rem 1rem; margin-bottom: 1.1rem; }
+  .key-list { gap: 0.4rem; }
+  .key-list li { font-size: 0.82rem; }
+  .btn-primary { padding: 0.8rem 2rem; font-size: 1rem; }
+
+  .coverage-bar-wrap { min-width: 0; max-width: 60vw; padding: 0.35rem 0.6rem; gap: 0.4rem; }
+  .coverage-label { font-size: 0.72rem; }
+  #timer { font-size: 1.15rem; min-width: 3rem; padding: 0.3rem 0.7rem; }
+  .status-msg { top: 3.6rem; font-size: 0.8rem; }
+
+  .gauge-cluster { min-width: 0; width: 46vw; padding: 0.55rem 0.7rem; gap: 0.35rem; }
+  .gauge-icon { width: 2rem; font-size: 0.6rem; }
+  .gauge-value { font-size: 0.7rem; width: 1.8rem; }
+  .ko-box { min-width: 3.6rem; padding: 0.4rem 0.55rem; }
+  .ko-box span:last-child { font-size: 1rem; }
+}
+
+/* Short viewports (landscape phones, or the address bar eating vertical space) */
+@media (max-height: 700px) {
+  .title-card, .result-card { padding: 1.3rem 1.4rem; }
+  .game-logo { font-size: clamp(1.8rem, 6vw, 2.6rem); margin-bottom: 0.15rem; }
+  .game-tagline { margin-bottom: 0.8rem; }
+  .panel.how-to-play { padding: 0.7rem 1rem; margin-bottom: 0.8rem; }
+  .key-list { gap: 0.35rem 1rem; }
+  .mouse-hint { margin-top: 0.5rem; }
+  .rule-hint { margin-top: 0.6rem; }
+}
+
+/* Devices that report touch input: shrink the joystick/buttons slightly on
+   the very smallest phones so they don't dominate the screen. */
+@media (max-width: 380px) {
+  .touch-joystick-base { width: 100px; height: 100px; }
+  .touch-joystick-nub { width: 44px; height: 44px; }
+  .touch-btn-fire { width: 72px; height: 72px; }
+  .touch-btn-jump, .touch-btn-surf { width: 48px; height: 48px; font-size: 0.65rem; }
 }

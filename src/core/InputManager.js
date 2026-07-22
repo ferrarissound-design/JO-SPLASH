@@ -1,12 +1,19 @@
 // ============================================================================
-// InputManager — keyboard + mouse state and pointer-lock handling.
-// Exposes plain state (`keys`, `mouseDown`, `mouseDeltaX/Y`) that other
-// systems poll once per frame; mouse deltas are consumed (zeroed) by
+// InputManager — keyboard + mouse + touch state and pointer-lock handling.
+// Exposes plain state (`keys`, `mouseDown`, mouse deltas) that other systems
+// poll once per frame; mouse deltas are consumed (zeroed) by
 // `consumeMouseDelta()` so they never double-apply across systems.
+//
+// Touch input (TouchControls) drives this exact same state through the
+// public `setVirtualKey`, `addLookDelta`, and `setFireHeld` methods, so
+// Player/CameraController/Game never need to know whether an input came
+// from a keyboard+mouse or a finger.
 // ============================================================================
 export class InputManager {
   constructor(domElement) {
     this.domElement = domElement;
+
+    this.isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
     this.keys = Object.create(null);
     this.mouseDown = false;
@@ -18,11 +25,10 @@ export class InputManager {
     this._justPressed = Object.create(null);
 
     this._onKeyDown = (e) => {
-      if (!this.keys[e.code]) this._justPressed[e.code] = true;
-      this.keys[e.code] = true;
+      this.setVirtualKey(e.code, true);
     };
     this._onKeyUp = (e) => {
-      this.keys[e.code] = false;
+      this.setVirtualKey(e.code, false);
     };
     this._onMouseDown = (e) => {
       if (e.button === 0) this.mouseDown = true;
@@ -57,6 +63,7 @@ export class InputManager {
   }
 
   requestPointerLock() {
+    if (this.isTouch) return; // no pointer-lock concept on touch devices
     if (document.pointerLockElement !== this.domElement) {
       this.domElement.requestPointerLock();
     }
@@ -87,6 +94,23 @@ export class InputManager {
     this._mouseDeltaX = 0;
     this._mouseDeltaY = 0;
     return [dx, dy];
+  }
+
+  /** Sets a "key" state programmatically — used by both the real keyboard handler and TouchControls. */
+  setVirtualKey(code, isDown) {
+    if (isDown && !this.keys[code]) this._justPressed[code] = true;
+    this.keys[code] = isDown;
+  }
+
+  /** Feeds a look-drag delta (in CSS pixels) into the same accumulator mouse movement uses. */
+  addLookDelta(dx, dy) {
+    this._mouseDeltaX += dx;
+    this._mouseDeltaY += dy;
+  }
+
+  /** Used by the on-screen fire button — sets the exact same flag a held left mouse button would. */
+  setFireHeld(isHeld) {
+    this.mouseDown = isHeld;
   }
 
   dispose() {
