@@ -1,6 +1,6 @@
 # JO-SPLASH — CHROMA DUEL
 
-Three.js 製、ブラウザで動作する 1 対 1 のインク陣取り TPS ゲームです。
+Three.js 製、ブラウザで動作する 1 対 1 のインク陣取り FPS ゲームです。
 床をインクで塗り合い、制限時間(90秒)終了時により広い面積を塗っていた側が勝利します。
 
 ## 起動方法
@@ -42,7 +42,7 @@ src/
   core/
     Game.js             状態遷移・メインループ・各システムの配線
     InputManager.js      キーボード / マウス / ポインターロック
-    CameraController.js  三人称カメラ（追従・衝突回避）
+    CameraController.js  一人称カメラ（マウス/タッチのyaw・pitch制御）
   entities/
     Character.js         Player / EnemyAI 共通の HP・インク・衝突・復活ロジック
     Player.js             プレイヤー入力処理

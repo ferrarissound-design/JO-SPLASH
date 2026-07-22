@@ -146,8 +146,56 @@
         <button type="button" class="touch-btn touch-btn-fire">FIRE</button>
       </div>
     </section>
+
+    <!-- ============ BOOT ERROR (shown only if the game fails to start) ============ -->
+    <section id="screen-boot-error" class="screen hidden" style="z-index: 50;">
+      <div class="title-card" style="text-align: left;">
+        <h2 style="margin-top: 0; color: var(--clr-text);">読み込みエラー</h2>
+        <p id="boot-error-message" style="color: var(--clr-text-dim); font-size: 0.9rem; line-height: 1.7; white-space: pre-wrap;"></p>
+        <p style="font-size: 0.8rem; color: var(--clr-text-dim);">この画面のスクリーンショットを送っていただけると原因の特定に役立ちます。</p>
+        <button class="btn-primary" type="button" onclick="location.reload()" style="margin-top: 0.8rem;">再読み込み</button>
+      </div>
+    </section>
   </div>
 
+  <script>
+    // Runs as a classic (non-module) script, so it executes even if the
+    // module below fails to load entirely (e.g. an older browser without
+    // <script type="importmap"> support). Surfaces a visible, screenshot-able
+    // diagnostic instead of a silent blank/unresponsive title screen.
+    (function () {
+      var shown = false;
+      function showBootError(detail) {
+        if (shown) return;
+        shown = true;
+        var msg = 'ゲームの起動に失敗しました。\n\n' +
+          '考えられる原因:\n' +
+          '・ブラウザ(iOS/Safari)のバージョンが古い\n' +
+          '・一時的な読み込み不具合\n\n' +
+          '対処法: 画面を再読み込みするか、Safari/Chromeを最新に更新してください。\n\n' +
+          '--- 技術情報 ---\n' +
+          'UA: ' + navigator.userAgent + '\n' +
+          'importmap対応: ' + (window.HTMLScriptElement && HTMLScriptElement.supports && HTMLScriptElement.supports('importmap')) + '\n' +
+          (detail ? ('エラー: ' + detail) : '');
+        var el = document.getElementById('boot-error-message');
+        if (el) el.textContent = msg;
+        var screen = document.getElementById('screen-boot-error');
+        if (screen) screen.classList.remove('hidden');
+      }
+      window.addEventListener('error', function (e) {
+        showBootError((e && (e.message || (e.error && e.error.message))) || 'unknown error');
+      });
+      window.addEventListener('unhandledrejection', function (e) {
+        showBootError('unhandled promise rejection: ' + (e.reason && (e.reason.message || e.reason)));
+      });
+      // Fallback: if the game hasn't initialized within a few seconds and no
+      // error was caught above, something failed silently (e.g. a module
+      // resolution error some browsers don't surface via window.onerror).
+      setTimeout(function () {
+        if (!window.__game) showBootError(null);
+      }, 4000);
+    })();
+  </script>
   <script type="importmap">
     {
       "imports": {
