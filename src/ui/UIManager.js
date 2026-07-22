@@ -7,6 +7,8 @@ export class UIManager {
   constructor() {
     this.el = {
       title: document.getElementById('screen-title'),
+      howtoDesktop: document.getElementById('howto-desktop'),
+      howtoTouch: document.getElementById('howto-touch'),
       countdown: document.getElementById('screen-countdown'),
       countdownNumber: document.getElementById('countdown-number'),
       hud: document.getElementById('hud'),
@@ -53,6 +55,13 @@ export class UIManager {
 
   bindStart(cb) { this.el.btnStart.addEventListener('click', cb); }
   bindRestart(cb) { this.el.btnRestart.addEventListener('click', cb); }
+
+  /** Swaps the title screen's instructions panel and reserves HUD space for on-screen touch controls. */
+  applyTouchMode(isTouch) {
+    this.el.howtoDesktop.classList.toggle('hidden', isTouch);
+    this.el.howtoTouch.classList.toggle('hidden', !isTouch);
+    this.el.hud.classList.toggle('touch-mode', isTouch);
+  }
 
   showTitle() { this.el.title.classList.remove('hidden'); }
   hideTitle() { this.el.title.classList.add('hidden'); }

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { MATCH, TEAM, COLORS, PERF } from '../config.js';
 import { InputManager } from './InputManager.js';
 import { CameraController } from './CameraController.js';
+import { TouchControls } from './TouchControls.js';
 import { Arena } from '../systems/Arena.js';
 import { PaintSystem } from '../systems/PaintSystem.js';
 import { ProjectileManager } from '../systems/ProjectileManager.js';
@@ -39,6 +40,10 @@ export class Game {
     this.paintSystem.applyToMaterial(this.arena.floorMesh.material);
 
     this.input = new InputManager(this.canvas);
+    this.touchControls = this.input.isTouch
+      ? new TouchControls(this.input, document.getElementById('touch-controls'))
+      : null;
+    this.ui.applyTouchMode(this.input.isTouch);
 
     const collidableForCamera = this.arena.group.children.filter((m) => m !== this.arena.floorMesh);
     this.cameraController = new CameraController(this.camera, collidableForCamera);
@@ -160,6 +165,7 @@ export class Game {
     this.ui.showCountdown();
     this.ui.showHUD();
     this.ui.hideRespawnBanner();
+    this.touchControls?.show();
 
     this._lastCountdownDigit = null;
     this.state = STATE.COUNTDOWN;
@@ -172,6 +178,7 @@ export class Game {
     this.state = STATE.RESULT;
     this.paintSystem.flush();
     this.input.exitPointerLock();
+    this.touchControls?.hide();
 
     const cov = this.paintSystem.getCoverage();
     const outcome = cov.playerCells === cov.cpuCells ? 'draw' : (cov.playerCells > cov.cpuCells ? 'win' : 'lose');
@@ -246,7 +253,7 @@ export class Game {
 
   _updateIdleCamera(dt) {
     const [dx, dy] = this.input.consumeMouseDelta();
-    if (this.input.pointerLocked) this.cameraController.applyLook(dx, dy);
+    if (this.input.pointerLocked || this.input.isTouch) this.cameraController.applyLook(dx, dy);
     this.cameraController.update(dt, this.player.position);
     this.player.syncMesh(this.elapsedTime);
     this.cpu.syncMesh(this.elapsedTime);
@@ -254,6 +261,8 @@ export class Game {
 
   _updateCountdown(dt) {
     this.countdownRemaining -= dt;
+    const [dx, dy] = this.input.consumeMouseDelta();
+    if (this.input.pointerLocked || this.input.isTouch) this.cameraController.applyLook(dx, dy);
     this.cameraController.update(dt, this.player.position);
     this.player.syncMesh(this.elapsedTime);
     this.cpu.syncMesh(this.elapsedTime);
@@ -284,7 +293,7 @@ export class Game {
     this.matchTimeRemaining = Math.max(0, this.matchTimeRemaining);
 
     const [dx, dy] = this.input.consumeMouseDelta();
-    if (this.input.pointerLocked) this.cameraController.applyLook(dx, dy);
+    if (this.input.pointerLocked || this.input.isTouch) this.cameraController.applyLook(dx, dy);
 
     const ctx = {
       arena: this.arena,

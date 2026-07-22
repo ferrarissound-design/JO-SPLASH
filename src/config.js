@@ -142,6 +142,12 @@ export const DEBUG_DEFAULTS = {
   showInvincibility: false,
 };
 
+export const TOUCH = {
+  joystickMaxRadius: 50, // px the nub can travel from its center before clamping
+  joystickDeadzone: 0.35, // fraction of max radius before a direction registers
+  lookSensitivityMult: 1.3, // extra multiplier on top of CAMERA.sensitivity for drag-to-look
+};
+
 export const PERF = {
   maxDeltaSec: 1 / 20, // clamp large frame gaps (tab switch, etc.)
   pixelRatioCap: 1.75,

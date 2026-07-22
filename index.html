@@ -17,7 +17,7 @@
         <h1 class="game-logo">CHROMA <span class="logo-accent">DUEL</span></h1>
         <p class="game-tagline">1 対 1 インクバトル &mdash; 床を塗って陣地を制圧せよ</p>
 
-        <div class="panel how-to-play">
+        <div class="panel how-to-play" id="howto-desktop">
           <h2>操作方法</h2>
           <ul class="key-list">
             <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>移動</span></li>
@@ -28,6 +28,18 @@
             <li><kbd>Esc</kbd><span>マウスロック解除</span></li>
           </ul>
           <p class="mouse-hint">※ クリックでマウスがロックされます。開始後は画面内でマウスを動かして狙いましょう。</p>
+        </div>
+
+        <div class="panel how-to-play hidden" id="howto-touch">
+          <h2>操作方法</h2>
+          <ul class="key-list">
+            <li><kbd>左スティック</kbd><span>移動</span></li>
+            <li><kbd>右側ドラッグ</kbd><span>カメラ / 照準</span></li>
+            <li><kbd>◎ボタン</kbd><span>インク発射</span></li>
+            <li><kbd>JUMP</kbd><span>ジャンプ</span></li>
+            <li><kbd>SURF</kbd><span>自陣で高速移動</span></li>
+          </ul>
+          <p class="mouse-hint">※ 画面左側をドラッグで移動、右側をドラッグでカメラ操作。ボタンは押している間だけ効果があります。</p>
         </div>
 
         <button id="btn-start" class="btn-primary" type="button">START</button>
@@ -119,6 +131,20 @@
     <section id="debug-overlay" class="hidden">
       <div id="debug-fps">FPS: --</div>
       <pre id="debug-info"></pre>
+    </section>
+
+    <!-- ============ TOUCH CONTROLS (touch devices only) ============ -->
+    <section id="touch-controls" class="hidden">
+      <div class="touch-joystick-zone">
+        <div class="touch-joystick-base"></div>
+        <div class="touch-joystick-nub"></div>
+      </div>
+      <div class="touch-look-zone"></div>
+      <div class="touch-buttons">
+        <button type="button" class="touch-btn touch-btn-surf">SURF</button>
+        <button type="button" class="touch-btn touch-btn-jump">JUMP</button>
+        <button type="button" class="touch-btn touch-btn-fire">FIRE</button>
+      </div>
     </section>
   </div>
 
