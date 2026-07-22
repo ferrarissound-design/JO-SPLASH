@@ -107,15 +107,10 @@ export const PARTICLES = {
 };
 
 export const CAMERA = {
-  distance: 5.2,
-  height: 2.0,
-  lookHeight: 1.35,
-  shoulderOffset: 0.55,
-  minPitch: -0.9,
-  maxPitch: 0.75,
+  eyeHeight: 1.75, // camera height above the character's feet (first-person view)
+  minPitch: -1.4,
+  maxPitch: 1.4,
   sensitivity: 0.0022,
-  collisionPadding: 0.35,
-  followLerp: 18,
 };
 
 export const AI = {

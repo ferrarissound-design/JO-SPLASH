@@ -100,6 +100,12 @@ export class Player extends Character {
     this.applyVerticalPhysics(dt, arena);
   }
 
+  /** First-person view: the player never sees their own body (standard FPS convention). */
+  syncMesh(elapsedTime) {
+    super.syncMesh(elapsedTime);
+    this.mesh.visible = false;
+  }
+
   _handleFiring(dt, projectileManager, particleManager, audioManager) {
     this.weapon.update(dt);
     if (!this.input.mouseDown) return;

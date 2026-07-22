@@ -45,8 +45,7 @@ export class Game {
       : null;
     this.ui.applyTouchMode(this.input.isTouch);
 
-    const collidableForCamera = this.arena.group.children.filter((m) => m !== this.arena.floorMesh);
-    this.cameraController = new CameraController(this.camera, collidableForCamera);
+    this.cameraController = new CameraController(this.camera);
 
     this.particleManager = new ParticleManager(this.scene);
     this.audioManager = new AudioManager();

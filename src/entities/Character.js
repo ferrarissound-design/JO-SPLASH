@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { HEALTH, INK, MOVEMENT, MATCH, TEAM, COLORS, ENEMY_FLOOR_EFFECT } from '../config.js';
+import { HEALTH, INK, MOVEMENT, MATCH, TEAM, COLORS, ENEMY_FLOOR_EFFECT, CAMERA } from '../config.js';
 import { Weapon } from '../systems/Weapon.js';
 
 const _closest = new THREE.Vector2();
@@ -107,7 +107,7 @@ export class Character {
   }
 
   get eyeHeight() {
-    return MOVEMENT.capsuleHeight + 0.05;
+    return CAMERA.eyeHeight;
   }
 
   /** Apply damage; returns true if this hit resulted in a KO. */

@@ -30,9 +30,9 @@ export class Arena {
     this._buildObstacles();
     this._buildWalls();
 
-    // Kept well clear of the boundary walls (not just inside them) so the
-    // TPS camera's collision pull-in has room to sit at its normal distance
-    // right from the spawn, rather than clipping in tight from frame one.
+    // Kept far apart (and well clear of the boundary walls) per the "start
+    // points separated" requirement, with a slightly asymmetric route to
+    // each side of the central platform.
     this.spawnPoints = {
       player: new THREE.Vector3(-13, 0, 12.5),
       cpu: new THREE.Vector3(13.5, 0, -13),
