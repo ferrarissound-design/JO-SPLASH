@@ -1,0 +1,364 @@
+import * as THREE from 'three';
+import { MATCH, TEAM, COLORS, PERF } from '../config.js';
+import { InputManager } from './InputManager.js';
+import { CameraController } from './CameraController.js';
+import { Arena } from '../systems/Arena.js';
+import { PaintSystem } from '../systems/PaintSystem.js';
+import { ProjectileManager } from '../systems/ProjectileManager.js';
+import { ParticleManager } from '../systems/ParticleManager.js';
+import { AudioManager } from '../audio/AudioManager.js';
+import { Player } from '../entities/Player.js';
+import { EnemyAI } from '../entities/EnemyAI.js';
+import { UIManager } from '../ui/UIManager.js';
+
+const STATE = {
+  TITLE: 'title',
+  COUNTDOWN: 'countdown',
+  PLAYING: 'playing',
+  RESULT: 'result',
+};
+
+// ============================================================================
+// Game — top-level orchestrator. Owns the single requestAnimationFrame loop,
+// the title/countdown/playing/result state machine, and wiring between all
+// subsystems. Individual systems stay ignorant of each other; Game is the
+// only place that knows the full picture.
+// ============================================================================
+export class Game {
+  constructor() {
+    this.canvas = document.getElementById('game-canvas');
+    this.ui = new UIManager();
+
+    this._setupRenderer();
+    this._setupScene();
+
+    this.arena = new Arena();
+    this.scene.add(this.arena.group);
+
+    this.paintSystem = new PaintSystem(this.arena.halfWidth, this.arena.halfDepth);
+    this.paintSystem.applyToMaterial(this.arena.floorMesh.material);
+
+    this.input = new InputManager(this.canvas);
+
+    const collidableForCamera = this.arena.group.children.filter((m) => m !== this.arena.floorMesh);
+    this.cameraController = new CameraController(this.camera, collidableForCamera);
+
+    this.particleManager = new ParticleManager(this.scene);
+    this.audioManager = new AudioManager();
+    this.projectileManager = new ProjectileManager(
+      this.scene, this.arena, this.paintSystem, this.particleManager, this.audioManager
+    );
+    this.projectileManager.onCharacterHit = (targetTeam, damage, hitPoint) => this._onCharacterHit(targetTeam, damage, hitPoint);
+
+    this.player = new Player(this.arena.spawnPoints.player, this.cameraController, this.input);
+    this.cpu = new EnemyAI(this.arena.spawnPoints.cpu);
+    this.scene.add(this.player.mesh, this.cpu.mesh);
+
+    this._faceSpawnPoints();
+
+    this.state = STATE.TITLE;
+    this.countdownRemaining = 0;
+    this.matchTimeRemaining = MATCH.durationSec;
+    this.elapsedTime = 0;
+
+    this.debugMode = false;
+    this.ui.setDebugVisible(false);
+
+    this._fpsAccum = 0;
+    this._fpsFrames = 0;
+    this._fpsDisplay = 0;
+
+    this._bindUI();
+    this._bindWindow();
+
+    this.clock = new THREE.Clock();
+    this._animate = this._animate.bind(this);
+    requestAnimationFrame(this._animate);
+
+    // Exposed for manual QA in the browser console (e.g. `__game.debugMode = true`).
+    window.__game = this;
+  }
+
+  _setupRenderer() {
+    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, PERF.pixelRatioCap));
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    if ('outputColorSpace' in this.renderer) this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+  }
+
+  _setupScene() {
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0x141a24);
+    this.scene.fog = new THREE.Fog(0x141a24, 30, 75);
+
+    this.camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 200);
+
+    const ambient = new THREE.HemisphereLight(0x8fa8c8, 0x1a1e28, 0.85);
+    this.scene.add(ambient);
+
+    const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+    sun.position.set(14, 22, 10);
+    this.scene.add(sun);
+  }
+
+  _faceSpawnPoints() {
+    const center = new THREE.Vector3(0, 0, 0);
+    const pDir = center.clone().sub(this.player.position).setY(0).normalize();
+    this.player.yaw = Math.atan2(-pDir.x, -pDir.z);
+    this.cameraController.yaw = this.player.yaw;
+
+    const cDir = center.clone().sub(this.cpu.position).setY(0).normalize();
+    this.cpu.yaw = Math.atan2(-cDir.x, -cDir.z);
+  }
+
+  _bindUI() {
+    this.ui.bindStart(() => this._startMatch());
+    this.ui.bindRestart(() => this._startMatch());
+  }
+
+  _bindWindow() {
+    window.addEventListener('resize', () => {
+      this.camera.aspect = window.innerWidth / window.innerHeight;
+      this.camera.updateProjectionMatrix();
+      this.renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  }
+
+  // -------------------------------------------------------------- flow
+  _startMatch() {
+    this.paintSystem.reset();
+    this.projectileManager.reset();
+    this.particleManager.reset();
+
+    this.player.position.copy(this.arena.spawnPoints.player);
+    this.player.velocity.set(0, 0, 0);
+    this.player.hp = 100;
+    this.player.ink = 100;
+    this.player.alive = true;
+    this.player.invincibleTimer = 0;
+    this.player.koScored = 0;
+    this.player.deaths = 0;
+
+    this.cpu.position.copy(this.arena.spawnPoints.cpu);
+    this.cpu.velocity.set(0, 0, 0);
+    this.cpu.hp = 100;
+    this.cpu.ink = 100;
+    this.cpu.alive = true;
+    this.cpu.invincibleTimer = 0;
+    this.cpu.koScored = 0;
+    this.cpu.deaths = 0;
+    this.cpu.state = 'explore';
+    this.cpu.targetPoint = this.cpu.position.clone();
+
+    this._faceSpawnPoints();
+
+    this.matchTimeRemaining = MATCH.durationSec;
+    this.countdownRemaining = MATCH.countdownSec + MATCH.startFlashSec;
+
+    this.ui.hideTitle();
+    this.ui.hideResultScreen();
+    this.ui.showCountdown();
+    this.ui.showHUD();
+    this.ui.hideRespawnBanner();
+
+    this._lastCountdownDigit = null;
+    this.state = STATE.COUNTDOWN;
+
+    this.audioManager.resume();
+    this.input.requestPointerLock();
+  }
+
+  _endMatch() {
+    this.state = STATE.RESULT;
+    this.paintSystem.flush();
+    this.input.exitPointerLock();
+
+    const cov = this.paintSystem.getCoverage();
+    const outcome = cov.playerCells === cov.cpuCells ? 'draw' : (cov.playerCells > cov.cpuCells ? 'win' : 'lose');
+
+    if (outcome === 'win') this.audioManager.playWin();
+    else if (outcome === 'lose') this.audioManager.playLose();
+
+    this.ui.showResult({
+      playerPct: cov.playerPct,
+      cpuPct: cov.cpuPct,
+      koPlayer: this.player.koScored,
+      koCpu: this.cpu.koScored,
+      outcome,
+    });
+  }
+
+  _onCharacterHit(targetTeam, damage, hitPoint) {
+    const target = targetTeam === TEAM.PLAYER ? this.player : this.cpu;
+    const shooter = targetTeam === TEAM.PLAYER ? this.cpu : this.player;
+
+    const died = target.takeDamage(damage);
+    this.audioManager.playDamage();
+    if (targetTeam === TEAM.PLAYER) this.ui.flashHit();
+
+    if (died) {
+      shooter.koScored++;
+      const color = targetTeam === TEAM.PLAYER ? COLORS.player : COLORS.cpu;
+      this.particleManager.spawnKOExplosion(hitPoint, color);
+      this.audioManager.playKO();
+      this.ui.showStatusMessage(targetTeam === TEAM.PLAYER ? 'YOU WERE SPLATTED!' : 'CPU DEFEATED!', 1.8);
+      if (targetTeam === TEAM.PLAYER) this.ui.showRespawnBanner();
+    }
+  }
+
+  // ------------------------------------------------------------ main loop
+  _animate() {
+    requestAnimationFrame(this._animate);
+    const rawDt = this.clock.getDelta();
+    if (document.hidden) return;
+
+    const dt = Math.min(rawDt, PERF.maxDeltaSec);
+    this.elapsedTime += dt;
+
+    this._updateFps(dt);
+    this._update(dt);
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  _update(dt) {
+    if (this.input.wasJustPressed('Backquote')) {
+      this.debugMode = !this.debugMode;
+      this.ui.setDebugVisible(this.debugMode);
+    }
+
+    switch (this.state) {
+      case STATE.TITLE:
+        this._updateIdleCamera(dt);
+        break;
+      case STATE.COUNTDOWN:
+        this._updateCountdown(dt);
+        break;
+      case STATE.PLAYING:
+        this._updatePlaying(dt);
+        break;
+      case STATE.RESULT:
+        this._updateResult(dt);
+        break;
+    }
+
+    if (this.debugMode) this._updateDebugOverlay();
+  }
+
+  _updateIdleCamera(dt) {
+    const [dx, dy] = this.input.consumeMouseDelta();
+    if (this.input.pointerLocked) this.cameraController.applyLook(dx, dy);
+    this.cameraController.update(dt, this.player.position);
+    this.player.syncMesh(this.elapsedTime);
+    this.cpu.syncMesh(this.elapsedTime);
+  }
+
+  _updateCountdown(dt) {
+    this.countdownRemaining -= dt;
+    this.cameraController.update(dt, this.player.position);
+    this.player.syncMesh(this.elapsedTime);
+    this.cpu.syncMesh(this.elapsedTime);
+
+    const remaining = Math.max(0, this.countdownRemaining);
+    let label;
+    if (remaining > MATCH.startFlashSec) {
+      label = String(Math.ceil(remaining - MATCH.startFlashSec));
+    } else {
+      label = 'START';
+    }
+    if (label !== this._lastCountdownDigit) {
+      this._lastCountdownDigit = label;
+      this.ui.setCountdownText(label);
+      if (label === 'START') this.audioManager.playStart();
+      else this.audioManager.playCountdownBeep();
+    }
+
+    if (this.countdownRemaining <= 0) {
+      this.ui.hideCountdown();
+      this.state = STATE.PLAYING;
+    }
+  }
+
+  _updatePlaying(dt) {
+    this.matchTimeRemaining -= dt;
+    const matchOver = this.matchTimeRemaining <= 0;
+    this.matchTimeRemaining = Math.max(0, this.matchTimeRemaining);
+
+    const [dx, dy] = this.input.consumeMouseDelta();
+    if (this.input.pointerLocked) this.cameraController.applyLook(dx, dy);
+
+    const ctx = {
+      arena: this.arena,
+      paintSystem: this.paintSystem,
+      projectileManager: this.projectileManager,
+      particleManager: this.particleManager,
+      audioManager: this.audioManager,
+      player: this.player,
+      controlsEnabled: true,
+      elapsedTime: this.elapsedTime,
+    };
+
+    this.player.update(dt, ctx);
+    this.cpu.update(dt, ctx);
+
+    this.projectileManager.update(dt, [this.player, this.cpu]);
+    this.particleManager.update(dt);
+    this.paintSystem.update(dt);
+
+    this.cameraController.update(dt, this.player.position);
+
+    if (this.player.alive) this.ui.hideRespawnBanner();
+
+    this.ui.tickStatusMessage(dt);
+    this.ui.tickHitFlash(dt);
+
+    const cov = this.paintSystem.getCoverage();
+    this.ui.updateHUD({
+      timeRemaining: this.matchTimeRemaining,
+      playerPct: cov.playerPct,
+      cpuPct: cov.cpuPct,
+      hp: this.player.hp,
+      ink: this.player.ink,
+      koPlayer: this.player.koScored,
+      koCpu: this.cpu.koScored,
+      firing: this.input.mouseDown && this.player.alive,
+    });
+
+    if (matchOver) this._endMatch();
+  }
+
+  _updateResult(dt) {
+    this.cameraController.update(dt, this.player.position);
+    this.player.syncMesh(this.elapsedTime);
+    this.cpu.syncMesh(this.elapsedTime);
+
+    if (this.input.wasJustPressed('KeyR')) this._startMatch();
+  }
+
+  _updateFps(dt) {
+    this._fpsAccum += dt;
+    this._fpsFrames++;
+    if (this._fpsAccum >= 0.5) {
+      this._fpsDisplay = Math.round(this._fpsFrames / this._fpsAccum);
+      this._fpsAccum = 0;
+      this._fpsFrames = 0;
+    }
+  }
+
+  _updateDebugOverlay() {
+    const [pgx, pgz] = this.paintSystem.worldToGrid(this.player.position.x, this.player.position.z);
+    const [cgx, cgz] = this.paintSystem.worldToGrid(this.cpu.position.x, this.cpu.position.z);
+    const cov = this.paintSystem.getCoverage();
+    const info = [
+      `state: ${this.state}`,
+      `player cell: (${pgx}, ${pgz})  grounded:${this.player.grounded}`,
+      `cpu    cell: (${cgx}, ${cgz})  grounded:${this.cpu.grounded}`,
+      `cpu ai state: ${this.cpu.state}`,
+      `cpu target: ${this.cpu.debugTarget ? this.cpu.debugTarget.toArray().map((n) => n.toFixed(1)).join(',') : '-'}`,
+      `player inv: ${this.player.invincibleTimer.toFixed(2)}  cpu inv: ${this.cpu.invincibleTimer.toFixed(2)}`,
+      `coverage P:${cov.playerPct.toFixed(1)}% C:${cov.cpuPct.toFixed(1)}% N:${(100 - cov.playerPct - cov.cpuPct).toFixed(1)}%`,
+      `projectiles active: ${this.projectileManager.pool.filter((p) => p.active).length}/${this.projectileManager.pool.length}`,
+      `particles active: ${this.particleManager.pool.filter((p) => p.active).length}/${this.particleManager.pool.length}`,
+    ].join('\n');
+    this.ui.updateDebug(this._fpsDisplay, info);
+  }
+}
