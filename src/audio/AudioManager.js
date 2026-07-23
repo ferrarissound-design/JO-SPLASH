@@ -1,7 +1,11 @@
+const BGM_URL = new URL('./turf_war_anthem.mp3', import.meta.url).href;
+
 // ============================================================================
 // AudioManager — every sound effect is synthesized with the Web Audio API
 // (no external audio assets). The AudioContext is created suspended and
 // resumed on the first user gesture to respect browser autoplay policies.
+// The battle BGM is the one exception: a real audio file played back via
+// HTMLAudioElement, looped for the duration of a match.
 // ============================================================================
 export class AudioManager {
   constructor() {
@@ -10,6 +14,11 @@ export class AudioManager {
     this._noiseBuffer = null;
     this._resumed = false;
     this._surfLoop = null;
+
+    this.bgm = new Audio(BGM_URL);
+    this.bgm.loop = true;
+    this.bgm.volume = 0.35;
+    this.bgm.preload = 'auto';
 
     this._pendingResume = () => this.resume();
     window.addEventListener('pointerdown', this._pendingResume);
@@ -109,6 +118,16 @@ export class AudioManager {
     this._surfLoop = null;
   }
 
+  playBattleBGM() {
+    this.bgm.currentTime = 0;
+    this.bgm.play().catch(() => {});
+  }
+
+  stopBattleBGM() {
+    this.bgm.pause();
+    this.bgm.currentTime = 0;
+  }
+
   playInkSurfExit() {
     this._tone(260, 0.12, { type: 'triangle', peak: 0.13, freqEnd: 520 });
     this._noise(0.16, { peak: 0.11, filterFreq: 1500 });
@@ -152,6 +171,7 @@ export class AudioManager {
     window.removeEventListener('pointerdown', this._pendingResume);
     window.removeEventListener('keydown', this._pendingResume);
     this.stopInkSurfLoop();
+    this.stopBattleBGM();
     this.ctx?.close();
   }
 }
