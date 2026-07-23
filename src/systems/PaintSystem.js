@@ -41,7 +41,7 @@ export class PaintSystem {
     this.canvas.width = size;
     this.canvas.height = size;
     this.ctx = this.canvas.getContext('2d');
-    this.ctx.fillStyle = '#3a4150';
+    this.ctx.fillStyle = '#465061';
     this.ctx.fillRect(0, 0, size, size);
 
     this.texture = new THREE.CanvasTexture(this.canvas);
@@ -217,7 +217,7 @@ export class PaintSystem {
     this.playerCells = 0;
     this.cpuCells = 0;
     const size = PAINT.textureSize;
-    this.ctx.fillStyle = '#3a4150';
+    this.ctx.fillStyle = '#465061';
     this.ctx.fillRect(0, 0, size, size);
     this.flush();
   }
