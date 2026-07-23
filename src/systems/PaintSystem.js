@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PAINT, TEAM } from '../config.js';
+import { PAINT, TEAM, ARENA } from '../config.js';
 
 const OWNER_NONE = 0;
 const OWNER_PLAYER = 1;
@@ -43,8 +43,7 @@ export class PaintSystem {
     this.paintCanvas.width = size;
     this.paintCanvas.height = size;
     this.paintCtx = this.paintCanvas.getContext('2d');
-    this.paintCtx.fillStyle = '#586475';
-    this.paintCtx.fillRect(0, 0, size, size);
+    this._drawFloorBase();
 
     this.canvas = document.createElement('canvas');
     this.canvas.width = size;
@@ -57,6 +56,131 @@ export class PaintSystem {
     this.texture.wrapS = THREE.ClampToEdgeWrapping;
     this.texture.wrapT = THREE.ClampToEdgeWrapping;
     this.texture.colorSpace = THREE.SRGBColorSpace;
+  }
+
+  // Draws the *unpainted* floor's base look directly into paintCtx, once at
+  // startup and again on reset(). This layer sits permanently beneath every
+  // ink splat (splats are additional draws on top of it, never a clear), so
+  // it purely establishes the "neon marine arena" floor identity — center
+  // plaza concrete, navy metal at the rim, a marked platform edge and ramp
+  // hazard stripes — without touching the paint grid or any gameplay read.
+  // All line work stays low-alpha so it never competes with ink for
+  // attention once teams start painting over it.
+  _drawFloorBase() {
+    const size = PAINT.textureSize;
+    const ctx = this.paintCtx;
+    const hw = this.halfWidth;
+    const hd = this.halfDepth;
+    const toPx = (x, z) => [((x + hw) / (hw * 2)) * size, ((z + hd) / (hd * 2)) * size];
+
+    // Rim: dark navy metal deck
+    ctx.fillStyle = '#101a30';
+    ctx.fillRect(0, 0, size, size);
+
+    // Center plaza: lighter, desaturated concrete (keeps ink the most
+    // saturated thing in view once painted).
+    const grad = ctx.createRadialGradient(size / 2, size / 2, size * 0.06, size / 2, size / 2, size * 0.44);
+    grad.addColorStop(0, '#7c889c');
+    grad.addColorStop(0.72, '#6d7a8e');
+    grad.addColorStop(1, '#586475');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size * 0.44, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Faint panel seams across the whole floor
+    ctx.strokeStyle = 'rgba(255,255,255,0.045)';
+    ctx.lineWidth = 1;
+    const step = size / 11;
+    for (let i = 1; i < 11; i++) {
+      ctx.beginPath(); ctx.moveTo(i * step, 0); ctx.lineTo(i * step, size); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i * step); ctx.lineTo(size, i * step); ctx.stroke();
+    }
+
+    // Platform footprint: yellow/white "step edge" warning outline so the
+    // raised center reads clearly even before anyone paints it.
+    const hp = ARENA.platformSize / 2;
+    const [px0, pz0] = toPx(-hp, -hp);
+    const [px1, pz1] = toPx(hp, hp);
+    ctx.strokeStyle = 'rgba(255,217,74,0.5)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(px0, pz0, px1 - px0, pz1 - pz0);
+    ctx.strokeStyle = 'rgba(255,255,255,0.32)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(px0 - 4, pz0 - 4, (px1 - px0) + 8, (pz1 - pz0) + 8);
+
+    // Ramp footprint: diagonal hazard-stripe wash, clipped to its rectangle.
+    const rw = ARENA.rampWidth;
+    const rl = ARENA.rampLength;
+    const rOffX = ARENA.rampOffsetX;
+    const rMinX = rOffX - rw / 2;
+    const rMaxX = rOffX + rw / 2;
+    const [rpx0, rpz0] = toPx(rMinX, hp);
+    const [rpx1, rpz1] = toPx(rMaxX, hp + rl);
+    const rx0 = Math.min(rpx0, rpx1);
+    const rw_ = Math.abs(rpx1 - rpx0);
+    const rh_ = rpz1 - rpz0;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(rx0, rpz0, rw_, rh_);
+    ctx.clip();
+    ctx.fillStyle = 'rgba(255,217,74,0.16)';
+    const stripeW = 9;
+    for (let d = -rh_; d < rw_ + rh_; d += stripeW * 2) {
+      ctx.save();
+      ctx.translate(rx0 + d, rpz0);
+      ctx.rotate(Math.PI / 4);
+      ctx.fillRect(0, 0, stripeW, rh_ * 2.4);
+      ctx.restore();
+    }
+    ctx.restore();
+
+    // Outer boundary marking, just inside the perimeter walls.
+    const inset = size * 0.018;
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(inset, inset, size - inset * 2, size - inset * 2);
+    ctx.strokeStyle = 'rgba(255,217,74,0.24)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(inset + 5, inset + 5, size - inset * 2 - 10, size - inset * 2 - 10);
+
+    // Scattered zone numerals, directional arrows and a center emblem —
+    // low-alpha so they read as floor markings, not visual noise.
+    ctx.fillStyle = 'rgba(255,255,255,0.09)';
+    ctx.font = 'bold 30px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('01', size * 0.17, size * 0.20);
+    ctx.fillText('02', size * 0.83, size * 0.20);
+    ctx.fillText('03', size * 0.17, size * 0.82);
+    ctx.fillText('04', size * 0.83, size * 0.82);
+
+    this._drawArrow(ctx, size * 0.5, size * 0.09, Math.PI / 2, 'rgba(255,255,255,0.1)');
+    this._drawArrow(ctx, size * 0.5, size * 0.91, -Math.PI / 2, 'rgba(255,255,255,0.1)');
+    this._drawArrow(ctx, size * 0.09, size * 0.5, 0, 'rgba(255,255,255,0.1)');
+    this._drawArrow(ctx, size * 0.91, size * 0.5, Math.PI, 'rgba(255,255,255,0.1)');
+
+    ctx.strokeStyle = 'rgba(180,230,255,0.14)';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size * 0.07, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  /** Small filled triangle pointing along `angle`, used as a subtle floor way-marker. */
+  _drawArrow(ctx, x, y, angle, style) {
+    const len = 22;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.fillStyle = style;
+    ctx.beginPath();
+    ctx.moveTo(len * 0.6, 0);
+    ctx.lineTo(-len * 0.4, -len * 0.4);
+    ctx.lineTo(-len * 0.4, len * 0.4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   }
 
   /** Attach this system's texture onto a floor mesh's material. */
@@ -191,8 +315,8 @@ export class PaintSystem {
     // Soft base bloom is painted permanently; the sharper wet sheen is
     // composited separately and fades over PAINT.glossLifeSec.
     const grad = ctx.createRadialGradient(px, py, pr * 0.18, px, py, pr * 1.18);
-    grad.addColorStop(0, `${glow}88`);
-    grad.addColorStop(0.58, `${color}44`);
+    grad.addColorStop(0, `${glow}a8`);
+    grad.addColorStop(0.58, `${color}55`);
     grad.addColorStop(1, `${color}00`);
     ctx.fillStyle = grad;
     ctx.beginPath();
@@ -238,8 +362,8 @@ export class PaintSystem {
       this.ctx.translate(g.x, g.y);
       this.ctx.rotate(g.dir - 0.45);
       this.ctx.scale(g.stretch, 0.42);
-      this.ctx.strokeStyle = `rgba(${g.rgb}, ${0.58 * t})`;
-      this.ctx.lineWidth = Math.max(1, g.r * 0.08);
+      this.ctx.strokeStyle = `rgba(${g.rgb}, ${0.68 * t})`;
+      this.ctx.lineWidth = Math.max(1, g.r * 0.1);
       this.ctx.beginPath();
       this.ctx.arc(0, 0, g.r * (0.38 + 0.12 * t), -0.4, 1.05);
       this.ctx.stroke();
@@ -291,9 +415,7 @@ export class PaintSystem {
     this.ownerGrid.fill(OWNER_NONE);
     this.playerCells = 0;
     this.cpuCells = 0;
-    const size = PAINT.textureSize;
-    this.paintCtx.fillStyle = '#586475';
-    this.paintCtx.fillRect(0, 0, size, size);
+    this._drawFloorBase();
     this._glosses = [];
     this.flush();
   }

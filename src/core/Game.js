@@ -1,9 +1,10 @@
 import * as THREE from 'three';
-import { MATCH, TEAM, COLORS, PERF, MOVEMENT, ARENA } from '../config.js';
+import { MATCH, TEAM, COLORS, THEME, PERF, MOVEMENT, ARENA } from '../config.js';
 import { InputManager } from './InputManager.js';
 import { CameraController } from './CameraController.js';
 import { TouchControls } from './TouchControls.js';
 import { Arena } from '../systems/Arena.js';
+import { StageDecor } from '../systems/StageDecor.js';
 import { PaintSystem } from '../systems/PaintSystem.js';
 import { ProjectileManager } from '../systems/ProjectileManager.js';
 import { ParticleManager } from '../systems/ParticleManager.js';
@@ -49,6 +50,12 @@ export class Game {
       ? new TouchControls(this.input, document.getElementById('touch-controls'))
       : null;
     this.ui.applyTouchMode(this.input.isTouch);
+
+    // Purely cosmetic background/landmark/prop layer. Lives in its own
+    // scene-level group (see StageDecor's header comment) so it can never
+    // affect hit-testing, collision, or AI pathing. `lowQuality` trims
+    // instance counts on touch devices to protect mobile frame rate.
+    this.stageDecor = new StageDecor(this.scene, this.arena, { lowQuality: this.input.isTouch });
 
     this.cameraController = new CameraController(this.camera);
 
@@ -102,16 +109,25 @@ export class Game {
 
   _setupScene() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x263244);
-    this.scene.fog = new THREE.Fog(0x263244, 42, 96);
+    // The actual sky is StageDecor's gradient dome; this background color is
+    // just the fallback shown for the one frame before it's built, tuned to
+    // match the dome's horizon stop so there's no visible pop-in.
+    this.scene.background = new THREE.Color(THEME.skyHorizon);
+    this.scene.fog = new THREE.Fog(THEME.fogColor, 55, 170);
 
     this.camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 200);
     this._baseCameraFov = this.camera.fov;
 
-    const ambient = new THREE.HemisphereLight(0xc8d8ee, 0x344052, 1.32);
+    // Two lights total, per the "avoid stacking real-time lights" mobile
+    // budget — everything else that reads as "glowing" is emissive
+    // materials on the meshes themselves (see Arena/StageDecor), not extra
+    // dynamic lights. Hemisphere sky/ground tints lean cyan/navy to match
+    // the new arena palette; the directional key light is toned down
+    // slightly since neon emissives now carry more of the visual "pop".
+    const ambient = new THREE.HemisphereLight(0xbfe8ff, 0x16223f, 1.28);
     this.scene.add(ambient);
 
-    const sun = new THREE.DirectionalLight(0xffffff, 1.24);
+    const sun = new THREE.DirectionalLight(0xfff3d8, 1.05);
     sun.position.set(14, 22, 10);
     this.scene.add(sun);
   }
@@ -283,6 +299,10 @@ export class Game {
 
     this._updateFps(dt);
     this._update(dt);
+    // Background/landmark/prop animation runs every frame regardless of
+    // match state (title/countdown/playing/result) so the stage reads as
+    // alive immediately, not just once a match starts.
+    this.stageDecor.updateStageAnimations(dt, this.elapsedTime);
     this.renderer.render(this.scene, this.camera);
   }
 
