@@ -53,7 +53,7 @@ export class Player extends Character {
       particleManager.spawnSplat(_surfExitSplatPos, COLORS.player, true);
     }
 
-    this.updateFloorParticles(dt, particleManager);
+    this.updateFloorParticles(dt, particleManager, paintSystem);
 
     this.yaw = this.camera.yaw;
     this.syncMesh(ctx.elapsedTime);

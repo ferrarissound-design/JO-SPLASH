@@ -180,7 +180,11 @@ export class ProjectileManager {
     const color = slot.team === TEAM.PLAYER ? 0x2fb8ff : 0xff7a2f;
 
     if (hit.object === this.arena.floorMesh) {
-      this.paintSystem.paintSplat(hit.point.x, hit.point.z, PAINT.splatRadius, slot.team);
+      this.paintSystem.paintSplat(hit.point.x, hit.point.z, PAINT.splatRadius, slot.team, {
+        dirX: slot.velocity.x,
+        dirZ: slot.velocity.z,
+        stretch: 1.45,
+      });
       this.particleManager?.spawnSplat(hit.point, color, true);
     } else {
       this.particleManager?.spawnSplat(hit.point, color, false);

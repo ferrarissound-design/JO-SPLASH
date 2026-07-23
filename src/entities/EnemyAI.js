@@ -175,7 +175,7 @@ export class EnemyAI extends Character {
     const wantsInkSurf = paintSystem.getOwnerAt(this.position.x, this.position.z) === TEAM.CPU;
     const speedMult = this.updateFloorEffects(dt, paintSystem, wantsInkSurf);
     this._lastSpeedMult = speedMult;
-    this.updateFloorParticles(dt, particleManager);
+    this.updateFloorParticles(dt, particleManager, paintSystem);
 
     this.syncMesh(ctx.elapsedTime);
   }

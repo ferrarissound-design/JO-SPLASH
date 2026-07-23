@@ -45,6 +45,11 @@ export const PAINT = {
   textureSize: 512, // canvas texture pixel resolution
   splatRadius: 2.1, // world-units radius painted per projectile hit
   updateIntervalMs: 45, // throttle canvas texture upload
+  splatterMin: 7, // tiny random flecks around each impact
+  splatterMax: 13,
+  glossLifeSec: 2.2, // temporary wet sheen duration for fresh ink
+  trailRadius: 0.42, // thin paint ribbon stamped by grounded movement
+  trailIntervalSec: 0.08,
 };
 
 export const MOVEMENT = {
