@@ -61,11 +61,33 @@ export class TouchControls {
   }
 
   _bindButton(el, cb) {
-    const start = (e) => { e.preventDefault(); el.classList.add('pressed'); cb(true); };
-    const end = (e) => { e.preventDefault(); el.classList.remove('pressed'); cb(false); };
-    el.addEventListener('touchstart', start, { passive: false });
-    el.addEventListener('touchend', end, { passive: false });
-    el.addEventListener('touchcancel', end, { passive: false });
+    const press = (e) => {
+      e.preventDefault();
+      el.classList.add('pressed');
+      cb(true);
+      if (e.pointerId !== undefined && el.setPointerCapture) {
+        try { el.setPointerCapture(e.pointerId); } catch {}
+      }
+    };
+    const release = (e) => {
+      e.preventDefault();
+      el.classList.remove('pressed');
+      cb(false);
+      if (e.pointerId !== undefined && el.releasePointerCapture) {
+        try { el.releasePointerCapture(e.pointerId); } catch {}
+      }
+    };
+
+    if (window.PointerEvent) {
+      el.addEventListener('pointerdown', press, { passive: false });
+      el.addEventListener('pointerup', release, { passive: false });
+      el.addEventListener('pointercancel', release, { passive: false });
+      el.addEventListener('lostpointercapture', release, { passive: false });
+    } else {
+      el.addEventListener('touchstart', press, { passive: false });
+      el.addEventListener('touchend', release, { passive: false });
+      el.addEventListener('touchcancel', release, { passive: false });
+    }
   }
 
   _findTouch(touchList, id) {
