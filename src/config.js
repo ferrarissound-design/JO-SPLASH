@@ -20,6 +20,8 @@ export const COLORS = {
   obstacle: 0x8a96a8,
   platform: 0xa2adbd,
   ramp: 0x949faf,
+  climbPanel: 0xf3c14b, // distinct warm tone marks a wall as "paintable / climbable"
+  climbPanelBase: 0x5a4a2e,
 };
 
 export const MATCH = {
@@ -35,9 +37,11 @@ export const ARENA = {
   depth: 44,
   wallHeight: 6,
   platformHeight: 2.6,
-  platformSize: 11,
+  platformSize: 14, // bigger central objective raises its control value
   rampWidth: 5,
   rampLength: 7,
+  climbPanelWidth: 4.2, // width of each paintable/climbable wall section
+  spawnSafeRadius: 3.6, // pre-inked safe zone painted around each spawn point
 };
 
 export const PAINT = {
@@ -50,6 +54,10 @@ export const PAINT = {
   glossLifeSec: 2.2, // temporary wet sheen duration for fresh ink
   trailRadius: 0.42, // thin paint ribbon stamped by grounded movement
   trailIntervalSec: 0.08,
+  wallGridCols: 12, // small independent coverage grid for each climbable wall panel
+  wallGridRows: 10,
+  wallTextureSize: 128,
+  wallOwnThreshold: 0.14, // fraction of a panel that must already be your own ink before you can climb it
 };
 
 export const MOVEMENT = {
@@ -71,6 +79,11 @@ export const MOVEMENT = {
   capsuleRadius: 0.45,
   capsuleHeight: 1.7,
   maxFallSpeed: -30,
+  wallClimbSpeed: 5.6, // vertical speed while scaling a painted climb panel
+  wallClimbMaxDurationSec: 1.35, // hard cap so a climb always resolves quickly
+  wallClimbApproachDist: 0.85, // how far from a panel's plane still counts as "touching" it
+  wallClimbInkCostPerSec: 32, // ink drained per second while climbing
+  wallClimbMountInward: 0.9, // nudge onto the ledge once a climb reaches the top
 };
 
 export const ENEMY_FLOOR_EFFECT = {

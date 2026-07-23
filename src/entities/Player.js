@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Character } from './Character.js';
-import { MOVEMENT, TEAM, COLORS } from '../config.js';
+import { MOVEMENT, TEAM, COLORS, PAINT } from '../config.js';
 
 const _wish = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
@@ -100,17 +100,101 @@ export class Player extends Character {
     this.velocity.x = _horizVel.x;
     this.velocity.z = _horizVel.y;
 
-    if (this.grounded && input.wasJustPressed('Space')) {
-      this.inkSurfCooldown = MOVEMENT.inkSurfExitCooldownSec;
-      this.inkSurfActive = false;
-      this.velocity.y = MOVEMENT.jumpSpeed;
-      this.grounded = false;
+    if (!this.isClimbing && input.wasJustPressed('Space')) {
+      const panel = this._findClimbablePanel(arena);
+      if (panel && input.isDown('KeyW') && this.ink > MOVEMENT.wallClimbInkCostPerSec * 0.2) {
+        this._startClimb(panel);
+      } else if (this.grounded) {
+        this.inkSurfCooldown = MOVEMENT.inkSurfExitCooldownSec;
+        this.inkSurfActive = false;
+        this.velocity.y = MOVEMENT.jumpSpeed;
+        this.grounded = false;
+      }
     }
 
     this.position.x += this.velocity.x * dt;
     this.position.z += this.velocity.z * dt;
     this.resolveObstacleCollisions(arena);
-    this.applyVerticalPhysics(dt, arena);
+
+    if (this.isClimbing) {
+      this._updateClimbing(dt);
+    } else {
+      this.applyVerticalPhysics(dt, arena);
+    }
+  }
+
+  /** Finds a nearby wall panel the player is facing that already carries enough of their own ink to climb. */
+  _findClimbablePanel(arena) {
+    const r = MOVEMENT.capsuleRadius;
+    for (const panel of arena.climbPanels) {
+      const dist = panel.planeAxis === 'x'
+        ? Math.abs(this.position.x - panel.planeValue)
+        : Math.abs(this.position.z - panel.planeValue);
+      if (dist > r + MOVEMENT.wallClimbApproachDist) continue;
+
+      const tan = panel.planeAxis === 'x' ? this.position.z : this.position.x;
+      if (tan < panel.tangentMin || tan > panel.tangentMax) continue;
+      if (this.position.y >= panel.height - 0.05) continue;
+      if (panel.paint.coverageFraction(this.team) < PAINT.wallOwnThreshold) continue;
+      return panel;
+    }
+    return null;
+  }
+
+  _isTouchingPanel(panel) {
+    const r = MOVEMENT.capsuleRadius;
+    const dist = panel.planeAxis === 'x'
+      ? Math.abs(this.position.x - panel.planeValue)
+      : Math.abs(this.position.z - panel.planeValue);
+    if (dist > r + MOVEMENT.wallClimbApproachDist + 0.3) return false;
+
+    const tan = panel.planeAxis === 'x' ? this.position.z : this.position.x;
+    return tan >= panel.tangentMin - 0.2 && tan <= panel.tangentMax + 0.2;
+  }
+
+  _startClimb(panel) {
+    this.isClimbing = true;
+    this._climbPanel = panel;
+    this._climbTimer = MOVEMENT.wallClimbMaxDurationSec;
+    this.velocity.set(0, MOVEMENT.wallClimbSpeed, 0);
+    this.grounded = false;
+  }
+
+  /** Rides the climb: keeps rising while forward is held, ink lasts, and the panel is still in reach. */
+  _updateClimbing(dt) {
+    const panel = this._climbPanel;
+    this._climbTimer -= dt;
+    this.ink = Math.max(0, this.ink - MOVEMENT.wallClimbInkCostPerSec * dt);
+
+    const canContinue = panel && this.input.isDown('KeyW') && this._isTouchingPanel(panel)
+      && this.ink > 0 && this._climbTimer > 0;
+
+    if (!canContinue) {
+      this._endClimb();
+      this.velocity.y = Math.min(this.velocity.y, 0);
+      return;
+    }
+
+    this.velocity.set(0, MOVEMENT.wallClimbSpeed, 0);
+    this.position.y += MOVEMENT.wallClimbSpeed * dt;
+    this.grounded = false;
+
+    if (this.position.y >= panel.height) this._mountClimb(panel);
+  }
+
+  /** Pops the player up and inward onto the ledge once a climb reaches the panel's top. */
+  _mountClimb(panel) {
+    this.position.x += panel.normal.x * MOVEMENT.wallClimbMountInward;
+    this.position.z += panel.normal.z * MOVEMENT.wallClimbMountInward;
+    this.position.y = panel.height;
+    this.velocity.set(panel.normal.x * 2.2, 3, panel.normal.z * 2.2);
+    this.grounded = false;
+    this._endClimb();
+  }
+
+  _endClimb() {
+    this.isClimbing = false;
+    this._climbPanel = null;
   }
 
   /** First-person view: the player never sees their own body (standard FPS convention). */
@@ -121,7 +205,7 @@ export class Player extends Character {
 
   _handleFiring(dt, projectileManager, particleManager, audioManager) {
     this.weapon.update(dt);
-    if (this.inkSurfActive) return;
+    if (this.inkSurfActive || this.isClimbing) return;
     if (!this.input.mouseDown) return;
 
     this.camera.getAimDirection(_aimDir);

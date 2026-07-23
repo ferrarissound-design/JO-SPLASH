@@ -230,7 +230,9 @@ export class EnemyAI extends Character {
     _losRay.set(_eyeA, _toPlayer);
     _losRay.far = dist - 0.3;
     _losRay.near = 0;
-    const blockers = this._sightBlockers || (this._sightBlockers = arena.group.children.filter((m) => m !== arena.floorMesh));
+    const blockers = this._sightBlockers || (this._sightBlockers = arena.group.children.filter(
+      (m) => m !== arena.floorMesh && m !== arena.platformTopMesh && m !== arena.rampTopMesh
+    ));
     const hits = _losRay.intersectObjects(blockers, false);
     return hits.length === 0;
   }
@@ -445,6 +447,7 @@ export class EnemyAI extends Character {
     _probeOrigin.set(this.position.x, this.position.y + 0.6, this.position.z);
     const obstacleMeshes = this._obstacleMeshes || (this._obstacleMeshes = arena.group.children.filter(
       (m) => m !== arena.floorMesh && m !== arena.platformMesh && m !== arena.rampMesh
+        && m !== arena.platformTopMesh && m !== arena.rampTopMesh
     ));
 
     _wishSnapshot.copy(wishDir);
