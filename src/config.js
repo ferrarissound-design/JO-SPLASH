@@ -14,12 +14,12 @@ export const COLORS = {
   playerDeep: 0x0f6fb8,
   cpu: 0xff7a2f,
   cpuDeep: 0xc2470c,
-  neutral: 0x313845,
-  floorBase: 0x465061,
-  wall: 0x667286,
-  obstacle: 0x778398,
-  platform: 0x929daf,
-  ramp: 0x828da0,
+  neutral: 0x3c4452,
+  floorBase: 0x586475,
+  wall: 0x7a879b,
+  obstacle: 0x8a96a8,
+  platform: 0xa2adbd,
+  ramp: 0x949faf,
 };
 
 export const MATCH = {

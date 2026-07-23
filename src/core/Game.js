@@ -97,15 +97,15 @@ export class Game {
 
   _setupScene() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x1b2330);
-    this.scene.fog = new THREE.Fog(0x1b2330, 36, 88);
+    this.scene.background = new THREE.Color(0x263244);
+    this.scene.fog = new THREE.Fog(0x263244, 42, 96);
 
     this.camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 200);
 
-    const ambient = new THREE.HemisphereLight(0xaec4df, 0x242b38, 1.05);
+    const ambient = new THREE.HemisphereLight(0xc8d8ee, 0x344052, 1.32);
     this.scene.add(ambient);
 
-    const sun = new THREE.DirectionalLight(0xffffff, 1.12);
+    const sun = new THREE.DirectionalLight(0xffffff, 1.24);
     sun.position.set(14, 22, 10);
     this.scene.add(sun);
   }
