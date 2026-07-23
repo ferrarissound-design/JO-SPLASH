@@ -41,7 +41,7 @@ export class PaintSystem {
     this.canvas.width = size;
     this.canvas.height = size;
     this.ctx = this.canvas.getContext('2d');
-    this.ctx.fillStyle = '#3a4150';
+    this.ctx.fillStyle = '#586475';
     this.ctx.fillRect(0, 0, size, size);
 
     this.texture = new THREE.CanvasTexture(this.canvas);
@@ -139,20 +139,47 @@ export class PaintSystem {
     const pr = (radius / this.width) * size;
 
     const color = team === TEAM.PLAYER ? '#2fb8ff' : '#ff7a2f';
+    const glow = team === TEAM.PLAYER ? '#7fe0ff' : '#ffb06f';
     const ctx = this.ctx;
+
+    // Draw an irregular radial polygon over the same logical circle. Gameplay
+    // coverage still uses the unchanged grid circle above; this only makes the
+    // CanvasTexture edge feel like liquid instead of a perfect stamp.
+    const lobes = 18;
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.arc(px, py, pr, 0, Math.PI * 2);
+    for (let i = 0; i < lobes; i++) {
+      const a = (i / lobes) * Math.PI * 2;
+      const wobble = 0.9 + Math.sin(px * 0.071 + py * 0.043 + i * 1.73) * 0.085 + Math.sin(i * 2.41 + px * 0.019) * 0.045;
+      const r = pr * wobble;
+      const sx = px + Math.cos(a) * r;
+      const sy = py + Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(sx, sy);
+      else ctx.lineTo(sx, sy);
+    }
+    ctx.closePath();
     ctx.fill();
 
-    // Soften the rim slightly so overlapping splats don't look like hard-edged tiles.
-    const grad = ctx.createRadialGradient(px, py, pr * 0.75, px, py, pr * 1.05);
-    grad.addColorStop(0, color);
+    // Brief-looking highlight baked into the texture, plus tiny splashes with
+    // a fixed count (no Geometry/Material allocations) for a lighter ink feel.
+    const grad = ctx.createRadialGradient(px, py, pr * 0.18, px, py, pr * 1.08);
+    grad.addColorStop(0, `${glow}88`);
+    grad.addColorStop(0.58, `${color}44`);
     grad.addColorStop(1, `${color}00`);
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.arc(px, py, pr * 1.05, 0, Math.PI * 2);
+    ctx.arc(px, py, pr * 1.08, 0, Math.PI * 2);
     ctx.fill();
+
+    ctx.fillStyle = `${color}cc`;
+    for (let i = 0; i < 5; i++) {
+      const a = px * 0.013 + py * 0.017 + i * 1.91;
+      const d = pr * (0.78 + ((Math.sin(a * 2.3) + 1) * 0.22));
+      const rr = Math.max(1.2, pr * (0.06 + ((Math.cos(a * 1.7) + 1) * 0.025)));
+      ctx.beginPath();
+      ctx.arc(px + Math.cos(a) * d, py + Math.sin(a) * d, rr, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   /** Call once per frame; throttles the (relatively costly) GPU texture upload. */
@@ -190,7 +217,7 @@ export class PaintSystem {
     this.playerCells = 0;
     this.cpuCells = 0;
     const size = PAINT.textureSize;
-    this.ctx.fillStyle = '#3a4150';
+    this.ctx.fillStyle = '#586475';
     this.ctx.fillRect(0, 0, size, size);
     this.flush();
   }

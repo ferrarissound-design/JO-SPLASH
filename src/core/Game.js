@@ -12,6 +12,9 @@ import { Player } from '../entities/Player.js';
 import { EnemyAI } from '../entities/EnemyAI.js';
 import { UIManager } from '../ui/UIManager.js';
 
+const _enemyScreenPos = new THREE.Vector3();
+const _enemyMarkerOffset = new THREE.Vector3(0, 2.35, 0);
+
 const STATE = {
   TITLE: 'title',
   COUNTDOWN: 'countdown',
@@ -57,6 +60,8 @@ export class Game {
     this.player = new Player(this.arena.spawnPoints.player, this.cameraController, this.input);
     this.cpu = new EnemyAI(this.arena.spawnPoints.cpu);
     this.scene.add(this.player.mesh, this.cpu.mesh);
+    this._setupCpuVisibilityAid();
+    this._cpuHitFlashTimer = 0;
 
     this._faceSpawnPoints();
 
@@ -92,15 +97,15 @@ export class Game {
 
   _setupScene() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x141a24);
-    this.scene.fog = new THREE.Fog(0x141a24, 30, 75);
+    this.scene.background = new THREE.Color(0x263244);
+    this.scene.fog = new THREE.Fog(0x263244, 42, 96);
 
     this.camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 200);
 
-    const ambient = new THREE.HemisphereLight(0x8fa8c8, 0x1a1e28, 0.85);
+    const ambient = new THREE.HemisphereLight(0xc8d8ee, 0x344052, 1.32);
     this.scene.add(ambient);
 
-    const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+    const sun = new THREE.DirectionalLight(0xffffff, 1.24);
     sun.position.set(14, 22, 10);
     this.scene.add(sun);
   }
@@ -121,11 +126,27 @@ export class Game {
   }
 
   _bindWindow() {
-    window.addEventListener('resize', () => {
-      this.camera.aspect = window.innerWidth / window.innerHeight;
-      this.camera.updateProjectionMatrix();
-      this.renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+    const resize = () => this._resizeViewport();
+    window.addEventListener('resize', resize);
+    window.addEventListener('orientationchange', resize);
+    window.visualViewport?.addEventListener('resize', resize);
+  }
+
+  _resizeViewport() {
+    const width = window.visualViewport?.width || window.innerWidth;
+    const height = window.visualViewport?.height || window.innerHeight;
+    this.camera.aspect = width / height;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(width, height, false);
+  }
+
+  _setupCpuVisibilityAid() {
+    const ringGeo = new THREE.TorusGeometry(0.62, 0.025, 6, 28);
+    const ringMat = new THREE.MeshBasicMaterial({ color: COLORS.cpu, transparent: true, opacity: 0.46, depthWrite: false });
+    this.cpuRing = new THREE.Mesh(ringGeo, ringMat);
+    this.cpuRing.rotation.x = Math.PI / 2;
+    this.cpuRing.position.y = 0.035;
+    this.cpu.mesh.add(this.cpuRing);
   }
 
   // -------------------------------------------------------------- flow
@@ -164,6 +185,8 @@ export class Game {
     this.ui.showCountdown();
     this.ui.showHUD();
     this.ui.hideRespawnBanner();
+    this.ui.updateEnemyMarker({ visible: false });
+    this._cpuHitFlashTimer = 0;
     this.touchControls?.show();
 
     this._lastCountdownDigit = null;
@@ -200,7 +223,9 @@ export class Game {
 
     const died = target.takeDamage(damage);
     this.audioManager.playDamage();
+    this.ui.flashCrosshair(targetTeam === TEAM.CPU);
     if (targetTeam === TEAM.PLAYER) this.ui.flashHit();
+    if (targetTeam === TEAM.CPU) this._flashCpuBody();
 
     if (died) {
       shooter.koScored++;
@@ -318,6 +343,7 @@ export class Game {
 
     this.ui.tickStatusMessage(dt);
     this.ui.tickHitFlash(dt);
+    this._updateCpuVisibility(dt);
 
     const cov = this.paintSystem.getCoverage();
     this.ui.updateHUD({
@@ -335,11 +361,55 @@ export class Game {
   }
 
   _updateResult(dt) {
+    this.ui.updateEnemyMarker({ visible: false });
     this.cameraController.update(dt, this.player.position);
     this.player.syncMesh(this.elapsedTime);
     this.cpu.syncMesh(this.elapsedTime);
 
     if (this.input.wasJustPressed('KeyR')) this._startMatch();
+  }
+
+  _flashCpuBody() {
+    this._cpuHitFlashTimer = 0.16;
+    for (const material of this.cpu.materials) {
+      material.emissive?.setHex(0xff7a2f);
+      if (material.emissiveIntensity !== undefined) material.emissiveIntensity = 0.6;
+    }
+  }
+
+  _updateCpuVisibility(dt) {
+    if (this._cpuHitFlashTimer > 0) {
+      this._cpuHitFlashTimer -= dt;
+      const intensity = Math.max(0, this._cpuHitFlashTimer / 0.16) * 0.6;
+      for (const material of this.cpu.materials) {
+        if (material.emissiveIntensity !== undefined) material.emissiveIntensity = intensity;
+      }
+    }
+
+    this.cpuRing.visible = this.cpu.alive;
+    if (!this.cpu.alive) {
+      this.ui.updateEnemyMarker({ visible: false });
+      return;
+    }
+
+    const distance = this.camera.position.distanceTo(this.cpu.position);
+    if (distance > 26) {
+      this.ui.updateEnemyMarker({ visible: false });
+      return;
+    }
+
+    _enemyScreenPos.copy(this.cpu.position).add(_enemyMarkerOffset).project(this.camera);
+    if (_enemyScreenPos.z < -1 || _enemyScreenPos.z > 1) {
+      this.ui.updateEnemyMarker({ visible: false });
+      return;
+    }
+
+    const width = this.renderer.domElement.clientWidth || window.innerWidth;
+    const height = this.renderer.domElement.clientHeight || window.innerHeight;
+    const x = (_enemyScreenPos.x * 0.5 + 0.5) * width;
+    const y = (-_enemyScreenPos.y * 0.5 + 0.5) * height;
+    const scale = THREE.MathUtils.clamp(1.08 - distance / 36, 0.62, 1);
+    this.ui.updateEnemyMarker({ visible: true, x, y, hp: this.cpu.hp, scale });
   }
 
   _updateFps(dt) {

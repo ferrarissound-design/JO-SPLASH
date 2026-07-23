@@ -37,7 +37,7 @@
             <li><kbd>右側ドラッグ</kbd><span>カメラ / 照準</span></li>
             <li><kbd>◎ボタン</kbd><span>インク発射</span></li>
             <li><kbd>JUMP</kbd><span>ジャンプ</span></li>
-            <li><kbd>SURF</kbd><span>自陣で高速移動</span></li>
+            <li><kbd>FLOW</kbd><span>自分色の上で高速移動</span></li>
           </ul>
           <p class="mouse-hint">※ 画面左側をドラッグで移動、右側をドラッグでカメラ操作。ボタンは押している間だけ効果があります。</p>
         </div>
@@ -55,40 +55,33 @@
     <!-- ============ HUD ============ -->
     <section id="hud" class="hidden">
       <div class="hud-top">
-        <div class="coverage-bar-wrap">
-          <div class="coverage-label">
-            <span class="side-tag side-player">YOU</span>
-            <span id="coverage-player-pct">0%</span>
-          </div>
-          <div class="coverage-bar">
+        <div class="match-strip" aria-label="試合状況">
+          <div class="match-side match-player"><span class="side-tag side-player">YOU</span><span id="coverage-player-pct">0%</span></div>
+          <div id="timer">01:30</div>
+          <div class="match-side match-cpu"><span class="side-tag side-cpu">CPU</span><span id="coverage-cpu-pct">0%</span></div>
+          <div class="coverage-bar" aria-hidden="true">
             <div id="coverage-bar-player" class="coverage-fill fill-player"></div>
             <div id="coverage-bar-cpu" class="coverage-fill fill-cpu"></div>
           </div>
-          <div class="coverage-label">
-            <span id="coverage-cpu-pct">0%</span>
-            <span class="side-tag side-cpu">CPU</span>
-          </div>
         </div>
-        <div id="timer">90</div>
         <div class="status-msg" id="status-msg"></div>
       </div>
 
       <div class="hud-bottom">
-        <div class="gauge-cluster">
-          <div class="gauge-row">
-            <span class="gauge-icon hp-icon">HP</span>
-            <div class="gauge-track"><div id="hp-fill" class="gauge-fill hp-fill"></div></div>
-            <span id="hp-value" class="gauge-value">100</span>
+        <div class="vitals-stack">
+          <div class="gauge-cluster">
+            <div class="gauge-row" id="hp-row">
+              <span class="gauge-icon hp-icon">HP</span>
+              <div class="gauge-track"><div id="hp-fill" class="gauge-fill hp-fill"></div></div>
+              <span id="hp-value" class="gauge-value">100</span>
+            </div>
+            <div class="gauge-row" id="ink-row">
+              <span class="gauge-icon ink-icon">INK</span>
+              <div class="gauge-track"><div id="ink-fill" class="gauge-fill ink-fill"></div></div>
+              <span id="ink-value" class="gauge-value">100</span>
+            </div>
           </div>
-          <div class="gauge-row">
-            <span class="gauge-icon ink-icon">INK</span>
-            <div class="gauge-track"><div id="ink-fill" class="gauge-fill ink-fill"></div></div>
-            <span id="ink-value" class="gauge-value">100</span>
-          </div>
-        </div>
-        <div class="ko-cluster">
-          <div class="ko-box"><span class="ko-label">YOU KO</span><span id="ko-player">0</span></div>
-          <div class="ko-box"><span class="ko-label">CPU KO</span><span id="ko-cpu">0</span></div>
+          <div class="ko-cluster"><span class="ko-title">KO</span><span id="ko-player" class="ko-player">0</span><span class="ko-sep">-</span><span id="ko-cpu" class="ko-cpu">0</span></div>
         </div>
       </div>
 
@@ -100,6 +93,7 @@
         <span class="ch-dot"></span>
       </div>
 
+      <div id="enemy-marker" class="hidden"><div class="enemy-name">J0-BOT</div><div class="enemy-hp-track"><div id="enemy-hp-fill"></div></div></div>
       <div id="hit-flash"></div>
       <div id="respawn-banner" class="hidden">RESPAWNING…</div>
     </section>
@@ -141,7 +135,7 @@
       </div>
       <div class="touch-look-zone"></div>
       <div class="touch-buttons">
-        <button type="button" class="touch-btn touch-btn-surf">SURF</button>
+        <button type="button" class="touch-btn touch-btn-surf" aria-label="FLOW 自分色の上で高速移動"><span>FLOW</span><small>自分色で加速</small></button>
         <button type="button" class="touch-btn touch-btn-jump">JUMP</button>
         <button type="button" class="touch-btn touch-btn-fire">FIRE</button>
       </div>

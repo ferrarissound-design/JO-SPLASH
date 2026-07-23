@@ -23,8 +23,10 @@ export class UIManager {
       coverageBarCpu: document.getElementById('coverage-bar-cpu'),
       statusMsg: document.getElementById('status-msg'),
 
+      hpRow: document.getElementById('hp-row'),
       hpFill: document.getElementById('hp-fill'),
       hpValue: document.getElementById('hp-value'),
+      inkRow: document.getElementById('ink-row'),
       inkFill: document.getElementById('ink-fill'),
       inkValue: document.getElementById('ink-value'),
 
@@ -32,6 +34,8 @@ export class UIManager {
       koCpu: document.getElementById('ko-cpu'),
 
       crosshair: document.getElementById('crosshair'),
+      enemyMarker: document.getElementById('enemy-marker'),
+      enemyHpFill: document.getElementById('enemy-hp-fill'),
       hitFlash: document.getElementById('hit-flash'),
       respawnBanner: document.getElementById('respawn-banner'),
 
@@ -51,6 +55,9 @@ export class UIManager {
     this._statusMsgTimer = 0;
     this._hitFlashTimer = 0;
     this._countUpAnim = null;
+    this._lastKoPlayer = 0;
+    this._lastKoCpu = 0;
+    this._crosshairTimer = 0;
   }
 
   bindStart(cb) { this.el.btnStart.addEventListener('click', cb); }
@@ -78,7 +85,9 @@ export class UIManager {
 
   updateHUD({ timeRemaining, playerPct, cpuPct, hp, ink, koPlayer, koCpu, firing }) {
     const t = Math.max(0, Math.ceil(timeRemaining));
-    this.el.timer.textContent = String(t);
+    const minutes = Math.floor(t / 60);
+    const seconds = String(t % 60).padStart(2, '0');
+    this.el.timer.textContent = `${String(minutes).padStart(2, '0')}:${seconds}`;
     this.el.timer.classList.toggle('time-low', t <= 10);
 
     this.el.coveragePlayerPct.textContent = `${playerPct.toFixed(0)}%`;
@@ -88,11 +97,25 @@ export class UIManager {
 
     this.el.hpFill.style.width = `${Math.max(0, hp)}%`;
     this.el.hpFill.classList.toggle('hp-low', hp <= 30);
+    this.el.hpRow.classList.toggle('hp-alert', hp <= 30);
     this.el.hpValue.textContent = String(Math.ceil(hp));
 
     this.el.inkFill.style.width = `${Math.max(0, ink)}%`;
+    this.el.inkRow.classList.toggle('ink-alert', ink <= 18);
     this.el.inkValue.textContent = String(Math.ceil(ink));
 
+    if (koPlayer !== this._lastKoPlayer) {
+      this.el.koPlayer.classList.remove('ko-pop');
+      void this.el.koPlayer.offsetWidth;
+      this.el.koPlayer.classList.add('ko-pop');
+      this._lastKoPlayer = koPlayer;
+    }
+    if (koCpu !== this._lastKoCpu) {
+      this.el.koCpu.classList.remove('ko-pop');
+      void this.el.koCpu.offsetWidth;
+      this.el.koCpu.classList.add('ko-pop');
+      this._lastKoCpu = koCpu;
+    }
     this.el.koPlayer.textContent = String(koPlayer);
     this.el.koCpu.textContent = String(koCpu);
 
@@ -118,12 +141,33 @@ export class UIManager {
   }
 
   tickHitFlash(dt) {
-    if (this._hitFlashTimer <= 0) return;
-    this._hitFlashTimer -= dt;
-    if (this._hitFlashTimer <= 0) {
-      this.el.hitFlash.classList.remove('flash');
-      this.el.hitFlash.classList.add('flash-fade');
+    if (this._hitFlashTimer > 0) {
+      this._hitFlashTimer -= dt;
+      if (this._hitFlashTimer <= 0) {
+        this.el.hitFlash.classList.remove('flash');
+        this.el.hitFlash.classList.add('flash-fade');
+      }
     }
+    if (this._crosshairTimer > 0) {
+      this._crosshairTimer -= dt;
+      if (this._crosshairTimer <= 0) this.el.crosshair.classList.remove('hit-confirm', 'enemy-hit');
+    }
+  }
+
+  flashCrosshair(enemyHit = false) {
+    this.el.crosshair.classList.remove('hit-confirm', 'enemy-hit');
+    void this.el.crosshair.offsetWidth;
+    this.el.crosshair.classList.add(enemyHit ? 'enemy-hit' : 'hit-confirm');
+    this._crosshairTimer = 0.12;
+  }
+
+  updateEnemyMarker({ visible, x = 0, y = 0, hp = 100, scale = 1 }) {
+    this.el.enemyMarker.classList.toggle('hidden', !visible);
+    if (!visible) return;
+    this.el.enemyMarker.style.left = `${x}px`;
+    this.el.enemyMarker.style.top = `${y}px`;
+    this.el.enemyMarker.style.transform = `translate(-50%, -100%) scale(${scale})`;
+    this.el.enemyHpFill.style.width = `${Math.max(0, hp)}%`;
   }
 
   showRespawnBanner() { this.el.respawnBanner.classList.remove('hidden'); }
@@ -155,6 +199,9 @@ export class UIManager {
         this._countUpAnim = requestAnimationFrame(step);
       } else {
         this._countUpAnim = null;
+    this._lastKoPlayer = 0;
+    this._lastKoCpu = 0;
+    this._crosshairTimer = 0;
       }
     };
     this._countUpAnim = requestAnimationFrame(step);
