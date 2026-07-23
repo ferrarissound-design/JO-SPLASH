@@ -49,7 +49,10 @@ export const PAINT = {
 
 export const MOVEMENT = {
   walkSpeed: 6.4,
-  inkSurfSpeedMult: 1.55,
+  inkSurfSpeedMult: 1.8,
+  inkSurfCameraSink: 0.82, // lowers the first-person camera while submerged in own ink
+  inkSurfBodySink: -1.05, // pulls the character rig below the floor for a true dive silhouette
+  inkSurfExitCooldownSec: 0.12,
   enemyPaintSlowMult: 0.62,
   airControl: 0.35,
   jumpSpeed: 7.4,

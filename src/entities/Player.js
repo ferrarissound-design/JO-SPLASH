@@ -90,6 +90,8 @@ export class Player extends Character {
     this.velocity.z = _horizVel.y;
 
     if (this.grounded && input.wasJustPressed('Space')) {
+      this.inkSurfCooldown = MOVEMENT.inkSurfExitCooldownSec;
+      this.inkSurfActive = false;
       this.velocity.y = MOVEMENT.jumpSpeed;
       this.grounded = false;
     }
@@ -108,6 +110,7 @@ export class Player extends Character {
 
   _handleFiring(dt, projectileManager, particleManager, audioManager) {
     this.weapon.update(dt);
+    if (this.inkSurfActive) return;
     if (!this.input.mouseDown) return;
 
     this.camera.getAimDirection(_aimDir);

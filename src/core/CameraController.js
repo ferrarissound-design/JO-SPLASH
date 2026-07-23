@@ -40,8 +40,8 @@ export class CameraController {
     return out;
   }
 
-  update(dt, targetPosition) {
-    this.camera.position.set(targetPosition.x, targetPosition.y + CAMERA.eyeHeight, targetPosition.z);
+  update(dt, targetPosition, sink = 0) {
+    this.camera.position.set(targetPosition.x, targetPosition.y + CAMERA.eyeHeight - sink, targetPosition.z);
     this.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
   }
 }
