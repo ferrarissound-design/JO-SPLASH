@@ -30,11 +30,11 @@ export class PaintSystem {
     this.cpuCells = 0;
     this.totalCells = this.gridRes * this.gridRes;
 
-    this._buildCanvasTexture();
-
     this._dirty = false;
     this._timeSinceUpload = 0;
     this._glosses = [];
+
+    this._buildCanvasTexture();
   }
 
   _buildCanvasTexture() {
