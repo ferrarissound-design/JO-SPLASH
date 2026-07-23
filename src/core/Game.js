@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MATCH, TEAM, COLORS, PERF } from '../config.js';
+import { MATCH, TEAM, COLORS, PERF, MOVEMENT } from '../config.js';
 import { InputManager } from './InputManager.js';
 import { CameraController } from './CameraController.js';
 import { TouchControls } from './TouchControls.js';
@@ -160,6 +160,8 @@ export class Game {
     this.player.hp = 100;
     this.player.ink = 100;
     this.player.alive = true;
+    this.player.inkSurfActive = false;
+    this.player.inkSurfCooldown = 0;
     this.player.invincibleTimer = 0;
     this.player.koScored = 0;
     this.player.deaths = 0;
@@ -169,6 +171,8 @@ export class Game {
     this.cpu.hp = 100;
     this.cpu.ink = 100;
     this.cpu.alive = true;
+    this.cpu.inkSurfActive = false;
+    this.cpu.inkSurfCooldown = 0;
     this.cpu.invincibleTimer = 0;
     this.cpu.koScored = 0;
     this.cpu.deaths = 0;
@@ -337,7 +341,8 @@ export class Game {
     this.particleManager.update(dt);
     this.paintSystem.update(dt);
 
-    this.cameraController.update(dt, this.player.position);
+    const cameraSink = this.player.inkSurfActive ? MOVEMENT.inkSurfCameraSink : 0;
+    this.cameraController.update(dt, this.player.position, cameraSink);
 
     if (this.player.alive) this.ui.hideRespawnBanner();
 
@@ -354,7 +359,8 @@ export class Game {
       ink: this.player.ink,
       koPlayer: this.player.koScored,
       koCpu: this.cpu.koScored,
-      firing: this.input.mouseDown && this.player.alive,
+      firing: this.input.mouseDown && this.player.alive && !this.player.inkSurfActive,
+      submerged: this.player.inkSurfActive,
     });
 
     if (matchOver) this._endMatch();

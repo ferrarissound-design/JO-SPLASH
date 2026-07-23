@@ -193,6 +193,8 @@ html, body {
 
 /* ============ HUD ============ */
 #hud { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
+#hud::after { content:""; position:absolute; inset:0; pointer-events:none; opacity:0; transition:opacity .16s ease; background:radial-gradient(ellipse at center, rgba(47,184,255,.08) 0%, rgba(47,184,255,.18) 68%, rgba(15,111,184,.34) 100%); box-shadow:inset 0 0 70px rgba(47,184,255,.42); }
+#hud.ink-submerged::after { opacity:1; }
 .hud-top { position:absolute; top:0; left:0; right:0; display:flex; justify-content:center; padding: max(0.45rem, env(safe-area-inset-top)) max(0.65rem, env(safe-area-inset-right)) 0 max(0.65rem, env(safe-area-inset-left)); }
 .match-strip { position:relative; display:grid; grid-template-columns:minmax(4.7rem,1fr) minmax(4rem,auto) minmax(4.7rem,1fr); align-items:center; gap:clamp(.35rem,2vw,1rem); width:min(92vw,430px); min-height:38px; padding:.34rem .65rem .48rem; border-radius:999px; background:rgba(9,15,25,.66); border:1px solid rgba(255,255,255,.14); box-shadow:0 8px 24px rgba(0,0,0,.28), inset 0 0 18px rgba(47,184,255,.05); backdrop-filter:blur(7px); }
 .match-side { display:flex; align-items:center; gap:.35rem; min-width:0; font-size:clamp(.72rem,3.1vw,.9rem); font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap; }
@@ -233,6 +235,9 @@ html, body {
 .ko-pop { animation:ko-pop .34s ease-out; }
 @keyframes ko-pop { 40% { transform:scale(1.36); filter:brightness(1.45); } }
 #crosshair { position:absolute; top:50%; left:50%; width:30px; height:30px; transform:translate(-50%,-50%); pointer-events:none; transition:width .08s ease,height .08s ease; filter:drop-shadow(0 0 2px #000) drop-shadow(0 0 5px rgba(0,0,0,.75)); }
+#hud.ink-submerged #crosshair { width:46px; height:46px; opacity:.45; }
+#hud.ink-submerged #crosshair .ch-line { background:rgba(127,224,255,.72); }
+#hud.ink-submerged #crosshair .ch-dot { background:rgba(127,224,255,.72); }
 .ch-line { position:absolute; background:rgba(255,255,255,.92); box-shadow:0 0 0 1px rgba(0,0,0,.55),0 0 6px rgba(47,184,255,.25); border-radius:2px; }
 .ch-top,.ch-bottom { left:50%; width:2px; height:8px; margin-left:-1px; }.ch-top{top:0}.ch-bottom{bottom:0}.ch-left,.ch-right{top:50%;height:2px;width:8px;margin-top:-1px}.ch-left{left:0}.ch-right{right:0}
 .ch-dot { position:absolute; top:50%; left:50%; width:4px; height:4px; margin:-2px 0 0 -2px; border-radius:50%; background:#fff; box-shadow:0 0 0 1px rgba(0,0,0,.55); }

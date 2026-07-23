@@ -32,6 +32,7 @@ export class Character {
     this.deaths = 0;
 
     this.inkSurfActive = false;
+    this.inkSurfCooldown = 0;
     this.onEnemyFloor = false;
     this._enemyFloorDamageAccum = 0;
     this._floorFxTimer = 0;
@@ -123,6 +124,8 @@ export class Character {
 
   die() {
     this.alive = false;
+    this.inkSurfActive = false;
+    this.inkSurfCooldown = 0;
     this.deaths++;
     this.respawnTimer = MATCH.respawnDelaySec;
     this.velocity.set(0, 0, 0);
@@ -136,6 +139,8 @@ export class Character {
     this.position.copy(this.spawnPoint);
     this.velocity.set(0, 0, 0);
     this.grounded = true;
+    this.inkSurfActive = false;
+    this.inkSurfCooldown = 0;
   }
 
   /** Resolve horizontal collisions against arena obstacles/walls (circle vs box/circle). */
@@ -196,6 +201,8 @@ export class Character {
 
   /** Apply per-frame floor-based effects (ink-surf boost / enemy-floor slow+damage). Returns speed multiplier. */
   updateFloorEffects(dt, paintSystem, wantsInkSurf) {
+    if (this.inkSurfCooldown > 0) this.inkSurfCooldown = Math.max(0, this.inkSurfCooldown - dt);
+
     if (!this.grounded) {
       this.inkSurfActive = false;
       this.onEnemyFloor = false;
@@ -206,7 +213,8 @@ export class Character {
     const enemyTeam = this.team === TEAM.PLAYER ? TEAM.CPU : TEAM.PLAYER;
 
     this.onEnemyFloor = owner === enemyTeam;
-    this.inkSurfActive = wantsInkSurf && owner === this.team;
+    const canInkSurf = wantsInkSurf && owner === this.team && this.inkSurfCooldown <= 0;
+    this.inkSurfActive = canInkSurf;
 
     let speedMult = 1;
     if (this.inkSurfActive) {
@@ -267,7 +275,7 @@ export class Character {
     this.mesh.visible = this.alive;
     this.mesh.rotation.y = this.yaw;
 
-    const crouchOffset = this.inkSurfActive ? -0.16 : 0;
+    const crouchOffset = this.inkSurfActive ? MOVEMENT.inkSurfBodySink : 0;
     this.rig.position.y = THREE.MathUtils.lerp(this.rig.position.y, crouchOffset, 0.25);
 
     if (this.invincibleTimer > 0) {
