@@ -209,6 +209,7 @@ export class Game {
     this._wasPlayerInkSurfing = false;
     this._currentCameraSink = 0;
     this.audioManager.stopInkSurfLoop();
+    this.audioManager.stopBattleBGM();
     this.touchControls?.show();
 
     this._lastCountdownDigit = null;
@@ -223,6 +224,7 @@ export class Game {
     this.paintSystem.flush();
     this.input.exitPointerLock();
     this.touchControls?.hide();
+    this.audioManager.stopBattleBGM();
 
     const cov = this.paintSystem.getCoverage();
     const outcome = cov.playerCells === cov.cpuCells ? 'draw' : (cov.playerCells > cov.cpuCells ? 'win' : 'lose');
@@ -334,6 +336,7 @@ export class Game {
       this.ui.hideCountdown();
       this.cpu.playIntro(); // enemy "appears" as play begins
       this.state = STATE.PLAYING;
+      this.audioManager.playBattleBGM();
     }
   }
 
