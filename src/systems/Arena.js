@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { ARENA, COLORS } from '../config.js';
+import { ARENA, COLORS, THEME, DECOR } from '../config.js';
 import { WallPanel } from './WallPanel.js';
+import { createPanelTexture, createMetalTexture, createHazardStripeTexture, createSignTexture } from './StageTextures.js';
 
 const _up = new THREE.Vector3(0, 1, 0);
 
@@ -38,7 +39,12 @@ export class Arena {
     /** @type {ReturnType<Arena['_buildClimbPanel']>[]} paintable/climbable wall sections */
     this.climbPanels = [];
     this.climbPanelByMesh = new Map();
+    /** @type {{pos:number[], size?:number[], radius?:number, height:number, type:string}[]} exposed read-only for StageDecor's accent lights/no-collision dressing */
+    this.obstacleDefs = [];
+    /** @type {{pos:number[], size:number[]}[]} exposed read-only for StageDecor's perimeter fence/lights */
+    this.wallSpecs = [];
 
+    this._buildSharedTextures();
     this._buildFloor();
     this._buildPlatformAndRamp();
     this._buildObstacles();
@@ -53,6 +59,56 @@ export class Arena {
       player: new THREE.Vector3(-13, 0, 12.5),
       cpu: new THREE.Vector3(13.5, 0, -13),
     };
+  }
+
+  // Builds a small set of shared CanvasTextures (metal hull / accent panel /
+  // hazard stripe / signage) used across the platform, ramp, obstacles and
+  // walls below. Kept to a handful of tiny textures — clones (not re-draws)
+  // are made per surface just to set a surface-appropriate UV repeat, so
+  // GPU memory stays trivial even on mobile.
+  _buildSharedTextures() {
+    this._texMetal = createMetalTexture(COLORS.wall, THEME.neonCyan);
+    this._texPanelCyan = createPanelTexture(THEME.neonCyan);
+    this._texPanelPurple = createPanelTexture(THEME.neonPurple);
+    this._texPanelYellow = createPanelTexture(THEME.neonYellow, 0x2a2440);
+    this._texHazard = createHazardStripeTexture();
+    this._texSign = createSignTexture(['CHROMA', 'ARENA'], THEME.neonCyan);
+  }
+
+  _repeatClone(tex, rx, ry) {
+    const t = tex.clone();
+    t.needsUpdate = true;
+    t.repeat.set(rx, ry);
+    return t;
+  }
+
+  /** Navy hull material with a glowing seam (emissiveMap), used for generic structural surfaces. */
+  _hullMaterial(texPair, rx, ry, emissiveHex = THEME.neonCyan, intensity = DECOR.emissiveIntensity * 0.6) {
+    return new THREE.MeshStandardMaterial({
+      map: this._repeatClone(texPair.map, rx, ry),
+      emissiveMap: this._repeatClone(texPair.emissiveMap, rx, ry),
+      emissive: new THREE.Color(emissiveHex),
+      emissiveIntensity: intensity,
+      roughness: 0.72,
+      metalness: 0.32,
+    });
+  }
+
+  /** Backlit signage/logo material — the sign texture itself doubles as its own emissive map. */
+  _signMaterial(tex = this._texSign, emissiveHex = THEME.neonCyan, intensity = DECOR.emissiveIntensity) {
+    return new THREE.MeshStandardMaterial({
+      map: tex,
+      emissiveMap: tex,
+      emissive: new THREE.Color(emissiveHex),
+      emissiveIntensity: intensity,
+      roughness: 0.55,
+      metalness: 0.1,
+    });
+  }
+
+  /** Plain flat material for faces that are always hidden (box bottoms, faces behind climb panels). */
+  _flatMaterial(colorHex) {
+    return new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.85, metalness: 0.08 });
   }
 
   // Floor mesh uses an explicit quad (rather than a rotated PlaneGeometry) so
@@ -80,8 +136,8 @@ export class Arena {
 
     const mat = new THREE.MeshStandardMaterial({
       color: COLORS.floorBase,
-      roughness: 0.92,
-      metalness: 0.02,
+      roughness: 0.8,
+      metalness: 0.06,
     });
     this.floorMesh = new THREE.Mesh(geo, mat);
     this.floorMesh.receiveShadow = false;
@@ -114,7 +170,7 @@ export class Arena {
     geo.setIndex(indices);
     geo.computeVertexNormals();
 
-    const mat = new THREE.MeshStandardMaterial({ color: COLORS.floorBase, roughness: 0.9, side: THREE.DoubleSide });
+    const mat = new THREE.MeshStandardMaterial({ color: COLORS.floorBase, roughness: 0.8, metalness: 0.06, side: THREE.DoubleSide });
     const mesh = new THREE.Mesh(geo, mat);
     this.group.add(mesh);
     return mesh;
@@ -127,8 +183,21 @@ export class Arena {
     const eps = 0.04;
 
     const platGeo = new THREE.BoxGeometry(size, h, size);
-    const platMat = new THREE.MeshStandardMaterial({ color: COLORS.platform, roughness: 0.85 });
-    const platform = new THREE.Mesh(platGeo, platMat);
+    // Face order for a BoxGeometry is [+x, -x, +y, -y, +z, -z]. +X is the
+    // only side clear of both the ramp and the two climb panels, so it gets
+    // the big landmark signage; the rest get the shared navy hull material
+    // (top/bottom are always hidden, under the paint overlay or the floor).
+    const hullSide = this._hullMaterial(this._texMetal, size / 2.4, h / 1.6, THEME.neonCyan);
+    const hullHidden = this._flatMaterial(COLORS.platform);
+    const platMaterials = [
+      this._signMaterial(this._texSign, THEME.neonCyan, DECOR.emissiveIntensity),
+      hullSide,
+      hullHidden,
+      hullHidden,
+      hullSide,
+      hullSide,
+    ];
+    const platform = new THREE.Mesh(platGeo, platMaterials);
     platform.position.set(0, h / 2, 0);
     this.group.add(platform);
     this.platformMesh = platform;
@@ -153,14 +222,18 @@ export class Arena {
     // walls (see _buildPlatformSideWalls) with two paintable climb panels.
     const rampWidth = ARENA.rampWidth;
     const rampLen = ARENA.rampLength;
-    const rampOffsetX = 2.2;
+    const rampOffsetX = ARENA.rampOffsetX;
     const rampMinX = rampOffsetX - rampWidth / 2;
     const rampMaxX = rampOffsetX + rampWidth / 2;
     const rampCenterZ = hp + rampLen / 2;
     const rampAngle = Math.atan2(h, rampLen);
 
     const rampGeo = new THREE.BoxGeometry(rampWidth, 0.4, rampLen / Math.cos(rampAngle));
-    const rampMat = new THREE.MeshStandardMaterial({ color: COLORS.ramp, roughness: 0.88 });
+    const rampMat = new THREE.MeshStandardMaterial({
+      map: this._repeatClone(this._texHazard, rampWidth / 1.5, 1),
+      roughness: 0.8,
+      metalness: 0.15,
+    });
     const ramp = new THREE.Mesh(rampGeo, rampMat);
     ramp.position.set(rampOffsetX, h / 2, rampCenterZ);
     ramp.rotation.x = -rampAngle;
@@ -289,10 +362,29 @@ export class Arena {
       { type: 'cylinder', pos: [5.5, 1.1, -9.5], radius: 1.3, height: 2.2 },
       { type: 'box', pos: [-5, 1, 9.5], size: [2.2, 2, 2.2] },
     ];
+    this.obstacleDefs = defs;
 
-    const mat = new THREE.MeshStandardMaterial({ color: COLORS.obstacle, roughness: 0.8 });
+    // Only the obstacles closest to the central platform get the stronger
+    // "featured" accent-panel treatment (cycling cyan/purple/yellow); the
+    // rest share one plain navy hull material so decoration budget goes
+    // where players actually look, per the "don't over-decorate everything"
+    // guidance.
+    const regularMat = this._hullMaterial(this._texMetal, 1.3, 1, THEME.neonCyan, DECOR.emissiveIntensity * 0.45);
+    const accentPairs = [this._texPanelCyan, this._texPanelPurple, this._texPanelYellow];
+    const accentColors = [THEME.neonCyan, THEME.neonPurple, THEME.neonYellow];
+    let accentIdx = 0;
 
     for (const def of defs) {
+      const distFromCenter = Math.hypot(def.pos[0], def.pos[2]);
+      const featured = distFromCenter < 12.5;
+      let mat = regularMat;
+      if (featured) {
+        const i = accentIdx++ % accentPairs.length;
+        const rx = def.type === 'box' ? Math.max(1, def.size[0] / 2.4) : Math.max(1, (Math.PI * 2 * def.radius) / 2.8);
+        const ry = def.type === 'box' ? Math.max(1, def.size[1] / 2) : Math.max(1, def.height / 2);
+        mat = this._hullMaterial(accentPairs[i], rx, ry, accentColors[i], DECOR.emissiveIntensity * 0.75);
+      }
+
       if (def.type === 'box') {
         const [sx, sy, sz] = def.size;
         const geo = new THREE.BoxGeometry(sx, sy, sz);
@@ -321,18 +413,31 @@ export class Arena {
   _buildWalls() {
     const wallH = ARENA.wallHeight;
     const t = 1;
-    const mat = new THREE.MeshStandardMaterial({ color: COLORS.wall, roughness: 0.7 });
     const w = ARENA.width;
     const d = ARENA.depth;
 
     const specs = [
-      { pos: [0, wallH / 2, d / 2 + t / 2], size: [w + t * 2, wallH, t] },
+      { pos: [0, wallH / 2, d / 2 + t / 2], size: [w + t * 2, wallH, t], signFace: true },
       { pos: [0, wallH / 2, -d / 2 - t / 2], size: [w + t * 2, wallH, t] },
       { pos: [w / 2 + t / 2, wallH / 2, 0], size: [t, wallH, d] },
       { pos: [-w / 2 - t / 2, wallH / 2, 0], size: [t, wallH, d] },
     ];
+    this.wallSpecs = specs;
 
     for (const s of specs) {
+      const mat = s.signFace
+        // Face order [+x,-x,+y,-y,+z,-z]; this wall is thin along Z, so its
+        // -z face (index 5) is the one facing the arena — that's where the
+        // big landmark sign goes, matching _buildPlatformAndRamp's signage.
+        ? [
+            this._hullMaterial(this._texMetal, s.size[0] / 3, wallH / 1.6, THEME.neonPurple),
+            this._hullMaterial(this._texMetal, s.size[0] / 3, wallH / 1.6, THEME.neonPurple),
+            this._flatMaterial(COLORS.wall),
+            this._flatMaterial(COLORS.wall),
+            this._hullMaterial(this._texMetal, s.size[0] / 3, wallH / 1.6, THEME.neonPurple),
+            this._signMaterial(this._texSign, THEME.neonPurple, DECOR.emissiveIntensity),
+          ]
+        : this._hullMaterial(this._texMetal, s.size[0] / 3, wallH / 1.6, THEME.neonCyan);
       const geo = new THREE.BoxGeometry(...s.size);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(...s.pos);

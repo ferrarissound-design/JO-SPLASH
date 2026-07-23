@@ -15,13 +15,80 @@ export const COLORS = {
   cpu: 0xff7a2f,
   cpuDeep: 0xc2470c,
   neutral: 0x3c4452,
-  floorBase: 0x586475,
-  wall: 0x7a879b,
-  obstacle: 0x8a96a8,
-  platform: 0xa2adbd,
-  ramp: 0x949faf,
-  climbPanel: 0xf3c14b, // distinct warm tone marks a wall as "paintable / climbable"
-  climbPanelBase: 0x5a4a2e,
+  floorBase: 0x6d7a8e, // deliberately desaturated so player/CPU ink stays the most saturated thing on screen
+  wall: 0x18213a,
+  obstacle: 0x232f4d,
+  platform: 0x27324f,
+  ramp: 0x2a3552,
+  climbPanel: 0xffd94a, // distinct warm tone marks a wall as "paintable / climbable"
+  climbPanelBase: 0x2c2410,
+};
+
+// "Neon marine arena" theme palette — used by structural surface textures,
+// the background environment and stage decorations. Kept separate from
+// COLORS (which also drives gameplay-relevant reads like ink hues) so art
+// direction can be retuned here without touching anything logic-facing.
+export const THEME = {
+  neonCyan: 0x35e6ff,
+  neonPurple: 0xb15bff,
+  neonYellow: 0xffd94a,
+  neonOrange: 0xff8a3d,
+  neonWhite: 0xf3f8ff,
+  navyDeep: 0x0a1128,
+  navyMid: 0x172140,
+  skyTop: 0x0a1230,
+  skyHorizon: 0x8fe0ff,
+  seaColor: 0x0c3450,
+  seaHighlight: 0x3fd2e8,
+  fogColor: 0x2c4d78,
+};
+
+// Tunable knobs for the purely-decorative background/environment/prop layer
+// (see StageDecor). None of these values are read by gameplay, AI, or paint
+// logic — safe to retune for art direction or mobile performance.
+export const DECOR = {
+  // Sky + sea
+  skyDomeRadius: 150,
+  seaRadius: 230,
+  seaY: -2.6,
+  seaScrollSpeed: 0.015,
+
+  // Clouds (InstancedMesh)
+  cloudCount: 10,
+  cloudCountLow: 5,
+  cloudHeight: 46,
+  cloudSpread: 130,
+  cloudDriftSpeed: 0.35,
+
+  // Distant skyline silhouettes (no colliders, no shadows)
+  distantIslandCount: 4,
+  distantTowerCount: 5,
+  distantRadius: 120,
+
+  // Animated props (kept to a handful per the mobile perf budget)
+  shipSpeed: 2.0,
+  droneCount: 2,
+  droneCountLow: 1,
+  droneOrbitRadius: 27,
+  droneOrbitSpeed: 0.18,
+  droneHeight: 9,
+  flagCount: 4,
+  signBlinkSpeed: 1.6,
+
+  // Perimeter dressing
+  buoyCount: 14,
+  perimeterLightCount: 16,
+
+  // Central landmark ("energy core" + rotating neon ring)
+  landmarkHeight: 5.6,
+  landmarkRingRadius: 2.1,
+  landmarkCoreRadius: 0.85,
+  landmarkRotateSpeed: 0.35,
+  landmarkRingRotateSpeed: -0.22,
+  landmarkBobAmplitude: 0.28,
+  landmarkBobSpeed: 0.9,
+
+  emissiveIntensity: 1.4,
 };
 
 export const MATCH = {
@@ -40,6 +107,7 @@ export const ARENA = {
   platformSize: 14, // bigger central objective raises its control value
   rampWidth: 5,
   rampLength: 7,
+  rampOffsetX: 2.2, // ramp's X offset from platform center; shared with PaintSystem's floor-pattern overlay
   climbPanelWidth: 4.2, // width of each paintable/climbable wall section
   spawnSafeRadius: 3.6, // pre-inked safe zone painted around each spawn point
 };
