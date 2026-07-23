@@ -6,6 +6,7 @@ const OWNER_PLAYER = 1;
 const OWNER_CPU = 2;
 
 const OWNER_BY_TEAM = { [TEAM.PLAYER]: OWNER_PLAYER, [TEAM.CPU]: OWNER_CPU };
+const GLOSS_RGB_BY_TEAM = { [TEAM.PLAYER]: '200, 245, 255', [TEAM.CPU]: '255, 210, 179' };
 
 // ============================================================================
 // PaintSystem — tracks floor coverage on a lightweight grid (for gameplay
@@ -33,16 +34,23 @@ export class PaintSystem {
 
     this._dirty = false;
     this._timeSinceUpload = 0;
+    this._glosses = [];
   }
 
   _buildCanvasTexture() {
     const size = PAINT.textureSize;
+    this.paintCanvas = document.createElement('canvas');
+    this.paintCanvas.width = size;
+    this.paintCanvas.height = size;
+    this.paintCtx = this.paintCanvas.getContext('2d');
+    this.paintCtx.fillStyle = '#586475';
+    this.paintCtx.fillRect(0, 0, size, size);
+
     this.canvas = document.createElement('canvas');
     this.canvas.width = size;
     this.canvas.height = size;
     this.ctx = this.canvas.getContext('2d');
-    this.ctx.fillStyle = '#586475';
-    this.ctx.fillRect(0, 0, size, size);
+    this._compositeTexture();
 
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.flipY = false;
@@ -84,12 +92,13 @@ export class PaintSystem {
   }
 
   /** Paint a circular splat centered at world (x,z) with the given radius, owned by `team`. */
-  paintSplat(x, z, radius, team) {
+  paintSplat(x, z, radius, team, opts = {}) {
     const owner = OWNER_BY_TEAM[team];
     if (!owner) return;
 
     this._paintGrid(x, z, radius, owner);
-    this._paintCanvas(x, z, radius, team);
+    this._paintCanvas(x, z, radius, team, opts);
+    this._addGloss(x, z, radius, team, opts);
     this._dirty = true;
   }
 
@@ -131,7 +140,18 @@ export class PaintSystem {
     }
   }
 
-  _paintCanvas(x, z, radius, team) {
+  paintTrail(x, z, radius, team, dirX = 0, dirZ = 1) {
+    const owner = OWNER_BY_TEAM[team];
+    if (!owner) return;
+
+    this._paintGrid(x, z, radius * 0.65, owner);
+    const opts = { dirX, dirZ, stretch: 2.8, minorScale: 0.42, splatterScale: 0.2, glossScale: 0.45 };
+    this._paintCanvas(x, z, radius, team, opts);
+    this._addGloss(x, z, radius, team, opts);
+    this._dirty = true;
+  }
+
+  _paintCanvas(x, z, radius, team, opts = {}) {
     const size = PAINT.textureSize;
     const [u, v] = this._worldToUV(x, z);
     const px = u * size;
@@ -140,53 +160,107 @@ export class PaintSystem {
 
     const color = team === TEAM.PLAYER ? '#2fb8ff' : '#ff7a2f';
     const glow = team === TEAM.PLAYER ? '#7fe0ff' : '#ffb06f';
-    const ctx = this.ctx;
+    const ctx = this.paintCtx;
+    const angle = Math.atan2(opts.dirZ ?? 0, opts.dirX ?? 1);
+    const stretch = opts.stretch ?? 1.28;
+    const minorScale = opts.minorScale ?? 0.86;
 
     // Draw an irregular radial polygon over the same logical circle. Gameplay
     // coverage still uses the unchanged grid circle above; this only makes the
     // CanvasTexture edge feel like liquid instead of a perfect stamp.
-    const lobes = 18;
+    const lobes = 22;
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(angle);
+    ctx.scale(stretch, minorScale);
     ctx.fillStyle = color;
     ctx.beginPath();
     for (let i = 0; i < lobes; i++) {
       const a = (i / lobes) * Math.PI * 2;
-      const wobble = 0.9 + Math.sin(px * 0.071 + py * 0.043 + i * 1.73) * 0.085 + Math.sin(i * 2.41 + px * 0.019) * 0.045;
+      const wobble = 0.88 + Math.sin(px * 0.071 + py * 0.043 + i * 1.73) * 0.11 + Math.sin(i * 2.41 + px * 0.019) * 0.06;
       const r = pr * wobble;
-      const sx = px + Math.cos(a) * r;
-      const sy = py + Math.sin(a) * r;
+      const sx = Math.cos(a) * r;
+      const sy = Math.sin(a) * r;
       if (i === 0) ctx.moveTo(sx, sy);
       else ctx.lineTo(sx, sy);
     }
     ctx.closePath();
     ctx.fill();
+    ctx.restore();
 
-    // Brief-looking highlight baked into the texture, plus tiny splashes with
-    // a fixed count (no Geometry/Material allocations) for a lighter ink feel.
-    const grad = ctx.createRadialGradient(px, py, pr * 0.18, px, py, pr * 1.08);
+    // Soft base bloom is painted permanently; the sharper wet sheen is
+    // composited separately and fades over PAINT.glossLifeSec.
+    const grad = ctx.createRadialGradient(px, py, pr * 0.18, px, py, pr * 1.18);
     grad.addColorStop(0, `${glow}88`);
     grad.addColorStop(0.58, `${color}44`);
     grad.addColorStop(1, `${color}00`);
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.arc(px, py, pr * 1.08, 0, Math.PI * 2);
+    ctx.ellipse(px, py, pr * 1.1 * stretch, pr * 0.92 * minorScale, angle, 0, Math.PI * 2);
     ctx.fill();
 
+    const splatterCount = Math.floor(THREE.MathUtils.lerp(PAINT.splatterMin, PAINT.splatterMax + 1, Math.abs(Math.sin(px * 12.9898 + py * 78.233))));
+    const splatterScale = opts.splatterScale ?? 1;
     ctx.fillStyle = `${color}cc`;
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < splatterCount; i++) {
       const a = px * 0.013 + py * 0.017 + i * 1.91;
-      const d = pr * (0.78 + ((Math.sin(a * 2.3) + 1) * 0.22));
-      const rr = Math.max(1.2, pr * (0.06 + ((Math.cos(a * 1.7) + 1) * 0.025)));
+      const forwardBias = Math.cos(a * 1.37) * pr * 0.35 * stretch;
+      const d = pr * splatterScale * (0.72 + ((Math.sin(a * 2.3) + 1) * 0.42));
+      const rr = Math.max(0.9, pr * splatterScale * (0.045 + ((Math.cos(a * 1.7) + 1) * 0.035)));
       ctx.beginPath();
-      ctx.arc(px + Math.cos(a) * d, py + Math.sin(a) * d, rr, 0, Math.PI * 2);
+      ctx.arc(px + Math.cos(a) * d + Math.cos(angle) * forwardBias, py + Math.sin(a) * d + Math.sin(angle) * forwardBias, rr, 0, Math.PI * 2);
       ctx.fill();
+    }
+  }
+
+  _addGloss(x, z, radius, team, opts = {}) {
+    const [u, v] = this._worldToUV(x, z);
+    this._glosses.push({
+      x: u * PAINT.textureSize,
+      y: v * PAINT.textureSize,
+      r: (radius / this.width) * PAINT.textureSize * (opts.glossScale ?? 1),
+      dir: Math.atan2(opts.dirZ ?? 0, opts.dirX ?? 1),
+      stretch: opts.stretch ?? 1.28,
+      age: 0,
+      rgb: GLOSS_RGB_BY_TEAM[team],
+    });
+    if (this._glosses.length > 96) this._glosses.splice(0, this._glosses.length - 96);
+  }
+
+  _compositeTexture() {
+    this.ctx.clearRect(0, 0, PAINT.textureSize, PAINT.textureSize);
+    this.ctx.drawImage(this.paintCanvas, 0, 0);
+
+    for (const g of this._glosses) {
+      const t = 1 - (g.age / PAINT.glossLifeSec);
+      if (t <= 0) continue;
+      this.ctx.save();
+      this.ctx.translate(g.x, g.y);
+      this.ctx.rotate(g.dir - 0.45);
+      this.ctx.scale(g.stretch, 0.42);
+      this.ctx.strokeStyle = `rgba(${g.rgb}, ${0.58 * t})`;
+      this.ctx.lineWidth = Math.max(1, g.r * 0.08);
+      this.ctx.beginPath();
+      this.ctx.arc(0, 0, g.r * (0.38 + 0.12 * t), -0.4, 1.05);
+      this.ctx.stroke();
+      this.ctx.restore();
     }
   }
 
   /** Call once per frame; throttles the (relatively costly) GPU texture upload. */
   update(dt) {
-    if (!this._dirty) return;
+    let glossDirty = false;
+    if (this._glosses.length > 0) {
+      for (const g of this._glosses) g.age += dt;
+      const before = this._glosses.length;
+      this._glosses = this._glosses.filter((g) => g.age < PAINT.glossLifeSec);
+      glossDirty = before !== this._glosses.length || this._glosses.length > 0;
+    }
+
+    if (!this._dirty && !glossDirty) return;
     this._timeSinceUpload += dt * 1000;
     if (this._timeSinceUpload >= PAINT.updateIntervalMs) {
+      this._compositeTexture();
       this.texture.needsUpdate = true;
       this._timeSinceUpload = 0;
       this._dirty = false;
@@ -195,6 +269,7 @@ export class PaintSystem {
 
   /** Force an immediate texture upload (used right before results are shown). */
   flush() {
+    this._compositeTexture();
     this.texture.needsUpdate = true;
     this._dirty = false;
     this._timeSinceUpload = 0;
@@ -217,8 +292,9 @@ export class PaintSystem {
     this.playerCells = 0;
     this.cpuCells = 0;
     const size = PAINT.textureSize;
-    this.ctx.fillStyle = '#586475';
-    this.ctx.fillRect(0, 0, size, size);
+    this.paintCtx.fillStyle = '#586475';
+    this.paintCtx.fillRect(0, 0, size, size);
+    this._glosses = [];
     this.flush();
   }
 

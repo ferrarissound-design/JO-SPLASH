@@ -9,6 +9,7 @@ export class AudioManager {
     this.masterGain = null;
     this._noiseBuffer = null;
     this._resumed = false;
+    this._surfLoop = null;
 
     this._pendingResume = () => this.resume();
     window.addEventListener('pointerdown', this._pendingResume);
@@ -70,6 +71,49 @@ export class AudioManager {
     src.stop(t0 + duration + 0.02);
   }
 
+  startInkSurfLoop() {
+    if (!this.ctx || this._surfLoop) return;
+
+    const t0 = this.ctx.currentTime;
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = this._noiseBuffer;
+    noise.loop = true;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(520, t0);
+    filter.frequency.linearRampToValueAtTime(760, t0 + 0.18);
+    filter.Q.value = 0.7;
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.08, t0 + 0.12);
+
+    noise.connect(filter).connect(gain).connect(this.masterGain);
+    noise.start(t0);
+    this._surfLoop = { noise, gain };
+  }
+
+  stopInkSurfLoop() {
+    if (!this.ctx || !this._surfLoop) return;
+    const { noise, gain } = this._surfLoop;
+    const t0 = this.ctx.currentTime;
+    if (typeof gain.gain.cancelAndHoldAtTime === 'function') {
+      gain.gain.cancelAndHoldAtTime(t0);
+    } else {
+      gain.gain.cancelScheduledValues(t0);
+      gain.gain.setValueAtTime(0.08, t0);
+    }
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.14);
+    noise.stop(t0 + 0.16);
+    this._surfLoop = null;
+  }
+
+  playInkSurfExit() {
+    this._tone(260, 0.12, { type: 'triangle', peak: 0.13, freqEnd: 520 });
+    this._noise(0.16, { peak: 0.11, filterFreq: 1500 });
+  }
+
   playShoot() {
     this._tone(620, 0.07, { type: 'triangle', peak: 0.18, freqEnd: 340 });
   }
@@ -107,6 +151,7 @@ export class AudioManager {
   dispose() {
     window.removeEventListener('pointerdown', this._pendingResume);
     window.removeEventListener('keydown', this._pendingResume);
+    this.stopInkSurfLoop();
     this.ctx?.close();
   }
 }

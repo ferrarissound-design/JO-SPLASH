@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Character } from './Character.js';
-import { MOVEMENT, TEAM } from '../config.js';
+import { MOVEMENT, TEAM, COLORS } from '../config.js';
 
 const _wish = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
@@ -8,6 +8,7 @@ const _right = new THREE.Vector3();
 const _horizVel = new THREE.Vector2();
 const _fireOrigin = new THREE.Vector3();
 const _aimDir = new THREE.Vector3();
+const _surfExitSplatPos = new THREE.Vector3();
 
 // ============================================================================
 // Player — human-controlled Character. Reads InputManager state and the
@@ -39,10 +40,20 @@ export class Player extends Character {
       this.applyVerticalPhysics(dt, arena);
     }
 
+    const wasInkSurfing = this.inkSurfActive;
     const wantsInkSurf = controlsEnabled && (this.input.isDown('ShiftLeft') || this.input.isDown('ShiftRight'));
     const speedMult = this.updateFloorEffects(dt, paintSystem, wantsInkSurf);
     this._lastSpeedMult = speedMult;
-    this.updateFloorParticles(dt, particleManager);
+
+    if (controlsEnabled && wasInkSurfing && !this.inkSurfActive && !wantsInkSurf && this.grounded) {
+      this.velocity.y = Math.max(this.velocity.y, MOVEMENT.inkSurfExitHopSpeed);
+      this.grounded = false;
+      audioManager.playInkSurfExit();
+      _surfExitSplatPos.set(this.position.x, this.position.y + 0.08, this.position.z);
+      particleManager.spawnSplat(_surfExitSplatPos, COLORS.player, true);
+    }
+
+    this.updateFloorParticles(dt, particleManager, paintSystem);
 
     this.yaw = this.camera.yaw;
     this.syncMesh(ctx.elapsedTime);

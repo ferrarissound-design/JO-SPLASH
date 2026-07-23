@@ -1,9 +1,10 @@
 import * as THREE from 'three';
-import { HEALTH, INK, MOVEMENT, MATCH, TEAM, COLORS, ENEMY_FLOOR_EFFECT, CAMERA } from '../config.js';
+import { HEALTH, INK, MOVEMENT, MATCH, TEAM, COLORS, ENEMY_FLOOR_EFFECT, CAMERA, PAINT } from '../config.js';
 import { Weapon } from '../systems/Weapon.js';
 
 const _closest = new THREE.Vector2();
 const _pushDir = new THREE.Vector2();
+const _floorFxPos = new THREE.Vector3();
 
 // ============================================================================
 // Character — shared body/stats/collision logic used by both the
@@ -36,6 +37,7 @@ export class Character {
     this.onEnemyFloor = false;
     this._enemyFloorDamageAccum = 0;
     this._floorFxTimer = 0;
+    this._paintTrailTimer = 0;
 
     const isPlayer = team === TEAM.PLAYER;
     const color = isPlayer ? COLORS.player : COLORS.cpu;
@@ -225,6 +227,7 @@ export class Character {
     this.inkSurfActive = canInkSurf;
 
     let speedMult = 1;
+
     if (this.inkSurfActive) {
       speedMult = MOVEMENT.inkSurfSpeedMult;
       this.ink = Math.min(INK.max, this.ink + INK.regenSurf * dt);
@@ -247,25 +250,37 @@ export class Character {
     return speedMult;
   }
 
-  /** Spawns lightweight footfall particles for ink-surfing / enemy-floor danger cues. */
-  updateFloorParticles(dt, particleManager) {
+  /** Spawns lightweight footfall particles and thin movement paint ribbons. */
+  updateFloorParticles(dt, particleManager, paintSystem = null) {
     this._floorFxTimer -= dt;
-    if (this._floorFxTimer > 0 || !this.grounded) return;
+    this._paintTrailTimer -= dt;
+    if (!this.grounded) return;
+
+    const speedSq = this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z;
+    if (paintSystem && speedSq > 1.2 && this._paintTrailTimer <= 0) {
+      this._paintTrailTimer = PAINT.trailIntervalSec;
+      paintSystem.paintTrail(
+        this.position.x,
+        this.position.z,
+        PAINT.trailRadius * (this.inkSurfActive ? 1.35 : 1),
+        this.team,
+        this.velocity.x,
+        this.velocity.z
+      );
+    }
+
+    if (this._floorFxTimer > 0) return;
 
     if (this.inkSurfActive) {
       this._floorFxTimer = 0.09;
       const own = this.team === TEAM.PLAYER ? COLORS.player : COLORS.cpu;
-      particleManager.spawnInkSurfTrail(
-        new THREE.Vector3(this.position.x, this.position.y + 0.05, this.position.z),
-        own
-      );
+      _floorFxPos.set(this.position.x, this.position.y + 0.05, this.position.z);
+      particleManager.spawnInkSurfTrail(_floorFxPos, own);
     } else if (this.onEnemyFloor) {
       this._floorFxTimer = 0.15;
       const enemy = this.team === TEAM.PLAYER ? COLORS.cpu : COLORS.player;
-      particleManager.spawnEnemyFloorSpray(
-        new THREE.Vector3(this.position.x, this.position.y + 0.05, this.position.z),
-        enemy
-      );
+      _floorFxPos.set(this.position.x, this.position.y + 0.05, this.position.z);
+      particleManager.spawnEnemyFloorSpray(_floorFxPos, enemy);
     }
   }
 
