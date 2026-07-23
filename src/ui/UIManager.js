@@ -100,7 +100,7 @@ export class UIManager {
   showResultScreen() { this.el.result.classList.remove('hidden'); }
   hideResultScreen() { this.el.result.classList.add('hidden'); }
 
-  updateHUD({ timeRemaining, playerPct, cpuPct, hp, ink, koPlayer, koCpu, firing, submerged = false }) {
+  updateHUD({ timeRemaining, playerPct, cpuPct, hp, ink, koPlayer, koCpu, firing, submerged = false, enemyFloor = false }) {
     const t = Math.max(0, Math.ceil(timeRemaining));
     const minutes = Math.floor(t / 60);
     const seconds = String(t % 60).padStart(2, '0');
@@ -137,6 +137,7 @@ export class UIManager {
     this.el.koCpu.textContent = String(koCpu);
 
     this.el.hud.classList.toggle('ink-submerged', submerged);
+    this.el.hud.classList.toggle('enemy-ink-danger', enemyFloor);
     this.el.crosshair.classList.toggle('firing', firing && !submerged);
   }
 

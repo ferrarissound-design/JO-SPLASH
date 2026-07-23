@@ -50,9 +50,12 @@ export const PAINT = {
 export const MOVEMENT = {
   walkSpeed: 6.4,
   inkSurfSpeedMult: 1.8,
+  inkSurfFovBoost: 8, // widens the camera while ink-surfing for a stronger speed feel
+  inkSurfFovLerp: 8.5, // how quickly the FOV eases into/out of surf mode
   inkSurfCameraSink: 0.82, // lowers the first-person camera while submerged in own ink
   inkSurfBodySink: -1.05, // pulls the character rig below the floor for a true dive silhouette
   inkSurfExitCooldownSec: 0.12,
+  inkSurfExitHopSpeed: 3.2, // small pop upward when releasing surf on own ink
   enemyPaintSlowMult: 0.62,
   airControl: 0.35,
   jumpSpeed: 7.4,

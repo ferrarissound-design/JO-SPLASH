@@ -76,6 +76,7 @@ export class Game {
     this._fpsAccum = 0;
     this._fpsFrames = 0;
     this._fpsDisplay = 0;
+    this._wasPlayerInkSurfing = false;
 
     this._bindUI();
     this._bindWindow();
@@ -103,6 +104,7 @@ export class Game {
     this.scene.fog = new THREE.Fog(0x263244, 42, 96);
 
     this.camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 200);
+    this._baseCameraFov = this.camera.fov;
 
     const ambient = new THREE.HemisphereLight(0xc8d8ee, 0x344052, 1.32);
     this.scene.add(ambient);
@@ -204,6 +206,9 @@ export class Game {
     this.ui.hideRespawnBanner();
     this.ui.updateEnemyMarker({ visible: false });
     this._cpuHitFlashTimer = 0;
+    this._wasPlayerInkSurfing = false;
+    this._currentCameraSink = 0;
+    this.audioManager.stopInkSurfLoop();
     this.touchControls?.show();
 
     this._lastCountdownDigit = null;
@@ -363,8 +368,8 @@ export class Game {
     this.particleManager.update(dt);
     this.paintSystem.update(dt);
 
-    const cameraSink = this.player.inkSurfActive ? MOVEMENT.inkSurfCameraSink : 0;
-    this.cameraController.update(dt, this.player.position, cameraSink);
+    this._updateSurfFeedback(dt, this.player.inkSurfActive);
+    this.cameraController.update(dt, this.player.position, this._currentCameraSink);
 
     if (this.player.alive) this.ui.hideRespawnBanner();
 
@@ -383,6 +388,7 @@ export class Game {
       koCpu: this.cpu.koScored,
       firing: this.input.mouseDown && this.player.alive && !this.player.inkSurfActive,
       submerged: this.player.inkSurfActive,
+      enemyFloor: this.player.onEnemyFloor,
     });
 
     if (matchOver) this._endMatch();
@@ -390,11 +396,28 @@ export class Game {
 
   _updateResult(dt) {
     this.ui.updateEnemyMarker({ visible: false });
+    this._updateSurfFeedback(dt, false);
     this.cameraController.update(dt, this.player.position);
     this.player.syncMesh(this.elapsedTime);
     this.cpu.syncMesh(this.elapsedTime);
 
     if (this.input.wasJustPressed('KeyR')) this._startMatch();
+  }
+
+  _updateSurfFeedback(dt, active) {
+    const targetFov = this._baseCameraFov + (active ? MOVEMENT.inkSurfFovBoost : 0);
+    const fovLerp = 1 - Math.exp(-MOVEMENT.inkSurfFovLerp * dt);
+    const nextFov = THREE.MathUtils.lerp(this.camera.fov, targetFov, fovLerp);
+    if (Math.abs(nextFov - this.camera.fov) > 0.01) {
+      this.camera.fov = nextFov;
+      this.camera.updateProjectionMatrix();
+    }
+    this._currentCameraSink = active ? MOVEMENT.inkSurfCameraSink : 0;
+
+    if (active === this._wasPlayerInkSurfing) return;
+    this._wasPlayerInkSurfing = active;
+    if (active) this.audioManager.startInkSurfLoop();
+    else this.audioManager.stopInkSurfLoop();
   }
 
   _flashCpuBody() {
