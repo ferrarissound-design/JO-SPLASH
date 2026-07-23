@@ -1,6 +1,22 @@
 import * as THREE from 'three';
 import { Character } from './Character.js';
 import { MOVEMENT, WEAPON, AI, TEAM } from '../config.js';
+import {
+  createEnemyCharacter,
+  populateEnemyRig,
+  randomizeEnemyAppearance,
+  disposeEnemyMaterials,
+  enemyAppearancePresets,
+  randInt,
+} from './EnemyAppearance.js';
+
+// Short "pop-in" the enemy plays whenever it (re)appears: rises from just
+// below the floor and scales up from tiny to full. Purely visual.
+const ENEMY_INTRO_DURATION = 0.42;
+function easeOutBack(x) {
+  const c1 = 1.70158, c3 = c1 + 1;
+  return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
+}
 
 const STATE = {
   PAINT: 'paint',
@@ -42,6 +58,11 @@ export class EnemyAI extends Character {
   constructor(spawnPoint, difficulty = {}) {
     super(TEAM.CPU, spawnPoint);
 
+    // Intro animation / name-banner state (set here so it exists before the
+    // first update; _createMesh already picked the initial appearance below).
+    this._introTimer = 0;
+    this._introBannerPending = false;
+
     this.difficulty = {
       reactionDelay: AI.reactionDelaySec,
       aimJitterMult: 1,
@@ -65,10 +86,71 @@ export class EnemyAI extends Character {
     this.debugTarget = null; // exposed for debug overlay
   }
 
+  // ---------------------------------------------------------- appearance
+  // Cosmetic only. Nothing below reads/writes HP, AI, movement or collision;
+  // it swaps the rig's child meshes/materials while keeping the same root
+  // object (this.mesh), team tag and colliders intact.
+
+  /** Base-constructor hook: build a randomized appearance instead of the default body. */
+  _createMesh() {
+    const typeIndex = randInt(0, enemyAppearancePresets.length - 1);
+    const cfg = randomizeEnemyAppearance(typeIndex);
+    this._setAppearanceMeta(typeIndex, cfg);
+    return createEnemyCharacter(cfg);
+  }
+
+  _setAppearanceMeta(typeIndex, cfg) {
+    this.appearanceType = typeIndex;
+    this.appearance = cfg;
+    this.appearanceId = cfg.id;
+    this.appearanceName = cfg.name;
+  }
+
+  /** Rebuild the rig in place with a new appearance type (randomized colours/details). */
+  applyAppearance(typeIndex, { playIntro = true } = {}) {
+    disposeEnemyMaterials(this.materials);
+    while (this.rig.children.length) this.rig.remove(this.rig.children[0]);
+
+    const cfg = randomizeEnemyAppearance(typeIndex);
+    this.materials = populateEnemyRig(this.rig, cfg);
+    this._setAppearanceMeta(typeIndex, cfg);
+    console.log('[Enemy Appearance]', this.appearanceId);
+
+    if (playIntro) this.playIntro();
+  }
+
+  /** Roll a fresh random appearance type (used at match start). */
+  randomizeAppearance(opts) {
+    this.applyAppearance(randInt(0, enemyAppearancePresets.length - 1), opts);
+  }
+
+  /** Debug helper: Speed -> Street -> Heavy -> Technical -> Speed. */
+  cycleEnemyAppearance() {
+    const next = ((this.appearanceType ?? 0) + 1) % enemyAppearancePresets.length;
+    this.applyAppearance(next);
+    return this.appearanceId;
+  }
+
+  /** Kick off the rise-and-pop entrance and flag the name banner for the UI. */
+  playIntro() {
+    this._introTimer = ENEMY_INTRO_DURATION;
+    this._introBannerPending = true;
+  }
+
+  /** True once, on the frame after an intro started, so Game can show the name. */
+  consumeIntroBanner() {
+    if (this._introBannerPending) {
+      this._introBannerPending = false;
+      return true;
+    }
+    return false;
+  }
+
   update(dt, ctx) {
     const { arena, paintSystem, projectileManager, particleManager, audioManager, player, controlsEnabled } = ctx;
 
     this.updateTimers(dt);
+    if (this._introTimer > 0) this._introTimer = Math.max(0, this._introTimer - dt);
     if (!this.alive) {
       this.state = STATE.WAIT_RESPAWN;
       this.syncMesh(ctx.elapsedTime);
@@ -407,6 +489,31 @@ export class EnemyAI extends Character {
       this.targetPoint = this._findExploreTarget(arena);
       this.state = STATE.EXPLORE;
     }
+  }
+
+  /** Replay the entrance animation whenever the enemy respawns. */
+  respawn() {
+    super.respawn();
+    this.playIntro();
+  }
+
+  /** Adds the intro rise/pop on top of the base transform sync (cosmetic only). */
+  syncMesh(elapsedTime) {
+    super.syncMesh(elapsedTime);
+
+    if (this._introTimer > 0) {
+      const p = THREE.MathUtils.clamp(1 - this._introTimer / ENEMY_INTRO_DURATION, 0, 1);
+      const eased = easeOutBack(p);
+      this.mesh.scale.setScalar(THREE.MathUtils.lerp(0.25, 1, eased));
+      this.mesh.position.y = this.position.y - (1 - Math.min(1, eased)) * 0.85;
+    } else if (this.mesh.scale.x !== 1) {
+      this.mesh.scale.setScalar(1);
+    }
+  }
+
+  /** Only the per-instance materials are ours to free; geometries are shared/cached. */
+  dispose() {
+    disposeEnemyMaterials(this.materials);
   }
 }
 

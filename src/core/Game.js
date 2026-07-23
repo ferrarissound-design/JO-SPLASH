@@ -86,6 +86,8 @@ export class Game {
 
     // Exposed for manual QA in the browser console (e.g. `__game.debugMode = true`).
     window.__game = this;
+    // Global debug helper, per spec: cycles the enemy's appearance type.
+    window.cycleEnemyAppearance = () => this._cycleEnemyAppearance();
   }
 
   _setupRenderer() {
@@ -123,6 +125,14 @@ export class Game {
   _bindUI() {
     this.ui.bindStart(() => this._startMatch());
     this.ui.bindRestart(() => this._startMatch());
+    this.ui.bindCycleAppearance(() => this._cycleEnemyAppearance());
+  }
+
+  /** Debug: advance the enemy's appearance type and re-show its intro banner. */
+  _cycleEnemyAppearance() {
+    this.cpu.cycleEnemyAppearance();
+    this.cpu.consumeIntroBanner(); // shown directly below; avoid a duplicate next frame
+    this.ui.showEnemyIntro(this.cpu.appearanceName, this.cpu.appearanceId, this.cpu.appearance.main);
   }
 
   _bindWindow() {
@@ -178,6 +188,9 @@ export class Game {
     this.cpu.deaths = 0;
     this.cpu.state = 'explore';
     this.cpu.targetPoint = this.cpu.position.clone();
+    // Fresh random look each match; the entrance animation plays once the
+    // countdown ends (see _updateCountdown), not during the reset.
+    this.cpu.randomizeAppearance({ playIntro: false });
 
     this._faceSpawnPoints();
 
@@ -261,6 +274,9 @@ export class Game {
       this.ui.setDebugVisible(this.debugMode);
     }
 
+    // Debug: 'V' cycles the enemy appearance (Speed -> Street -> Heavy -> Technical).
+    if (this.input.wasJustPressed('KeyV')) this._cycleEnemyAppearance();
+
     switch (this.state) {
       case STATE.TITLE:
         this._updateIdleCamera(dt);
@@ -311,6 +327,7 @@ export class Game {
 
     if (this.countdownRemaining <= 0) {
       this.ui.hideCountdown();
+      this.cpu.playIntro(); // enemy "appears" as play begins
       this.state = STATE.PLAYING;
     }
   }
@@ -336,6 +353,11 @@ export class Game {
 
     this.player.update(dt, ctx);
     this.cpu.update(dt, ctx);
+
+    // Show the archetype name banner when the enemy (re)appears.
+    if (this.cpu.consumeIntroBanner()) {
+      this.ui.showEnemyIntro(this.cpu.appearanceName, this.cpu.appearanceId, this.cpu.appearance.main);
+    }
 
     this.projectileManager.update(dt, [this.player, this.cpu]);
     this.particleManager.update(dt);
