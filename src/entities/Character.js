@@ -35,6 +35,9 @@ export class Character {
     this.inkSurfActive = false;
     this.inkSurfCooldown = 0;
     this.onEnemyFloor = false;
+    this.isClimbing = false;
+    this._climbPanel = null;
+    this._climbTimer = 0;
     this._enemyFloorDamageAccum = 0;
     this._floorFxTimer = 0;
     this._paintTrailTimer = 0;
@@ -136,6 +139,8 @@ export class Character {
     this.alive = false;
     this.inkSurfActive = false;
     this.inkSurfCooldown = 0;
+    this.isClimbing = false;
+    this._climbPanel = null;
     this.deaths++;
     this.respawnTimer = MATCH.respawnDelaySec;
     this.velocity.set(0, 0, 0);
@@ -151,6 +156,8 @@ export class Character {
     this.grounded = true;
     this.inkSurfActive = false;
     this.inkSurfCooldown = 0;
+    this.isClimbing = false;
+    this._climbPanel = null;
   }
 
   /** Resolve horizontal collisions against arena obstacles/walls (circle vs box/circle). */

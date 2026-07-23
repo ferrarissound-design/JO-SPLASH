@@ -178,13 +178,17 @@ export class ProjectileManager {
 
     const hit = hits[0];
     const color = slot.team === TEAM.PLAYER ? 0x2fb8ff : 0xff7a2f;
+    const climbPanel = this.arena.climbPanelByMesh.get(hit.object);
 
-    if (hit.object === this.arena.floorMesh) {
+    if (this.arena.paintableFloorMeshes.has(hit.object)) {
       this.paintSystem.paintSplat(hit.point.x, hit.point.z, PAINT.splatRadius, slot.team, {
         dirX: slot.velocity.x,
         dirZ: slot.velocity.z,
         stretch: 1.45,
       });
+      this.particleManager?.spawnSplat(hit.point, color, true);
+    } else if (climbPanel) {
+      climbPanel.paint.paintSplat(hit.point, PAINT.splatRadius, slot.team);
       this.particleManager?.spawnSplat(hit.point, color, true);
     } else {
       this.particleManager?.spawnSplat(hit.point, color, false);

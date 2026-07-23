@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MATCH, TEAM, COLORS, PERF, MOVEMENT } from '../config.js';
+import { MATCH, TEAM, COLORS, PERF, MOVEMENT, ARENA } from '../config.js';
 import { InputManager } from './InputManager.js';
 import { CameraController } from './CameraController.js';
 import { TouchControls } from './TouchControls.js';
@@ -41,6 +41,8 @@ export class Game {
 
     this.paintSystem = new PaintSystem(this.arena.halfWidth, this.arena.halfDepth);
     this.paintSystem.applyToMaterial(this.arena.floorMesh.material);
+    this.paintSystem.applyToMaterial(this.arena.platformTopMesh.material);
+    this.paintSystem.applyToMaterial(this.arena.rampTopMesh.material);
 
     this.input = new InputManager(this.canvas);
     this.touchControls = this.input.isTouch
@@ -166,6 +168,8 @@ export class Game {
     this.paintSystem.reset();
     this.projectileManager.reset();
     this.particleManager.reset();
+    this._paintSpawnSafeZone(this.arena.spawnPoints.player, TEAM.PLAYER);
+    this._paintSpawnSafeZone(this.arena.spawnPoints.cpu, TEAM.CPU);
 
     this.player.position.copy(this.arena.spawnPoints.player);
     this.player.velocity.set(0, 0, 0);
@@ -174,6 +178,8 @@ export class Game {
     this.player.alive = true;
     this.player.inkSurfActive = false;
     this.player.inkSurfCooldown = 0;
+    this.player.isClimbing = false;
+    this.player._climbPanel = null;
     this.player.invincibleTimer = 0;
     this.player.koScored = 0;
     this.player.deaths = 0;
@@ -239,6 +245,11 @@ export class Game {
       koCpu: this.cpu.koScored,
       outcome,
     });
+  }
+
+  /** Pre-inks a safe home patch around a spawn point so nobody wakes up standing on neutral/enemy ground. */
+  _paintSpawnSafeZone(point, team) {
+    this.paintSystem.paintSplat(point.x, point.z, ARENA.spawnSafeRadius, team);
   }
 
   _onCharacterHit(targetTeam, damage, hitPoint) {
@@ -359,8 +370,12 @@ export class Game {
       elapsedTime: this.elapsedTime,
     };
 
+    const playerWasAlive = this.player.alive;
+    const cpuWasAlive = this.cpu.alive;
     this.player.update(dt, ctx);
     this.cpu.update(dt, ctx);
+    if (!playerWasAlive && this.player.alive) this._paintSpawnSafeZone(this.arena.spawnPoints.player, TEAM.PLAYER);
+    if (!cpuWasAlive && this.cpu.alive) this._paintSpawnSafeZone(this.arena.spawnPoints.cpu, TEAM.CPU);
 
     // Show the archetype name banner when the enemy (re)appears.
     if (this.cpu.consumeIntroBanner()) {
@@ -482,7 +497,7 @@ export class Game {
     const cov = this.paintSystem.getCoverage();
     const info = [
       `state: ${this.state}`,
-      `player cell: (${pgx}, ${pgz})  grounded:${this.player.grounded}`,
+      `player cell: (${pgx}, ${pgz})  grounded:${this.player.grounded}  climbing:${this.player.isClimbing}`,
       `cpu    cell: (${cgx}, ${cgz})  grounded:${this.cpu.grounded}`,
       `cpu ai state: ${this.cpu.state}`,
       `cpu target: ${this.cpu.debugTarget ? this.cpu.debugTarget.toArray().map((n) => n.toFixed(1)).join(',') : '-'}`,
