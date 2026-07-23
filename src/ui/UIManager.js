@@ -34,6 +34,9 @@ export class UIManager {
       koCpu: document.getElementById('ko-cpu'),
 
       crosshair: document.getElementById('crosshair'),
+      enemyIntro: document.getElementById('enemy-intro'),
+      enemyIntroType: document.getElementById('enemy-intro-type'),
+      enemyIntroName: document.getElementById('enemy-intro-name'),
       enemyMarker: document.getElementById('enemy-marker'),
       enemyHpFill: document.getElementById('enemy-hp-fill'),
       hitFlash: document.getElementById('hit-flash'),
@@ -50,6 +53,7 @@ export class UIManager {
       debugOverlay: document.getElementById('debug-overlay'),
       debugFps: document.getElementById('debug-fps'),
       debugInfo: document.getElementById('debug-info'),
+      btnCycleAppearance: document.getElementById('debug-cycle-appearance'),
     };
 
     this._statusMsgTimer = 0;
@@ -62,6 +66,19 @@ export class UIManager {
 
   bindStart(cb) { this.el.btnStart.addEventListener('click', cb); }
   bindRestart(cb) { this.el.btnRestart.addEventListener('click', cb); }
+  bindCycleAppearance(cb) { this.el.btnCycleAppearance?.addEventListener('click', cb); }
+
+  /** Flashes the enemy archetype name (e.g. "SPEED PUNK") on (re)appearance; CSS fades it out. */
+  showEnemyIntro(name, id, color = '#ffffff') {
+    const el = this.el.enemyIntro;
+    if (!el) return;
+    this.el.enemyIntroName.textContent = name || '';
+    this.el.enemyIntroType.textContent = id ? id.toUpperCase() : '';
+    el.style.setProperty('--intro-color', color);
+    el.classList.remove('hidden', 'play');
+    void el.offsetWidth; // restart the animation even on back-to-back calls
+    el.classList.add('play');
+  }
 
   /** Swaps the title screen's instructions panel and reserves HUD space for on-screen touch controls. */
   applyTouchMode(isTouch) {

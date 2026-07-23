@@ -40,13 +40,21 @@ export class Character {
     const isPlayer = team === TEAM.PLAYER;
     const color = isPlayer ? COLORS.player : COLORS.cpu;
     const deep = isPlayer ? COLORS.playerDeep : COLORS.cpuDeep;
-    const { group, rig, materials } = Character.buildMesh(color, deep);
+    // Virtual hook: subclasses may replace the visual rig (e.g. EnemyAI's
+    // appearance variations) without touching stats/collision. Runs during the
+    // base constructor, so overrides must only read their arguments.
+    const { group, rig, materials } = this._createMesh(color, deep);
     this.mesh = group;
     this.rig = rig;
     this.materials = materials;
 
     this.mesh.position.copy(this.position);
     this.weapon = new Weapon();
+  }
+
+  /** Overridable rig factory. Base uses the default shared body. */
+  _createMesh(color, deep) {
+    return Character.buildMesh(color, deep);
   }
 
   static buildMesh(color, deep) {

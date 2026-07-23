@@ -30,6 +30,7 @@ npx serve .
 | Esc | マウスロック解除 |
 | R | ゲーム終了後のリスタート |
 | `` ` `` (Backquote) | デバッグオーバーレイ表示切替 |
+| V | （デバッグ）敵の外見タイプを切替（Speed → Street → Heavy → Technical） |
 
 ## ディレクトリ構成
 
@@ -46,7 +47,8 @@ src/
   entities/
     Character.js         Player / EnemyAI 共通の HP・インク・衝突・復活ロジック
     Player.js             プレイヤー入力処理
-    EnemyAI.js            CPU の状態機械・操舵・射撃
+    EnemyAI.js            CPU の状態機械・操舵・射撃（＋外見タイプの適用・登場演出）
+    EnemyAppearance.js    敵の外見バリエーション（4タイプ）の見た目のみを構築
   systems/
     Arena.js              ステージ形状・衝突コリジョン
     PaintSystem.js        塗装グリッド + CanvasTexture 描画
