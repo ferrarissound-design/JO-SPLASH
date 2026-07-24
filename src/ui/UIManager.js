@@ -62,6 +62,7 @@ export class UIManager {
       specialFill: document.getElementById('special-fill'),
       specialValue: document.getElementById('special-value'),
       weaponName: document.getElementById('weapon-name'),
+      weaponSwitchHint: document.getElementById('weapon-switch-hint'),
       chargeMeter: document.getElementById('charge-meter'),
       chargeFill: document.getElementById('charge-fill'),
       chargeValue: document.getElementById('charge-value'),
@@ -206,6 +207,7 @@ export class UIManager {
     this.el.howtoDesktopPause?.classList.toggle('hidden', isTouch);
     this.el.howtoTouchPause?.classList.toggle('hidden', !isTouch);
     this.el.hud.classList.toggle('touch-mode', isTouch);
+    this.el.weaponSwitchHint.textContent = isTouch ? 'SELECT' : '1 / 2 / 3';
   }
 
   showTitle() { this.el.title.classList.remove('hidden'); }

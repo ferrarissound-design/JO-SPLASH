@@ -892,6 +892,52 @@ html, body {
 }
 
 /* Compact, thumb-friendly touch controls */
+.touch-weapon-switcher {
+  position:absolute;
+  right:max(.75rem, env(safe-area-inset-right));
+  bottom:calc(max(.75rem, env(safe-area-inset-bottom)) + 8.35rem);
+  display:flex;
+  gap:.24rem;
+  padding:.28rem;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:999px;
+  background:rgba(8,14,28,.72);
+  box-shadow:0 6px 18px rgba(0,0,0,.24);
+  pointer-events:none;
+  backdrop-filter:blur(5px);
+}
+.touch-weapon-btn {
+  width:54px;
+  min-width:44px;
+  height:44px;
+  padding:0;
+  border:1px solid rgba(255,255,255,.2);
+  border-radius:999px;
+  background:rgba(255,255,255,.08);
+  color:rgba(238,243,248,.72);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:1px;
+  pointer-events:auto;
+  touch-action:none;
+  font-size:.62rem;
+  font-weight:900;
+  line-height:1;
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  transition:transform .08s ease, background .14s ease, color .14s ease, box-shadow .14s ease;
+}
+.touch-weapon-btn small { font-size:.39rem; font-weight:800; letter-spacing:-.02em; }
+.touch-weapon-btn.pressed { transform:scale(.94); }
+.touch-weapon-btn.selected {
+  border-color:rgba(125,222,255,.88);
+  background:linear-gradient(145deg,rgba(47,184,255,.92),rgba(15,111,184,.82));
+  color:#fff;
+  box-shadow:0 0 13px rgba(47,184,255,.42);
+}
 .touch-buttons { right:max(.75rem, env(safe-area-inset-right)); bottom:max(.75rem, env(safe-area-inset-bottom)); display:grid; grid-template-columns:52px 52px 64px; grid-template-rows:50px 70px; grid-template-areas:"surf jump bomb" ". special fire"; gap:clamp(.34rem,1.5vw,.56rem); align-items:end; justify-items:center; opacity:.78; transition:opacity .18s ease; }
 .touch-buttons:has(.pressed) { opacity:1; }
 .touch-btn { min-width:44px; min-height:44px; pointer-events:auto; touch-action:none; border:1px solid rgba(255,255,255,.26); border-radius:999px; color:var(--clr-text); font-size:.66rem; font-weight:900; letter-spacing:.03em; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; opacity:.82; transition:opacity .12s ease, transform .08s ease, filter .12s ease, box-shadow .12s ease; }
@@ -902,8 +948,8 @@ html, body {
 .touch-btn-surf { grid-area:surf; width:54px; height:54px; background:linear-gradient(145deg,rgba(47,184,255,.22),rgba(255,255,255,.1)); }
 .touch-btn-special { grid-area:special; width:50px; height:50px; background:linear-gradient(145deg,rgba(228,108,255,.72),rgba(75,36,120,.72)); box-shadow:0 5px 14px rgba(228,108,255,.22); }
 .touch-btn-bomb { grid-area:bomb; width:50px; height:50px; background:linear-gradient(145deg,rgba(255,217,74,.6),rgba(255,122,47,.48)); }
-@media (max-width:380px){ .touch-buttons{grid-template-columns:44px 44px 58px; grid-template-rows:46px 64px;} .touch-btn-fire{width:68px;height:68px}.touch-btn-jump,.touch-btn-surf,.touch-btn-special,.touch-btn-bomb{width:44px;height:44px;font-size:.56rem}.touch-btn small{display:none}.gauge-cluster{width:158px}.match-strip{padding-left:.5rem;padding-right:.5rem} }
-@media (orientation:landscape) and (max-height:520px){ .match-strip{min-height:30px;padding:.24rem .62rem .38rem;width:min(62vw,420px)} #timer{font-size:.9rem}.hud-bottom{padding-bottom:max(.45rem,env(safe-area-inset-bottom))}.touch-buttons{right:max(.55rem,env(safe-area-inset-right));bottom:max(.45rem,env(safe-area-inset-bottom));transform:scale(.9);transform-origin:bottom right}.gauge-cluster{padding:.36rem .5rem}.turf-map{width:78px;top:max(2.8rem,calc(env(safe-area-inset-top) + 2.4rem));padding:.28rem}.turf-map-heading{margin-bottom:.16rem}.turf-map-legend{display:none}.status-msg{top:calc(max(.25rem, env(safe-area-inset-top)) + 34px)} }
+@media (max-width:380px){ .touch-buttons{grid-template-columns:44px 44px 58px; grid-template-rows:46px 64px;} .touch-btn-fire{width:68px;height:68px}.touch-btn-jump,.touch-btn-surf,.touch-btn-special,.touch-btn-bomb{width:44px;height:44px;font-size:.56rem}.touch-btn small{display:none}.touch-weapon-btn{width:46px}.touch-weapon-btn small{font-size:.36rem}.touch-weapon-switcher{bottom:calc(max(.75rem, env(safe-area-inset-bottom)) + 7.55rem)}.gauge-cluster{width:158px}.match-strip{padding-left:.5rem;padding-right:.5rem} }
+@media (orientation:landscape) and (max-height:520px){ .match-strip{min-height:30px;padding:.24rem .62rem .38rem;width:min(62vw,420px)} #timer{font-size:.9rem}.hud-bottom{padding-bottom:max(.45rem,env(safe-area-inset-bottom))}.touch-buttons{right:max(.55rem,env(safe-area-inset-right));bottom:max(.45rem,env(safe-area-inset-bottom));transform:scale(.9);transform-origin:bottom right}.touch-weapon-switcher{right:max(.55rem,env(safe-area-inset-right));bottom:calc(max(.45rem,env(safe-area-inset-bottom)) + 7.35rem);transform:scale(.9);transform-origin:bottom right}.gauge-cluster{padding:.36rem .5rem}.turf-map{width:78px;top:max(2.8rem,calc(env(safe-area-inset-top) + 2.4rem));padding:.28rem}.turf-map-heading{margin-bottom:.16rem}.turf-map-legend{display:none}.status-msg{top:calc(max(.25rem, env(safe-area-inset-top)) + 34px)} }
 @media (min-width:721px){ .match-strip{width:min(68vw,520px)} }
 
 #hit-flash { position:absolute; inset:0; background:radial-gradient(ellipse at center, rgba(255,60,60,0) 40%, rgba(255,40,40,.45) 100%); opacity:0; pointer-events:none; }

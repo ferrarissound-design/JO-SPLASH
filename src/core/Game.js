@@ -77,6 +77,7 @@ export class Game {
     this.projectileManager.onCharacterHit = (targetTeam, damage, hitPoint) => this._onCharacterHit(targetTeam, damage, hitPoint);
 
     this.player = new Player(this.arena.spawnPoints.player, this.cameraController, this.input);
+    this.touchControls?.setWeaponType(this.player.weapon.type);
     this.selectedDifficulty = AI_DIFFICULTY[this.settings.values.difficultyId] ? this.settings.values.difficultyId : 'standard';
     this.cpu = new EnemyAI(this.arena.spawnPoints.cpu, AI_DIFFICULTY[this.selectedDifficulty]);
     this.projectileManager.onPaint = (team, paintedCells) => {
@@ -655,6 +656,7 @@ export class Game {
     const playerWasAlive = this.player.alive;
     const cpuWasAlive = this.cpu.alive;
     this.player.update(dt, ctx);
+    this.touchControls?.setWeaponType(this.player.weapon.type);
     this.cpu.update(dt, ctx);
     this.ui.updateEnemySpecialWarning({
       visible: this.cpu.alive && (this.cpu.specialWindingUp || this.cpu.special.active),
