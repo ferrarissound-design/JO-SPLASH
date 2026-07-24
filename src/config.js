@@ -119,7 +119,8 @@ export const PAINT = {
   textureSize: 512, // canvas texture pixel resolution
   splatRadius: 2.1, // world-units radius painted per projectile hit
   koSplatRadius: 3.4, // large burst painted by the attacker when an opponent is splatted
-  updateIntervalMs: 45, // throttle canvas texture upload
+  updateIntervalMs: 45, // throttle canvas texture upload when there's new paint
+  glossUpdateIntervalMs: 110, // slower throttle when only gloss fade-out is animating (no new paint since last upload)
   splatterMin: 7, // tiny random flecks around each impact
   splatterMax: 13,
   glossLifeSec: 2.2, // temporary wet sheen duration for fresh ink
@@ -250,7 +251,12 @@ export const WEAPON = {
         minRange: 23,
         fullRange: 68,
         minDamage: 12,
-        fullDamage: 105,
+        // A hair under HEALTH.max (100) so a full-charge headshot chips to
+        // low HP instead of being an unconditional one-shot kill regardless
+        // of the target's current health — still devastating, just not a
+        // guaranteed instant kill outside of a finishing follow-up or floor
+        // chip damage.
+        fullDamage: 95,
         minSpreadRad: 0.035,
         fullSpreadRad: 0.001,
         minPaintRadius: 1.05,

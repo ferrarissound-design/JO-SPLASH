@@ -380,7 +380,17 @@ export class PaintSystem {
     }
   }
 
-  /** Call once per frame; throttles the (relatively costly) GPU texture upload. */
+  /**
+   * Call once per frame; throttles the (relatively costly) full-canvas
+   * recomposite + GPU texture upload. During active combat there's almost
+   * always at least one fading gloss sheen alive (glossLifeSec is 2.2s and
+   * splats land far more often than that), which would otherwise force this
+   * to run at the fast `updateIntervalMs` cadence continuously. Real new
+   * paint still gets that fast, responsive cadence; when the only reason to
+   * redraw is a gloss still fading out, fall back to the slower
+   * `glossUpdateIntervalMs` cadence instead — imperceptible on a 2.2s fade,
+   * but meaningfully cheaper over a sustained fight.
+   */
   update(dt) {
     let glossDirty = false;
     if (this._glosses.length > 0) {
@@ -392,7 +402,8 @@ export class PaintSystem {
 
     if (!this._dirty && !glossDirty) return;
     this._timeSinceUpload += dt * 1000;
-    if (this._timeSinceUpload >= PAINT.updateIntervalMs) {
+    const interval = this._dirty ? PAINT.updateIntervalMs : PAINT.glossUpdateIntervalMs;
+    if (this._timeSinceUpload >= interval) {
       this._compositeTexture();
       this.texture.needsUpdate = true;
       this._timeSinceUpload = 0;
