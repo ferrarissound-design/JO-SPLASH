@@ -60,7 +60,7 @@ export class Game {
     // instance counts on touch devices to protect mobile frame rate.
     this.stageDecor = new StageDecor(this.scene, this.arena, { lowQuality: this.input.isTouch });
 
-    this.cameraController = new CameraController(this.camera);
+    this.cameraController = new CameraController(this.camera, this.arena);
 
     this.particleManager = new ParticleManager(this.scene);
     this.audioManager = new AudioManager();
@@ -411,6 +411,14 @@ export class Game {
     if (this.debugMode && this.state === STATE.PLAYING && this.input.wasJustPressed('KeyH')) {
       this.player.debugStorePrecisionCharge(this.audioManager, this.ui);
     }
+    if (this.debugMode && this.state === STATE.PLAYING && this.input.wasJustPressed('KeyJ')) {
+      this.player.position.set(0, 0, this.arena.halfDepth - 0.75);
+      this.player.velocity.set(0, 0, 0);
+      this.player.grounded = true;
+      this.cameraController.yaw = 0;
+      this.cameraController.pitch = -0.05;
+      this.ui.showStatusMessage('CAMERA COLLISION TEST', 0.8);
+    }
 
     switch (this.state) {
       case STATE.TITLE:
@@ -696,8 +704,9 @@ export class Game {
       `special: ${this.player.special.charge.toFixed(1)}%  active:${this.player.special.active}`,
       `ink roll: ${this.player.isInkRolling}  armor:${this.player.inkRollArmorTimer.toFixed(2)}  cd:${this.player.inkRollCooldown.toFixed(2)}  used:${this.player.inkRollsUsed}`,
       `weapon: ${this.player.weapon.displayName}  charge:${(this.player.weapon.charge * 100).toFixed(0)}%  charging:${this.player.weapon.charging}  stored:${this.player.weapon.chargeStored}(${this.player.weapon.chargeStoreTimer.toFixed(2)})  bomb cd:${this.player.subWeapon.cooldown.toFixed(2)}`,
+      `camera: shoulder dist:${this.cameraController.currentDistance.toFixed(2)}  blocked:${this.cameraController.cameraBlocked}`,
       `precision lines: ${this.projectileManager.chargeLinesFired}  cells:${this.projectileManager.chargeLinePaintedCells}  walls:${this.projectileManager.chargeWallStrokes}`,
-      'debug keys: C=full charge  H=keep charge  G=ink roll  T=final 12s  P=player special  O=CPU special  L=CPU climb  B=CPU bomb  K=CPU weapon  V=enemy',
+      'debug keys: J=camera wall  C=full charge  H=keep charge  G=ink roll  T=final 12s  P=player special  O=CPU special  L=CPU climb  B=CPU bomb  K=CPU weapon  V=enemy',
       `projectiles active: ${this.projectileManager.pool.filter((p) => p.active).length}/${this.projectileManager.pool.length}`,
       `particles active: ${this.particleManager.pool.filter((p) => p.active).length}/${this.particleManager.pool.length}`,
     ].join('\n');

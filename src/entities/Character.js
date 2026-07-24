@@ -114,6 +114,21 @@ export class Character {
     fin.rotation.x = Math.PI / 2.4;
     rig.add(fin);
 
+    // Compact shoulder-mounted ink shooter. Besides strengthening the
+    // silhouette, its right-side placement matches the third-person muzzle
+    // origin used by CameraController.
+    const shooter = new THREE.Group();
+    shooter.position.set(0.36, MOVEMENT.capsuleHeight - 0.32, -0.34);
+    const shooterBody = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.58), deepMat);
+    shooterBody.position.z = -0.18;
+    const shooterTank = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), bodyMat);
+    shooterTank.position.set(0, 0.05, 0.12);
+    const shooterNozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.075, 0.34, 8), visorMat);
+    shooterNozzle.rotation.x = Math.PI / 2;
+    shooterNozzle.position.z = -0.58;
+    shooter.add(shooterBody, shooterTank, shooterNozzle);
+    rig.add(shooter);
+
     return { group, rig, materials };
   }
 

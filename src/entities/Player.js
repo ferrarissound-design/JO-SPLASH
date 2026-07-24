@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Character } from './Character.js';
-import { MOVEMENT, TEAM, COLORS } from '../config.js';
+import { MOVEMENT, TEAM, COLORS, CAMERA } from '../config.js';
 import { InkBurstSpecial } from '../systems/SpecialWeapon.js';
 import { InkBomb } from '../systems/SubWeapon.js';
 
@@ -219,8 +219,7 @@ export class Player extends Character {
     if (!this.weapon.beginCharge(this, audioManager)) return false;
     this.weapon.updateCharge(this.weapon.profile.charge.durationSec, this, audioManager);
 
-    this.camera.getAimDirection(_aimDir);
-    _fireOrigin.copy(this.camera.camera.position).addScaledVector(_aimDir, 0.35);
+    this._prepareShot();
     const fired = this.weapon.releaseCharge(
       this,
       _fireOrigin,
@@ -334,10 +333,15 @@ export class Player extends Character {
     this._climbPanel = null;
   }
 
-  /** First-person view: the player never sees their own body (standard FPS convention). */
+  /** Third-person view keeps the rig visible unless camera collision pushes inside it. */
   syncMesh(elapsedTime) {
     super.syncMesh(elapsedTime);
-    this.mesh.visible = false;
+    if (this.camera.currentDistance < CAMERA.bodyHideDistance) this.mesh.visible = false;
+  }
+
+  _prepareShot() {
+    this.camera.getFireOrigin(this.position, _fireOrigin);
+    this.camera.getShotDirection(_fireOrigin, this.position, _aimDir);
   }
 
   _handleFiring(dt, projectileManager, particleManager, audioManager, ui) {
@@ -383,8 +387,7 @@ export class Player extends Character {
         if (!this.weapon.charging) this.weapon.beginCharge(this, audioManager);
         this.weapon.updateCharge(dt, this, audioManager);
       } else if (this._fireWasHeld && this.weapon.charging) {
-        this.camera.getAimDirection(_aimDir);
-        _fireOrigin.copy(this.camera.camera.position).addScaledVector(_aimDir, 0.35);
+        this._prepareShot();
         this.weapon.releaseCharge(
           this,
           _fireOrigin,
@@ -402,8 +405,7 @@ export class Player extends Character {
     this._fireWasHeld = fireHeld;
     if (!fireHeld) return;
 
-    this.camera.getAimDirection(_aimDir);
-    _fireOrigin.copy(this.camera.camera.position).addScaledVector(_aimDir, 0.35);
+    this._prepareShot();
 
     this.weapon.fire(this, _fireOrigin, _aimDir, projectileManager, audioManager, particleManager);
   }
@@ -423,8 +425,7 @@ export class Player extends Character {
 
   _handleSubWeapon(projectileManager, particleManager, audioManager) {
     if (!this.input.wasJustPressed('KeyE') || this.special.active || this.isInkRolling) return;
-    this.camera.getAimDirection(_aimDir);
-    _fireOrigin.copy(this.camera.camera.position).addScaledVector(_aimDir, 0.45);
+    this._prepareShot();
     this.subWeapon.fire(this, _fireOrigin, _aimDir, projectileManager, audioManager, particleManager);
   }
 }

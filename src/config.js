@@ -307,9 +307,24 @@ export const SPECIAL = {
 };
 
 export const CAMERA = {
-  eyeHeight: 1.75, // camera height above the character's feet (first-person view)
-  minPitch: -1.4,
-  maxPitch: 1.4,
+  eyeHeight: 1.75,
+  targetHeight: 1.22,
+  shoulderDistance: 4.8,
+  shoulderOffset: 0.82,
+  verticalOffset: 0.62,
+  sinkReference: 0.82,
+  surfDistanceReduction: 0.75,
+  surfShoulderScale: 0.68,
+  aimDistance: 70,
+  muzzleHeight: 1.18,
+  muzzleShoulderOffset: 0.38,
+  muzzleForwardOffset: 0.26,
+  collisionPadding: 0.24,
+  collisionNear: 0.12,
+  returnSpeed: 8.5,
+  bodyHideDistance: 0.82,
+  minPitch: -1.05,
+  maxPitch: 1.0,
   sensitivity: 0.0022,
 };
 
