@@ -11,6 +11,7 @@ const _horizVel = new THREE.Vector2();
 const _fireOrigin = new THREE.Vector3();
 const _aimDir = new THREE.Vector3();
 const _surfExitSplatPos = new THREE.Vector3();
+const _inkRollFxPos = new THREE.Vector3();
 
 // ============================================================================
 // Player — human-controlled Character. Reads InputManager state and the
@@ -25,6 +26,16 @@ export class Player extends Character {
     this.input = inputManager;
     this.special = new InkBurstSpecial(this.team);
     this.subWeapon = new InkBomb();
+    this.isInkRolling = false;
+    this.inkRollTimer = 0;
+    this.inkRollCooldown = 0;
+    this.inkRollArmorTimer = 0;
+    this.inkRollsUsed = 0;
+  }
+
+  takeDamage(amount) {
+    const multiplier = this.inkRollArmorTimer > 0 ? MOVEMENT.inkRollArmorMultiplier : 1;
+    return super.takeDamage(amount * multiplier);
   }
 
   die() {
@@ -32,11 +43,18 @@ export class Player extends Character {
     this.special.active = false;
     this.special.timer = 0;
     this.special.charge *= 0.5;
+    this.resetInkRoll();
+  }
+
+  respawn() {
+    super.respawn();
+    this.resetInkRoll();
   }
 
   update(dt, ctx) {
     const { arena, paintSystem, projectileManager, particleManager, audioManager, controlsEnabled } = ctx;
 
+    this._updateInkRollTimers(dt);
     this.updateTimers(dt);
     if (!this.alive) {
       this.syncMesh(ctx.elapsedTime);
@@ -44,19 +62,19 @@ export class Player extends Character {
     }
 
     if (controlsEnabled) {
-      this._handleMovement(dt, arena);
+      this._handleMovement(dt, arena, particleManager, audioManager, ctx.ui);
     } else {
       // Still settle vertically so the player doesn't float during countdown/result.
       this.applyVerticalPhysics(dt, arena);
     }
 
     const wasInkSurfing = this.inkSurfActive;
-    if (controlsEnabled && this.input.wasJustPressed('KeyQ')) {
+    if (controlsEnabled && !this.isInkRolling && this.input.wasJustPressed('KeyQ')) {
       this.special.activate(this, audioManager, ctx.ui);
     }
     if (controlsEnabled) this._handleWeaponSelection(ctx.ui);
 
-    const wantsInkSurf = controlsEnabled && !this.special.active
+    const wantsInkSurf = controlsEnabled && !this.special.active && !this.isInkRolling
       && (this.input.isDown('ShiftLeft') || this.input.isDown('ShiftRight'));
     const speedMult = this.updateFloorEffects(dt, paintSystem, wantsInkSurf);
     this._lastSpeedMult = speedMult;
@@ -89,7 +107,7 @@ export class Player extends Character {
     this.syncMesh(ctx.elapsedTime);
   }
 
-  _handleMovement(dt, arena) {
+  _handleMovement(dt, arena, particleManager, audioManager, ui) {
     const input = this.input;
     let ix = 0, iz = 0;
     if (input.isDown('KeyW')) iz -= 1;
@@ -112,19 +130,23 @@ export class Player extends Character {
     _horizVel.set(this.velocity.x, this.velocity.z);
     const targetVel = { x: _wish.x * targetSpeed, z: _wish.z * targetSpeed };
 
-    if (this.grounded) {
-      if (_wish.lengthSq() < 1e-6) {
-        // Friction to a stop when no input.
-        const decel = Math.max(0, 1 - (MOVEMENT.friction * dt));
-        _horizVel.multiplyScalar(decel);
+    // Preserve the committed burst direction during the roll instead of
+    // letting ordinary ground/air control immediately cancel it.
+    if (!this.isInkRolling) {
+      if (this.grounded) {
+        if (_wish.lengthSq() < 1e-6) {
+          // Friction to a stop when no input.
+          const decel = Math.max(0, 1 - (MOVEMENT.friction * dt));
+          _horizVel.multiplyScalar(decel);
+        } else {
+          _horizVel.x += (targetVel.x - _horizVel.x) * Math.min(1, accel * dt / Math.max(targetSpeed, 0.001));
+          _horizVel.y += (targetVel.z - _horizVel.y) * Math.min(1, accel * dt / Math.max(targetSpeed, 0.001));
+        }
       } else {
-        _horizVel.x += (targetVel.x - _horizVel.x) * Math.min(1, accel * dt / Math.max(targetSpeed, 0.001));
-        _horizVel.y += (targetVel.z - _horizVel.y) * Math.min(1, accel * dt / Math.max(targetSpeed, 0.001));
+        // Limited air control: nudge velocity toward wish direction, can't fully redirect.
+        _horizVel.x += (targetVel.x - _horizVel.x) * Math.min(1, MOVEMENT.airControl * accel * dt / Math.max(targetSpeed, 0.001));
+        _horizVel.y += (targetVel.z - _horizVel.y) * Math.min(1, MOVEMENT.airControl * accel * dt / Math.max(targetSpeed, 0.001));
       }
-    } else {
-      // Limited air control: nudge velocity toward wish direction, can't fully redirect.
-      _horizVel.x += (targetVel.x - _horizVel.x) * Math.min(1, MOVEMENT.airControl * accel * dt / Math.max(targetSpeed, 0.001));
-      _horizVel.y += (targetVel.z - _horizVel.y) * Math.min(1, MOVEMENT.airControl * accel * dt / Math.max(targetSpeed, 0.001));
     }
 
     this.velocity.x = _horizVel.x;
@@ -134,6 +156,8 @@ export class Player extends Character {
       const panel = this._findClimbablePanel(arena);
       if (panel && input.isDown('KeyW') && this.ink > MOVEMENT.wallClimbInkCostPerSec * 0.2) {
         this._startClimb(panel);
+      } else if (this.inkSurfActive && this.grounded && this.inkRollCooldown <= 0 && _wish.lengthSq() > 0.1) {
+        this._startInkRoll(_wish, particleManager, audioManager, ui);
       } else if (this.grounded) {
         this.inkSurfCooldown = MOVEMENT.inkSurfExitCooldownSec;
         this.inkSurfActive = false;
@@ -151,6 +175,50 @@ export class Player extends Character {
     } else {
       this.applyVerticalPhysics(dt, arena);
     }
+  }
+
+  _startInkRoll(direction, particleManager, audioManager, ui) {
+    this.isInkRolling = true;
+    this.inkRollTimer = MOVEMENT.inkRollDurationSec;
+    this.inkRollArmorTimer = MOVEMENT.inkRollDurationSec;
+    this.inkRollCooldown = MOVEMENT.inkRollCooldownSec;
+    this.inkSurfCooldown = MOVEMENT.inkSurfExitCooldownSec;
+    this.inkSurfActive = false;
+    this.velocity.x = direction.x * MOVEMENT.inkRollSpeed;
+    this.velocity.z = direction.z * MOVEMENT.inkRollSpeed;
+    this.velocity.y = MOVEMENT.inkRollJumpSpeed;
+    this.grounded = false;
+    this.inkRollsUsed++;
+
+    _inkRollFxPos.set(this.position.x, this.position.y + 0.12, this.position.z);
+    particleManager?.spawnSplat(_inkRollFxPos, COLORS.player, true);
+    audioManager?.playInkRoll();
+    ui?.showStatusMessage('INK ROLL!', 0.55);
+    return true;
+  }
+
+  debugStartInkRoll(particleManager, audioManager, ui) {
+    if (!this.alive || !this.grounded || this.isClimbing || this.inkRollCooldown > 0) return false;
+    this.camera.getFlatForward(_fwd);
+    _fwd.y = 0;
+    if (_fwd.lengthSq() < 0.01) _fwd.set(0, 0, -1);
+    else _fwd.normalize();
+    return this._startInkRoll(_fwd, particleManager, audioManager, ui);
+  }
+
+  _updateInkRollTimers(dt) {
+    this.inkRollTimer = Math.max(0, this.inkRollTimer - dt);
+    this.inkRollCooldown = Math.max(0, this.inkRollCooldown - dt);
+    this.inkRollArmorTimer = Math.max(0, this.inkRollArmorTimer - dt);
+    this.isInkRolling = this.inkRollTimer > 0;
+  }
+
+  resetInkRoll({ newMatch = false } = {}) {
+    this.isInkRolling = false;
+    this.inkRollTimer = 0;
+    this.inkRollCooldown = 0;
+    this.inkRollArmorTimer = 0;
+    if (newMatch) this.inkRollsUsed = 0;
   }
 
   /** Finds a nearby wall panel the player is facing that already carries enough of their own ink to climb. */
@@ -235,7 +303,7 @@ export class Player extends Character {
 
   _handleFiring(dt, projectileManager, particleManager, audioManager) {
     this.weapon.update(dt);
-    if (this.inkSurfActive || this.isClimbing || this.special.active) return;
+    if (this.inkSurfActive || this.isClimbing || this.isInkRolling || this.special.active) return;
     if (!this.input.mouseDown) return;
 
     this.camera.getAimDirection(_aimDir);
@@ -258,7 +326,7 @@ export class Player extends Character {
   }
 
   _handleSubWeapon(projectileManager, particleManager, audioManager) {
-    if (!this.input.wasJustPressed('KeyE') || this.special.active) return;
+    if (!this.input.wasJustPressed('KeyE') || this.special.active || this.isInkRolling) return;
     this.camera.getAimDirection(_aimDir);
     _fireOrigin.copy(this.camera.camera.position).addScaledVector(_aimDir, 0.45);
     this.subWeapon.fire(this, _fireOrigin, _aimDir, projectileManager, audioManager, particleManager);

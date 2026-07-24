@@ -219,6 +219,7 @@ export class Game {
     this.player.inkSurfCooldown = 0;
     this.player.isClimbing = false;
     this.player._climbPanel = null;
+    this.player.resetInkRoll({ newMatch: true });
     this.player.invincibleTimer = 0;
     this.player._healthRegenTimer = 0;
     this.player.koScored = 0;
@@ -258,6 +259,7 @@ export class Game {
     this.ui.updateEnemyMarker({ visible: false });
     this.ui.updateEnemySpecialWarning({ visible: false });
     this.ui.resetFinale();
+    this.ui.resetInkRollFeedback();
     this.ui.resetTurfMap();
     this._cpuHitFlashTimer = 0;
     this._wasPlayerInkSurfing = false;
@@ -285,6 +287,7 @@ export class Game {
     this.audioManager.stopBattleBGM();
     this.audioManager.playTimeUp();
     this.ui.updateEnemySpecialWarning({ visible: false });
+    this.ui.resetInkRollFeedback();
     this.ui.showTimeUp();
   }
 
@@ -392,6 +395,9 @@ export class Game {
       this.ui.hideFinalCountdown();
       this.audioManager.setBattleFinale(false);
     }
+    if (this.debugMode && this.state === STATE.PLAYING && this.input.wasJustPressed('KeyG')) {
+      this.player.debugStartInkRoll(this.particleManager, this.audioManager, this.ui);
+    }
 
     switch (this.state) {
       case STATE.TITLE:
@@ -495,7 +501,7 @@ export class Game {
     this.particleManager.update(dt);
     this.paintSystem.update(dt);
 
-    this._updateSurfFeedback(dt, this.player.inkSurfActive);
+    this._updateSurfFeedback(dt, this.player.inkSurfActive, this.player.isInkRolling);
     this.cameraController.update(dt, this.player.position, this._currentCameraSink);
 
     if (this.player.alive) this.ui.hideRespawnBanner();
@@ -535,6 +541,7 @@ export class Game {
       koCpu: this.cpu.koScored,
       firing: this.input.mouseDown && this.player.alive && !this.player.inkSurfActive,
       submerged: this.player.inkSurfActive,
+      rolling: this.player.isInkRolling,
       enemyFloor: this.player.onEnemyFloor,
     });
 
@@ -572,8 +579,9 @@ export class Game {
     if (this.input.wasJustPressed('KeyR')) this._startMatch();
   }
 
-  _updateSurfFeedback(dt, active) {
-    const targetFov = this._baseCameraFov + (active ? MOVEMENT.inkSurfFovBoost : 0);
+  _updateSurfFeedback(dt, active, rolling = false) {
+    const targetFov = this._baseCameraFov
+      + (rolling ? MOVEMENT.inkRollFovBoost : active ? MOVEMENT.inkSurfFovBoost : 0);
     const fovLerp = 1 - Math.exp(-MOVEMENT.inkSurfFovLerp * dt);
     const nextFov = THREE.MathUtils.lerp(this.camera.fov, targetFov, fovLerp);
     if (Math.abs(nextFov - this.camera.fov) > 0.01) {
@@ -666,8 +674,9 @@ export class Game {
       `player inv: ${this.player.invincibleTimer.toFixed(2)}  cpu inv: ${this.cpu.invincibleTimer.toFixed(2)}`,
       `coverage P:${cov.playerPct.toFixed(1)}% C:${cov.cpuPct.toFixed(1)}% N:${(100 - cov.playerPct - cov.cpuPct).toFixed(1)}%`,
       `special: ${this.player.special.charge.toFixed(1)}%  active:${this.player.special.active}`,
+      `ink roll: ${this.player.isInkRolling}  armor:${this.player.inkRollArmorTimer.toFixed(2)}  cd:${this.player.inkRollCooldown.toFixed(2)}  used:${this.player.inkRollsUsed}`,
       `weapon: ${this.player.weapon.displayName}  bomb cd:${this.player.subWeapon.cooldown.toFixed(2)}`,
-      'debug keys: T=final 12s  P=player special  O=CPU special  L=CPU climb  B=CPU bomb  K=CPU weapon  V=enemy',
+      'debug keys: G=ink roll  T=final 12s  P=player special  O=CPU special  L=CPU climb  B=CPU bomb  K=CPU weapon  V=enemy',
       `projectiles active: ${this.projectileManager.pool.filter((p) => p.active).length}/${this.projectileManager.pool.length}`,
       `particles active: ${this.particleManager.pool.filter((p) => p.active).length}/${this.particleManager.pool.length}`,
     ].join('\n');

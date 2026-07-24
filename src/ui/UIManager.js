@@ -62,6 +62,7 @@ export class UIManager {
       finalCountdown: document.getElementById('final-countdown'),
       finalCountdownValue: document.getElementById('final-countdown-value'),
       timeUpOverlay: document.getElementById('time-up-overlay'),
+      inkRollFlash: document.getElementById('ink-roll-flash'),
       hitFlash: document.getElementById('hit-flash'),
       respawnBanner: document.getElementById('respawn-banner'),
 
@@ -145,7 +146,7 @@ export class UIManager {
     timeRemaining, playerPct, cpuPct, hp, ink, specialCharge = 0,
     specialReady = false, specialActive = false, weaponName = 'STREAM',
     koPlayer, koCpu, firing,
-    submerged = false, enemyFloor = false,
+    submerged = false, rolling = false, enemyFloor = false,
   }) {
     const t = Math.max(0, Math.ceil(timeRemaining));
     const minutes = Math.floor(t / 60);
@@ -190,6 +191,9 @@ export class UIManager {
     this.el.koCpu.textContent = String(koCpu);
 
     this.el.hud.classList.toggle('ink-submerged', submerged);
+    this.el.hud.classList.toggle('ink-rolling', rolling);
+    this.el.inkRollFlash?.classList.toggle('hidden', !rolling);
+    this.el.inkRollFlash?.classList.toggle('active', rolling);
     this.el.hud.classList.toggle('enemy-ink-danger', enemyFloor);
     this.el.crosshair.classList.toggle('firing', firing && !submerged);
   }
@@ -281,6 +285,12 @@ export class UIManager {
     this.hideFinalCountdown();
     this.hideTimeUp();
     this.el.finalCountdown?.classList.remove('urgent', 'tick');
+  }
+
+  resetInkRollFeedback() {
+    this.el.hud.classList.remove('ink-rolling');
+    this.el.inkRollFlash?.classList.add('hidden');
+    this.el.inkRollFlash?.classList.remove('active');
   }
 
   resetTurfMap() {

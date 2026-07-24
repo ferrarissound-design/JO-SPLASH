@@ -432,6 +432,41 @@ html, body {
   0% { opacity:0; transform:scale(1.18) rotate(2deg); }
   100% { opacity:1; transform:scale(1) rotate(0); }
 }
+#ink-roll-flash {
+  position:absolute;
+  inset:0;
+  z-index:11;
+  opacity:0;
+  overflow:hidden;
+  pointer-events:none;
+  background:
+    radial-gradient(circle at center, transparent 34%,rgba(47,184,255,.08) 50%,rgba(47,184,255,.42) 100%),
+    repeating-conic-gradient(from 5deg at 50% 50%,rgba(127,224,255,.15) 0 4deg,transparent 4deg 18deg);
+  box-shadow:inset 0 0 38px rgba(127,224,255,.78),inset 0 0 120px rgba(47,184,255,.34);
+}
+#ink-roll-flash span {
+  position:absolute;
+  left:50%;
+  bottom:24%;
+  transform:translateX(-50%) rotate(-4deg);
+  padding:.25rem .7rem;
+  border:1px solid rgba(255,255,255,.7);
+  border-radius:6px;
+  background:rgba(14,43,68,.78);
+  color:#d9f8ff;
+  font-size:.68rem;
+  font-weight:1000;
+  font-style:italic;
+  letter-spacing:.14em;
+  text-shadow:0 0 9px rgba(127,224,255,.9);
+}
+#ink-roll-flash.active { opacity:1; animation:ink-roll-flash .42s ease-out; }
+@keyframes ink-roll-flash {
+  0% { opacity:0; filter:brightness(1.8); transform:scale(.82) rotate(-2deg); }
+  28% { opacity:1; }
+  100% { opacity:.28; filter:brightness(1); transform:scale(1.08) rotate(1deg); }
+}
+#hud.ink-rolling #crosshair { width:52px; height:52px; transform:translate(-50%,-50%) rotate(12deg); opacity:.72; }
 
 /* ============ Result screen ============ */
 #result-title {

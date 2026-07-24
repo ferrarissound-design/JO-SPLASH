@@ -142,6 +142,12 @@ export class AudioManager {
     this._noise(0.16, { peak: 0.11, filterFreq: 1500 });
   }
 
+  playInkRoll() {
+    this._tone(210, 0.24, { type: 'sawtooth', peak: 0.18, freqEnd: 720 });
+    this._tone(640, 0.16, { type: 'triangle', peak: 0.14, freqEnd: 980, delay: 0.05 });
+    this._noise(0.28, { peak: 0.16, filterFreq: 2100 });
+  }
+
   playShoot() {
     this._tone(620, 0.07, { type: 'triangle', peak: 0.18, freqEnd: 340 });
   }

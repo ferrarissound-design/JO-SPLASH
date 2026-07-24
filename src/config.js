@@ -144,6 +144,12 @@ export const MOVEMENT = {
   inkSurfStillOpacity: 0.08,
   inkSurfExitCooldownSec: 0.12,
   inkSurfExitHopSpeed: 3.2, // small pop upward when releasing surf on own ink
+  inkRollSpeed: 10.8,
+  inkRollJumpSpeed: 4.6,
+  inkRollDurationSec: 0.42,
+  inkRollCooldownSec: 0.85,
+  inkRollArmorMultiplier: 0.4,
+  inkRollFovBoost: 12,
   enemyPaintSlowMult: 0.62,
   airControl: 0.35,
   jumpSpeed: 7.4,
