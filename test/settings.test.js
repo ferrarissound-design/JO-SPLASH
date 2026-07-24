@@ -33,7 +33,38 @@ describe('Settings defaults and persistence', () => {
       musicVolume: 1,
       difficultyId: 'standard',
       invertY: false,
+      keyBindings: {},
     });
+  });
+
+  it('setKeyBinding stores only known actions and persists across instances', async () => {
+    const { Settings } = await import('../src/core/Settings.js?fresh7');
+    const a = new Settings();
+    a.setKeyBinding('jump', 'ArrowUp');
+    a.setKeyBinding('bogusAction', 'KeyZ'); // unknown action, should be ignored
+
+    expect(a.values.keyBindings).toEqual({ jump: 'ArrowUp' });
+
+    const b = new Settings();
+    expect(b.values.keyBindings).toEqual({ jump: 'ArrowUp' });
+  });
+
+  it('resetKeyBindings clears all customizations', async () => {
+    const { Settings } = await import('../src/core/Settings.js?fresh8');
+    const settings = new Settings();
+    settings.setKeyBinding('jump', 'ArrowUp');
+    settings.resetKeyBindings();
+    expect(settings.values.keyBindings).toEqual({});
+  });
+
+  it('sanitizes stored keyBindings, dropping unknown actions and non-string codes', async () => {
+    localStorage.setItem(
+      'chromaDuel.settings.v1',
+      JSON.stringify({ keyBindings: { jump: 'ArrowUp', special: 42, notReal: 'KeyZ' } }),
+    );
+    const { Settings } = await import('../src/core/Settings.js?fresh9');
+    const settings = new Settings();
+    expect(settings.values.keyBindings).toEqual({ jump: 'ArrowUp' });
   });
 
   it('setInvertY toggles CAMERA.invertY and persists', async () => {

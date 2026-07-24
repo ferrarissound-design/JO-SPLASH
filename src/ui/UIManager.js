@@ -1,4 +1,32 @@
 import { ARENA } from '../config.js';
+import { DEFAULT_KEY_BINDINGS } from '../core/InputManager.js';
+
+const KEY_LABEL_OVERRIDES = {
+  Space: 'Space',
+  ShiftLeft: 'Shift',
+  ShiftRight: 'Shift R',
+  ControlLeft: 'Ctrl',
+  ControlRight: 'Ctrl R',
+  AltLeft: 'Alt',
+  AltRight: 'Alt R',
+  Tab: 'Tab',
+  CapsLock: 'Caps',
+  Enter: 'Enter',
+  Backquote: '`',
+  ArrowUp: '↑',
+  ArrowDown: '↓',
+  ArrowLeft: '←',
+  ArrowRight: '→',
+};
+
+/** Turns a KeyboardEvent.code into a short human-readable label for the keybind buttons. */
+function codeToLabel(code) {
+  if (!code) return '?';
+  if (code in KEY_LABEL_OVERRIDES) return KEY_LABEL_OVERRIDES[code];
+  if (code.startsWith('Key')) return code.slice(3);
+  if (code.startsWith('Digit')) return code.slice(5);
+  return code;
+}
 
 const MAP_COLORS = {
   neutralA: [17, 27, 44, 255],
@@ -39,6 +67,8 @@ export class UIManager {
       settingMusicVolume: document.getElementById('setting-music-volume'),
       settingMusicVolumeValue: document.getElementById('setting-music-volume-value'),
       settingInvertY: document.getElementById('setting-invert-y'),
+      keybindButtons: Array.from(document.querySelectorAll('.keybind-btn')),
+      btnResetKeybinds: document.getElementById('btn-reset-keybinds'),
       countdown: document.getElementById('screen-countdown'),
       countdownNumber: document.getElementById('countdown-number'),
       hud: document.getElementById('hud'),
@@ -167,6 +197,32 @@ export class UIManager {
     const el = this.el.settingInvertY;
     if (!el) return;
     el.addEventListener('change', () => cb(el.checked));
+  }
+
+  /** cb(action, buttonEl) fires when a keybind "変更" button is clicked. */
+  bindKeybindButtons(cb) {
+    for (const btn of this.el.keybindButtons) {
+      btn.addEventListener('click', () => cb(btn.dataset.action, btn));
+    }
+  }
+
+  bindResetKeybinds(cb) { this.el.btnResetKeybinds?.addEventListener('click', cb); }
+
+  /** Toggles a keybind button into/out of its "press a key..." capture state. */
+  setKeybindListening(button, isListening) {
+    if (!button) return;
+    button.classList.toggle('listening', isListening);
+    if (isListening) button.textContent = '入力待ち…';
+  }
+
+  /** Refreshes every keybind button's label from the effective (default + override) bindings. */
+  updateKeybindLabels(keyBindingOverrides = {}) {
+    for (const btn of this.el.keybindButtons) {
+      const action = btn.dataset.action;
+      const code = keyBindingOverrides[action] ?? DEFAULT_KEY_BINDINGS[action];
+      btn.textContent = codeToLabel(code);
+      btn.classList.remove('listening');
+    }
   }
 
   /** Syncs slider positions/labels to persisted values whenever the settings screen opens. */

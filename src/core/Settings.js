@@ -1,4 +1,5 @@
 import { CAMERA } from '../config.js';
+import { DEFAULT_KEY_BINDINGS } from './InputManager.js';
 
 // Captured once at module load, before Settings ever mutates CAMERA.sensitivity,
 // so the multiplier always scales from the game's tuned default rather than
@@ -13,12 +14,23 @@ const DEFAULTS = Object.freeze({
   musicVolume: 1,
   difficultyId: 'standard',
   invertY: false,
+  keyBindings: Object.freeze({}), // only customized actions are stored; everything else uses DEFAULT_KEY_BINDINGS
 });
 
 function clampNumber(value, min, max, fallback) {
   const n = Number(value);
   if (!Number.isFinite(n)) return fallback;
   return Math.max(min, Math.min(max, n));
+}
+
+/** Keeps only known action keys with a non-empty string physical code, discarding anything else. */
+function sanitizeKeyBindings(raw) {
+  if (!raw || typeof raw !== 'object') return {};
+  const result = {};
+  for (const action of Object.keys(DEFAULT_KEY_BINDINGS)) {
+    if (typeof raw[action] === 'string' && raw[action]) result[action] = raw[action];
+  }
+  return result;
 }
 
 function load() {
@@ -37,6 +49,7 @@ function load() {
     musicVolume: clampNumber(parsed.musicVolume, 0, 1, DEFAULTS.musicVolume),
     difficultyId: typeof parsed.difficultyId === 'string' ? parsed.difficultyId : DEFAULTS.difficultyId,
     invertY: typeof parsed.invertY === 'boolean' ? parsed.invertY : DEFAULTS.invertY,
+    keyBindings: sanitizeKeyBindings(parsed.keyBindings),
   };
 }
 
@@ -51,10 +64,17 @@ export class Settings {
     this.values = load();
   }
 
+  /** Wires up the InputManager instance whose bindings this settings store controls. */
+  attachInput(inputManager) {
+    this._input = inputManager;
+    this.apply();
+  }
+
   /** Pushes the current values onto the live systems that read them. */
   apply() {
     CAMERA.sensitivity = BASE_SENSITIVITY * this.values.sensitivityMult;
     CAMERA.invertY = this.values.invertY;
+    this._input?.setKeyBindings(this.values.keyBindings);
   }
 
   _save() {
@@ -88,6 +108,19 @@ export class Settings {
 
   setInvertY(v) {
     this.values.invertY = Boolean(v);
+    this.apply();
+    this._save();
+  }
+
+  setKeyBinding(action, code) {
+    if (!(action in DEFAULT_KEY_BINDINGS) || typeof code !== 'string' || !code) return;
+    this.values.keyBindings = { ...this.values.keyBindings, [action]: code };
+    this.apply();
+    this._save();
+  }
+
+  resetKeyBindings() {
+    this.values.keyBindings = {};
     this.apply();
     this._save();
   }

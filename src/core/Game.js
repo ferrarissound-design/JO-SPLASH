@@ -56,6 +56,7 @@ export class Game {
     this.paintSystem.applyToMaterial(this.arena.rampTopMesh.material);
 
     this.input = new InputManager(this.canvas);
+    this.settings.attachInput(this.input);
     this.touchControls = this.input.isTouch
       ? new TouchControls(this.input, document.getElementById('touch-controls'))
       : null;
@@ -191,6 +192,11 @@ export class Game {
       this.audioManager.setMusicVolume(v);
     });
     this.ui.bindInvertYChange((checked) => this.settings.setInvertY(checked));
+    this.ui.bindKeybindButtons((action, button) => this._startKeyRebind(action, button));
+    this.ui.bindResetKeybinds(() => {
+      this.settings.resetKeyBindings();
+      this.ui.updateKeybindLabels(this.settings.values.keyBindings);
+    });
   }
 
   _selectDifficulty(difficultyId) {
@@ -203,13 +209,37 @@ export class Game {
 
   _openSettings() {
     this.ui.setSettingsValues(this.settings.values);
+    this.ui.updateKeybindLabels(this.settings.values.keyBindings);
     this.ui.hideTitle();
     this.ui.showSettings();
   }
 
   _closeSettings() {
+    // Abandon an in-progress "press a key..." capture so it can't swallow
+    // the next real gameplay keypress after leaving the settings screen.
+    this.input.cancelKeyListen();
+    if (this._activeKeybindButton) {
+      this.ui.setKeybindListening(this._activeKeybindButton, false);
+      this.ui.updateKeybindLabels(this.settings.values.keyBindings);
+      this._activeKeybindButton = null;
+    }
     this.ui.hideSettings();
     this.ui.showTitle();
+  }
+
+  /** Starts a "press a key to rebind" capture for the given action/button, safely abandoning any prior capture. */
+  _startKeyRebind(action, button) {
+    if (this._activeKeybindButton && this._activeKeybindButton !== button) {
+      this.ui.setKeybindListening(this._activeKeybindButton, false);
+      this.ui.updateKeybindLabels(this.settings.values.keyBindings);
+    }
+    this._activeKeybindButton = button;
+    this.ui.setKeybindListening(button, true);
+    this.input.listenForNextKey((code) => {
+      this._activeKeybindButton = null;
+      if (code !== 'Escape') this.settings.setKeyBinding(action, code);
+      this.ui.updateKeybindLabels(this.settings.values.keyBindings);
+    });
   }
 
   /** Debug: advance the enemy's appearance type and re-show its intro banner. */

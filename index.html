@@ -105,6 +105,23 @@
           <label for="setting-invert-y">マウスY軸反転</label>
           <input type="checkbox" id="setting-invert-y" />
         </div>
+
+        <h3 class="keybind-title">キー設定</h3>
+        <ul id="keybind-list" class="keybind-list">
+          <li class="keybind-row" data-action="moveForward"><span>前進</span><button type="button" class="keybind-btn" data-action="moveForward">W</button></li>
+          <li class="keybind-row" data-action="moveBack"><span>後退</span><button type="button" class="keybind-btn" data-action="moveBack">S</button></li>
+          <li class="keybind-row" data-action="moveLeft"><span>左移動</span><button type="button" class="keybind-btn" data-action="moveLeft">A</button></li>
+          <li class="keybind-row" data-action="moveRight"><span>右移動</span><button type="button" class="keybind-btn" data-action="moveRight">D</button></li>
+          <li class="keybind-row" data-action="jump"><span>ジャンプ</span><button type="button" class="keybind-btn" data-action="jump">Space</button></li>
+          <li class="keybind-row" data-action="inkSurf"><span>潜伏</span><button type="button" class="keybind-btn" data-action="inkSurf">Shift</button></li>
+          <li class="keybind-row" data-action="special"><span>スペシャル</span><button type="button" class="keybind-btn" data-action="special">Q</button></li>
+          <li class="keybind-row" data-action="bomb"><span>インクボム</span><button type="button" class="keybind-btn" data-action="bomb">E</button></li>
+          <li class="keybind-row" data-action="weapon1"><span>武器: STREAM</span><button type="button" class="keybind-btn" data-action="weapon1">1</button></li>
+          <li class="keybind-row" data-action="weapon2"><span>武器: SPREAD</span><button type="button" class="keybind-btn" data-action="weapon2">2</button></li>
+          <li class="keybind-row" data-action="weapon3"><span>武器: PRECISION</span><button type="button" class="keybind-btn" data-action="weapon3">3</button></li>
+        </ul>
+        <button id="btn-reset-keybinds" class="btn-link" type="button">キー設定を初期値に戻す</button>
+
         <button id="btn-close-settings" class="btn-primary" type="button">戻る</button>
       </div>
     </section>
