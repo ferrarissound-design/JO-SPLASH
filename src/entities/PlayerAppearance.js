@@ -85,6 +85,45 @@ export function createPlayerCharacter() {
   for (const mesh of createEnemyTentacleHair(PLAYER_STYLE, mats)) hairGroup.add(mesh);
   for (const mesh of createEnemyOutfit(PLAYER_STYLE, mats)) bodyGroup.add(mesh);
 
+  // A complete blue shell guarantees that the shoulder camera never exposes a
+  // bare rear scalp. The skin-coloured face is layered only on the front.
+  const scalp = addOwnedMesh(
+    headGroup,
+    new THREE.SphereGeometry(0.355, 16, 12),
+    mats.main,
+    ownedGeometries,
+  );
+  scalp.position.set(0, PLAYER_STYLE.headY + 0.01, 0.005);
+  scalp.scale.set(1.03, 1.02, 1.03);
+
+  const facePlate = addOwnedMesh(
+    headGroup,
+    new THREE.SphereGeometry(0.285, 14, 10),
+    mats.skin,
+    ownedGeometries,
+  );
+  facePlate.position.set(0, PLAYER_STYLE.headY - 0.025, -0.345);
+  facePlate.scale.set(1.08, 0.82, 0.12);
+
+  // Tapered fringe pieces overlap the cap and flow over the forehead. Their
+  // uneven lengths keep the silhouette organic while leaving both eyes clear.
+  const fringeSpecs = [
+    { x: -0.16, y: 1.87, length: 0.29, tilt: -0.42 },
+    { x: 0, y: 1.92, length: 0.2, tilt: 0 },
+    { x: 0.16, y: 1.87, length: 0.28, tilt: 0.42 },
+  ];
+  for (const spec of fringeSpecs) {
+    const fringe = addOwnedMesh(
+      hairGroup,
+      new THREE.CylinderGeometry(0.09, 0.028, spec.length, 8),
+      mats.main,
+      ownedGeometries,
+    );
+    fringe.position.set(spec.x, spec.y, -0.37);
+    fringe.rotation.z = spec.tilt;
+    fringe.rotation.x = -0.12;
+  }
+
   const maskMat = makeExtraMaterial(materials, '#171824', {
     roughness: 0.35,
     metalness: 0.08,
@@ -116,7 +155,7 @@ export function createPlayerCharacter() {
   for (const side of [-1, 1]) {
     const lobe = new THREE.Mesh(maskGeometry, maskMat);
     lobe.scale.set(1.06, 0.46, 0.14);
-    lobe.position.set(side * 0.13, PLAYER_STYLE.headY + 0.015, -0.292);
+    lobe.position.set(side * 0.13, PLAYER_STYLE.headY + 0.015, -0.382);
     lobe.rotation.z = side * -0.12;
     headGroup.add(lobe);
   }
@@ -127,13 +166,13 @@ export function createPlayerCharacter() {
   for (const side of [-1, 1]) {
     const eye = new THREE.Mesh(eyeGeometry, eyeWhiteMat);
     eye.scale.set(1.05, 0.42, 0.14);
-    eye.position.set(side * 0.125, PLAYER_STYLE.headY + 0.018, -0.312);
+    eye.position.set(side * 0.125, PLAYER_STYLE.headY + 0.018, -0.402);
     eye.rotation.z = side * -0.17;
     headGroup.add(eye);
 
     const pupil = new THREE.Mesh(pupilGeometry, mats.eye);
     pupil.scale.set(0.42, 0.9, 0.16);
-    pupil.position.set(side * 0.115, PLAYER_STYLE.headY + 0.017, -0.328);
+    pupil.position.set(side * 0.115, PLAYER_STYLE.headY + 0.017, -0.418);
     pupil.rotation.z = side * -0.17;
     headGroup.add(pupil);
   }
@@ -154,7 +193,7 @@ export function createPlayerCharacter() {
     mouthMat,
     ownedGeometries,
   );
-  mouth.position.set(0.035, PLAYER_STYLE.headY - 0.17, -0.315);
+  mouth.position.set(0.035, PLAYER_STYLE.headY - 0.17, -0.393);
   mouth.rotation.z = -0.08;
 
   // Opaque ink tank with a bright liquid core and top/bottom metal collars.
