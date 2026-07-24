@@ -561,8 +561,8 @@ export class UIManager {
     const playerMapZ = toMap(playerZ, halfDepth);
     const cpuMapX = toMap(cpuX, halfWidth);
     const cpuMapZ = toMap(cpuZ, halfDepth);
-    if (playerAlive) this._drawTurfMapMarker(ctx, playerMapX, playerMapZ, playerYaw, '#2fb8ff');
-    if (cpuVisible) this._drawTurfMapMarker(ctx, cpuMapX, cpuMapZ, cpuYaw, '#ff7a2f');
+    if (playerAlive) this._drawTurfMapMarker(ctx, playerMapX, playerMapZ, playerYaw, '#2fb8ff', true);
+    if (cpuVisible) this._drawTurfMapMarker(ctx, cpuMapX, cpuMapZ, cpuYaw, '#ff7a2f', false);
 
     const map = this.el.turfMap;
     if (map) {
@@ -602,7 +602,12 @@ export class UIManager {
     ctx.restore();
   }
 
-  _drawTurfMapMarker(ctx, x, z, yaw, color) {
+  /**
+   * isPlayer picks the marker's silhouette (chevron vs diamond) so the two
+   * sides read apart by shape as well as hue — useful for colorblind players
+   * since this is otherwise the map's only cyan-vs-orange distinction.
+   */
+  _drawTurfMapMarker(ctx, x, z, yaw, color, isPlayer = true) {
     const radius = Math.max(4, ctx.canvas.width * 0.035);
     ctx.save();
     ctx.translate(x, z);
@@ -613,10 +618,19 @@ export class UIManager {
     ctx.shadowColor = 'rgba(0,0,0,.8)';
     ctx.shadowBlur = radius;
     ctx.beginPath();
-    ctx.moveTo(0, -radius * 1.55);
-    ctx.lineTo(radius, radius);
-    ctx.lineTo(0, radius * 0.55);
-    ctx.lineTo(-radius, radius);
+    if (isPlayer) {
+      // Chevron/arrow — the original marker shape.
+      ctx.moveTo(0, -radius * 1.55);
+      ctx.lineTo(radius, radius);
+      ctx.lineTo(0, radius * 0.55);
+      ctx.lineTo(-radius, radius);
+    } else {
+      // Diamond — distinct silhouette, still yaw-oriented via the same rotate above.
+      ctx.moveTo(0, -radius * 1.35);
+      ctx.lineTo(radius * 0.95, 0);
+      ctx.lineTo(0, radius * 1.35);
+      ctx.lineTo(-radius * 0.95, 0);
+    }
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
