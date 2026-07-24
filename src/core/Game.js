@@ -5,6 +5,7 @@ import {
 import { InputManager } from './InputManager.js';
 import { CameraController } from './CameraController.js';
 import { TouchControls } from './TouchControls.js';
+import { Settings } from './Settings.js';
 import { Arena } from '../systems/Arena.js';
 import { StageDecor } from '../systems/StageDecor.js';
 import { PaintSystem } from '../systems/PaintSystem.js';
@@ -38,6 +39,9 @@ export class Game {
     this.canvas = document.getElementById('game-canvas');
     this.ui = new UIManager();
 
+    this.settings = new Settings();
+    this.settings.apply();
+
     this._setupRenderer();
     this._setupScene();
 
@@ -65,13 +69,15 @@ export class Game {
 
     this.particleManager = new ParticleManager(this.scene);
     this.audioManager = new AudioManager();
+    this.audioManager.setMasterVolume(this.settings.values.masterVolume);
+    this.audioManager.setMusicVolume(this.settings.values.musicVolume);
     this.projectileManager = new ProjectileManager(
       this.scene, this.arena, this.paintSystem, this.particleManager, this.audioManager
     );
     this.projectileManager.onCharacterHit = (targetTeam, damage, hitPoint) => this._onCharacterHit(targetTeam, damage, hitPoint);
 
     this.player = new Player(this.arena.spawnPoints.player, this.cameraController, this.input);
-    this.selectedDifficulty = 'standard';
+    this.selectedDifficulty = AI_DIFFICULTY[this.settings.values.difficultyId] ? this.settings.values.difficultyId : 'standard';
     this.cpu = new EnemyAI(this.arena.spawnPoints.cpu, AI_DIFFICULTY[this.selectedDifficulty]);
     this.projectileManager.onPaint = (team, paintedCells) => {
       if (team === TEAM.PLAYER) this.player.special.addCharge(paintedCells);
@@ -165,6 +171,19 @@ export class Game {
     this.ui.bindDifficultySelection((difficultyId) => this._selectDifficulty(difficultyId));
     this.ui.bindResume(() => this._resumeFromPause());
     this.ui.bindQuit(() => this._quitToTitle());
+    this.ui.bindPause(() => this._pauseMatch());
+
+    this.ui.bindOpenSettings(() => this._openSettings());
+    this.ui.bindCloseSettings(() => this._closeSettings());
+    this.ui.bindSensitivityChange((mult) => this.settings.setSensitivityMult(mult));
+    this.ui.bindMasterVolumeChange((v) => {
+      this.settings.setMasterVolume(v);
+      this.audioManager.setMasterVolume(v);
+    });
+    this.ui.bindMusicVolumeChange((v) => {
+      this.settings.setMusicVolume(v);
+      this.audioManager.setMusicVolume(v);
+    });
   }
 
   _selectDifficulty(difficultyId) {
@@ -172,6 +191,18 @@ export class Game {
     this.selectedDifficulty = preset.id;
     this.cpu.setDifficulty(preset);
     this.ui.setDifficulty(preset.id, preset.label);
+    this.settings.setDifficultyId(preset.id);
+  }
+
+  _openSettings() {
+    this.ui.setSettingsValues(this.settings.values);
+    this.ui.hideTitle();
+    this.ui.showSettings();
+  }
+
+  _closeSettings() {
+    this.ui.hideSettings();
+    this.ui.showTitle();
   }
 
   /** Debug: advance the enemy's appearance type and re-show its intro banner. */
@@ -297,13 +328,18 @@ export class Game {
     this.input.requestPointerLock();
   }
 
-  /** Escape (or losing focus) drops pointer lock mid-match; freeze the game instead of leaving the player blind. */
-  _pauseFromLockLoss() {
+  /** Freezes the match and shows the pause/controls overlay. Safe to call repeatedly. */
+  _pauseMatch() {
     if (this.state !== STATE.PLAYING) return;
     this.state = STATE.PAUSED;
     this.audioManager.pauseBattleBGM();
     this.audioManager.suspendContext();
     this.ui.showPause();
+  }
+
+  /** Escape (or losing focus) drops pointer lock mid-match; freeze the game instead of leaving the player blind. */
+  _pauseFromLockLoss() {
+    this._pauseMatch();
   }
 
   _resumeFromPause() {
@@ -589,6 +625,11 @@ export class Game {
   }
 
   _updatePlaying(dt) {
+    // Redundant safety net alongside the pointer-lock-loss handler: some
+    // embedded/automated environments never actually grant pointer lock, so
+    // Esc wouldn't otherwise trigger anything there.
+    if (this.input.wasJustPressed('Escape')) this._pauseMatch();
+
     this.matchTimeRemaining -= dt;
     const matchOver = this.matchTimeRemaining <= 0;
     this.matchTimeRemaining = Math.max(0, this.matchTimeRemaining);

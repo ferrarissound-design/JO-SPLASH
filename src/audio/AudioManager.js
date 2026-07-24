@@ -7,6 +7,10 @@ const BGM_URL = new URL('./turf_war_anthem.mp3', import.meta.url).href;
 // The battle BGM is the one exception: a real audio file played back via
 // HTMLAudioElement, looped for the duration of a match.
 // ============================================================================
+const MASTER_GAIN_BASE = 0.55;
+const BGM_VOLUME_BASE = 0.35;
+const BGM_VOLUME_FINALE = 0.43;
+
 export class AudioManager {
   constructor() {
     this.ctx = null;
@@ -14,10 +18,13 @@ export class AudioManager {
     this._noiseBuffer = null;
     this._resumed = false;
     this._surfLoop = null;
+    this._battleFinale = false;
+    this.masterVolume = 1; // user-facing 0..1 multiplier, see setMasterVolume()
+    this.musicVolume = 1;
 
     this.bgm = new Audio(BGM_URL);
     this.bgm.loop = true;
-    this.bgm.volume = 0.35;
+    this.bgm.volume = BGM_VOLUME_BASE;
     this.bgm.preload = 'auto';
 
     this._pendingResume = () => this.resume();
@@ -26,17 +33,37 @@ export class AudioManager {
   }
 
   resume() {
-    if (this._resumed) return;
+    if (this._resumed) {
+      this.resumeContext();
+      return;
+    }
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) return;
     this.ctx = new Ctx();
     this.masterGain = this.ctx.createGain();
-    this.masterGain.gain.value = 0.55;
+    this.masterGain.gain.value = MASTER_GAIN_BASE * this.masterVolume;
     this.masterGain.connect(this.ctx.destination);
     this._noiseBuffer = this._buildNoiseBuffer();
     this._resumed = true;
     window.removeEventListener('pointerdown', this._pendingResume);
     window.removeEventListener('keydown', this._pendingResume);
+  }
+
+  /** User-facing master volume slider (0..1); scales every synthesized SFX. */
+  setMasterVolume(v) {
+    this.masterVolume = Math.max(0, Math.min(1, v));
+    if (this.masterGain) this.masterGain.gain.value = MASTER_GAIN_BASE * this.masterVolume;
+  }
+
+  /** User-facing music volume slider (0..1); scales the battle BGM only. */
+  setMusicVolume(v) {
+    this.musicVolume = Math.max(0, Math.min(1, v));
+    this._applyBgmVolume();
+  }
+
+  _applyBgmVolume() {
+    const base = this._battleFinale ? BGM_VOLUME_FINALE : BGM_VOLUME_BASE;
+    this.bgm.volume = base * this.musicVolume;
   }
 
   _buildNoiseBuffer() {
@@ -121,20 +148,23 @@ export class AudioManager {
   playBattleBGM() {
     this.bgm.currentTime = 0;
     this.bgm.playbackRate = 1;
-    this.bgm.volume = 0.35;
+    this._battleFinale = false;
+    this._applyBgmVolume();
     this.bgm.play().catch(() => {});
   }
 
   setBattleFinale(active) {
+    this._battleFinale = active;
     this.bgm.playbackRate = active ? 1.08 : 1;
-    this.bgm.volume = active ? 0.43 : 0.35;
+    this._applyBgmVolume();
   }
 
   stopBattleBGM() {
     this.bgm.pause();
     this.bgm.currentTime = 0;
     this.bgm.playbackRate = 1;
-    this.bgm.volume = 0.35;
+    this._battleFinale = false;
+    this._applyBgmVolume();
   }
 
   /** Suspends BGM playback in place (pause/tab-hidden) without resetting position. */

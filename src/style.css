@@ -243,11 +243,107 @@ html, body {
   color: #fff27a;
   text-shadow: 0 0 22px rgba(255,242,122,0.5);
 }
+#screen-pause .panel.how-to-play {
+  margin-top: 1.4rem;
+  margin-bottom: 0;
+}
+
+.hud-pause-btn {
+  position: absolute;
+  top: max(0.55rem, env(safe-area-inset-top));
+  right: max(0.65rem, env(safe-area-inset-right));
+  z-index: 14;
+  pointer-events: auto;
+  appearance: none;
+  cursor: pointer;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.28);
+  background: rgba(9,15,25,0.66);
+  color: var(--clr-text);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(6px);
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+.hud-pause-btn:hover { background: rgba(255,255,255,0.14); }
+.hud-pause-btn:active { transform: scale(0.92); }
 
 .rule-hint {
   margin: 1rem 0 0;
   font-size: 0.78rem;
   color: var(--clr-text-dim);
+}
+
+.btn-link {
+  appearance: none;
+  cursor: pointer;
+  border: none;
+  background: none;
+  display: block;
+  margin: 0.7rem auto 0;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  color: var(--clr-text-dim);
+  letter-spacing: 0.04em;
+  transition: color 0.12s ease;
+}
+.btn-link:hover { color: var(--clr-text); }
+
+/* ============ Settings screen ============ */
+.settings-title {
+  font-size: 1.6rem;
+  letter-spacing: 0.1em;
+  margin: 0 0 1.4rem;
+  color: var(--clr-text);
+}
+.settings-row {
+  display: grid;
+  grid-template-columns: 6.4rem 1fr 3.4rem;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1.1rem;
+  text-align: left;
+}
+.settings-row label {
+  font-size: 0.82rem;
+  color: var(--clr-text-dim);
+}
+.settings-value {
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--clr-text);
+}
+.settings-row input[type="range"] {
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.12);
+  outline: none;
+  cursor: pointer;
+}
+.settings-row input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--clr-player);
+  box-shadow: 0 0 8px rgba(47,184,255,0.6);
+  cursor: pointer;
+}
+.settings-row input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: var(--clr-player);
+  box-shadow: 0 0 8px rgba(47,184,255,0.6);
+  cursor: pointer;
 }
 
 /* ============ Countdown ============ */
