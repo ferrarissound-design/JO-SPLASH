@@ -319,6 +319,39 @@ export const AI = {
   specialDecisionCooldownSec: 4,
 };
 
+export const AI_DIFFICULTY = Object.freeze({
+  rookie: Object.freeze({
+    id: 'rookie',
+    label: 'ROOKIE',
+    reactionDelay: 0.42,
+    aimJitterMult: 1.65,
+    decisionIntervalMult: 1.3,
+    moveSpeedMult: 0.9,
+    bombPressureMult: 0.55,
+    specialChargeMult: 0.72,
+  }),
+  standard: Object.freeze({
+    id: 'standard',
+    label: 'STANDARD',
+    reactionDelay: AI.reactionDelaySec,
+    aimJitterMult: 1,
+    decisionIntervalMult: 1,
+    moveSpeedMult: 1,
+    bombPressureMult: 1,
+    specialChargeMult: 1,
+  }),
+  elite: Object.freeze({
+    id: 'elite',
+    label: 'ELITE',
+    reactionDelay: 0.14,
+    aimJitterMult: 0.62,
+    decisionIntervalMult: 0.72,
+    moveSpeedMult: 1.08,
+    bombPressureMult: 1.65,
+    specialChargeMult: 1.28,
+  }),
+});
+
 export const DEBUG_DEFAULTS = {
   showFps: false,
   showAiState: false,

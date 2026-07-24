@@ -70,9 +70,14 @@ export class EnemyAI extends Character {
     this._introBannerPending = false;
 
     this.difficulty = {
+      id: 'standard',
+      label: 'STANDARD',
       reactionDelay: AI.reactionDelaySec,
       aimJitterMult: 1,
       decisionIntervalMult: 1,
+      moveSpeedMult: 1,
+      bombPressureMult: 1,
+      specialChargeMult: 1,
       ...difficulty,
     };
 
@@ -156,6 +161,22 @@ export class EnemyAI extends Character {
     return this.appearanceId;
   }
 
+  setDifficulty(difficulty = {}) {
+    this.difficulty = {
+      id: 'standard',
+      label: 'STANDARD',
+      reactionDelay: AI.reactionDelaySec,
+      aimJitterMult: 1,
+      decisionIntervalMult: 1,
+      moveSpeedMult: 1,
+      bombPressureMult: 1,
+      specialChargeMult: 1,
+      ...difficulty,
+    };
+    this._decisionTimer = 0;
+    return this.difficulty;
+  }
+
   /** Kick off the rise-and-pop entrance and flag the name banner for the UI. */
   playIntro() {
     this._introTimer = ENEMY_INTRO_DURATION;
@@ -227,7 +248,9 @@ export class EnemyAI extends Character {
       onCharacterHit,
     });
     const trailPaintedCells = this.updateFloorParticles(dt, particleManager, paintSystem);
-    this.special.addCharge(trailPaintedCells * AI.specialChargeMultiplier);
+    this.special.addCharge(
+      trailPaintedCells * AI.specialChargeMultiplier * this.difficulty.specialChargeMult
+    );
 
     this.syncMesh(ctx.elapsedTime);
   }
@@ -549,7 +572,8 @@ export class EnemyAI extends Character {
     }
     const paintAware = this._choosePaintAwareDirection(arena, paintSystem, _steerDir, 0.25);
     const avoided = this._avoidObstacles(arena, paintAware);
-    const speed = MOVEMENT.walkSpeed * (this._lastSpeedMult ?? 1) * AI.moveSpeedMult * 0.65;
+    const speed = MOVEMENT.walkSpeed * (this._lastSpeedMult ?? 1)
+      * AI.moveSpeedMult * this.difficulty.moveSpeedMult * 0.65;
     this.velocity.x = avoided.x * speed;
     this.velocity.z = avoided.z * speed;
     this.yaw = yawFromDirection(_toPlayer.x, _toPlayer.z);
@@ -562,7 +586,8 @@ export class EnemyAI extends Character {
     if (this.ink < SUB_WEAPON.cost + AI.bombInkReserve) return false;
 
     const playerHasHighGround = player.position.y - this.position.y >= AI.bombHighGroundDelta;
-    return !hasLOS || playerHasHighGround || Math.random() < AI.bombPressureChance;
+    const pressureChance = Math.min(1, AI.bombPressureChance * this.difficulty.bombPressureMult);
+    return !hasLOS || playerHasHighGround || Math.random() < pressureChance;
   }
 
   _actBomb(dt, arena, paintSystem, projectileManager, particleManager, audioManager, player) {
@@ -578,7 +603,8 @@ export class EnemyAI extends Character {
       _steerDir.set(-_toPlayer.z, 0, _toPlayer.x).multiplyScalar(this._strafeSign);
       const paintAware = this._choosePaintAwareDirection(arena, paintSystem, _steerDir, 0.35);
       const avoided = this._avoidObstacles(arena, paintAware);
-      const speed = MOVEMENT.walkSpeed * (this._lastSpeedMult ?? 1) * AI.moveSpeedMult * 0.55;
+      const speed = MOVEMENT.walkSpeed * (this._lastSpeedMult ?? 1)
+        * AI.moveSpeedMult * this.difficulty.moveSpeedMult * 0.55;
       this.velocity.x = avoided.x * speed;
       this.velocity.z = avoided.z * speed;
       this._integrateHorizontal(dt, arena);
@@ -730,7 +756,8 @@ export class EnemyAI extends Character {
       this.velocity.z *= 0.5;
     } else {
       _toTarget.normalize();
-      const speed = MOVEMENT.walkSpeed * (this._lastSpeedMult ?? 1) * AI.moveSpeedMult;
+      const speed = MOVEMENT.walkSpeed * (this._lastSpeedMult ?? 1)
+        * AI.moveSpeedMult * this.difficulty.moveSpeedMult;
       this.velocity.x = _toTarget.x * speed;
       this.velocity.z = _toTarget.z * speed;
       this.yaw = yawFromDirection(_toTarget.x, _toTarget.z);
@@ -869,7 +896,7 @@ export class EnemyAI extends Character {
     const paintAware = this._choosePaintAwareDirection(arena, paintSystem, _toTarget);
     const avoided = this._avoidObstacles(arena, paintAware);
     const speedMult = this._lastSpeedMult ?? 1;
-    const speed = MOVEMENT.walkSpeed * speedMult * AI.moveSpeedMult;
+    const speed = MOVEMENT.walkSpeed * speedMult * AI.moveSpeedMult * this.difficulty.moveSpeedMult;
 
     this.velocity.x = avoided.x * speed;
     this.velocity.z = avoided.z * speed;
@@ -905,7 +932,8 @@ export class EnemyAI extends Character {
     const paintAware = this._choosePaintAwareDirection(arena, paintSystem, _steerDir, 0.45);
     const avoided = this._avoidObstacles(arena, paintAware);
     const speedMult = this._lastSpeedMult ?? 1;
-    const speed = MOVEMENT.walkSpeed * speedMult * AI.moveSpeedMult * 0.85;
+    const speed = MOVEMENT.walkSpeed * speedMult
+      * AI.moveSpeedMult * this.difficulty.moveSpeedMult * 0.85;
     this.velocity.x = avoided.x * speed;
     this.velocity.z = avoided.z * speed;
 

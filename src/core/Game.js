@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import { MATCH, TEAM, COLORS, THEME, PERF, MOVEMENT, ARENA, PAINT, AI } from '../config.js';
+import {
+  MATCH, TEAM, COLORS, THEME, PERF, MOVEMENT, ARENA, PAINT, AI, AI_DIFFICULTY,
+} from '../config.js';
 import { InputManager } from './InputManager.js';
 import { CameraController } from './CameraController.js';
 import { TouchControls } from './TouchControls.js';
@@ -67,10 +69,15 @@ export class Game {
     this.projectileManager.onCharacterHit = (targetTeam, damage, hitPoint) => this._onCharacterHit(targetTeam, damage, hitPoint);
 
     this.player = new Player(this.arena.spawnPoints.player, this.cameraController, this.input);
-    this.cpu = new EnemyAI(this.arena.spawnPoints.cpu);
+    this.selectedDifficulty = 'standard';
+    this.cpu = new EnemyAI(this.arena.spawnPoints.cpu, AI_DIFFICULTY[this.selectedDifficulty]);
     this.projectileManager.onPaint = (team, paintedCells) => {
       if (team === TEAM.PLAYER) this.player.special.addCharge(paintedCells);
-      else if (team === TEAM.CPU) this.cpu.special.addCharge(paintedCells * AI.specialChargeMultiplier);
+      else if (team === TEAM.CPU) {
+        this.cpu.special.addCharge(
+          paintedCells * AI.specialChargeMultiplier * this.cpu.difficulty.specialChargeMult
+        );
+      }
     };
     this.scene.add(this.player.mesh, this.cpu.mesh);
     this._setupCpuVisibilityAid();
@@ -92,6 +99,7 @@ export class Game {
     this._wasPlayerInkSurfing = false;
 
     this._bindUI();
+    this._selectDifficulty(this.selectedDifficulty);
     this._bindWindow();
 
     this.clock = new THREE.Clock();
@@ -150,6 +158,14 @@ export class Game {
     this.ui.bindStart(() => this._startMatch());
     this.ui.bindRestart(() => this._startMatch());
     this.ui.bindCycleAppearance(() => this._cycleEnemyAppearance());
+    this.ui.bindDifficultySelection((difficultyId) => this._selectDifficulty(difficultyId));
+  }
+
+  _selectDifficulty(difficultyId) {
+    const preset = AI_DIFFICULTY[difficultyId] ?? AI_DIFFICULTY.standard;
+    this.selectedDifficulty = preset.id;
+    this.cpu.setDifficulty(preset);
+    this.ui.setDifficulty(preset.id, preset.label);
   }
 
   /** Debug: advance the enemy's appearance type and re-show its intro banner. */
@@ -301,7 +317,9 @@ export class Game {
         shooter.team,
         { splatterScale: 1.3, glossScale: 1.2 }
       );
-      const chargeMult = shooter.team === TEAM.CPU ? AI.specialChargeMultiplier : 1;
+      const chargeMult = shooter.team === TEAM.CPU
+        ? AI.specialChargeMultiplier * this.cpu.difficulty.specialChargeMult
+        : 1;
       shooter.special?.addCharge(paintedCells * chargeMult);
       this.particleManager.spawnKOExplosion(hitPoint, color);
       this.audioManager.playKO();
@@ -574,6 +592,7 @@ export class Game {
       `cpu    cell: (${cgx}, ${cgz})  grounded:${this.cpu.grounded}  climbing:${this.cpu.isClimbing}`,
       `cpu ai state: ${this.cpu.state}  wall:${this.cpu._climbPlanPanel?.label ?? '-'}`,
       `cpu climbs: ${this.cpu.climbsCompleted}/${this.cpu.climbAttempts}`,
+      `cpu difficulty: ${this.cpu.difficulty.id}`,
       `cpu weapon: ${this.cpu.weapon.displayName}  switches:${this.cpu.weaponSwitches}`,
       `cpu bombs: ${this.cpu.bombsThrown}  cd:${this.cpu.subWeapon.cooldown.toFixed(2)}  think:${this.cpu._bombDecisionCooldown.toFixed(2)}`,
       `cpu special: ${this.cpu.special.charge.toFixed(1)}%  windup:${this.cpu.specialWindingUp}  active:${this.cpu.special.active}  used:${this.cpu.specialsUsed}`,

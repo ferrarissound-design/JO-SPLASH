@@ -150,6 +150,42 @@ html, body {
   color: var(--clr-text-dim);
 }
 
+.difficulty-picker {
+  display:grid;
+  grid-template-columns:auto repeat(3,minmax(0,1fr));
+  gap:.5rem;
+  align-items:stretch;
+  margin:-.5rem 0 1.25rem;
+}
+.difficulty-title {
+  align-self:center;
+  padding-right:.25rem;
+  color:var(--clr-text-dim);
+  font-size:.64rem;
+  font-weight:900;
+  letter-spacing:.12em;
+}
+.difficulty-option {
+  appearance:none;
+  min-width:0;
+  padding:.5rem .45rem;
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:9px;
+  background:rgba(255,255,255,.035);
+  color:var(--clr-text-dim);
+  cursor:pointer;
+  transition:transform .12s ease,border-color .12s ease,background .12s ease,box-shadow .12s ease;
+}
+.difficulty-option:hover { transform:translateY(-1px); border-color:rgba(47,184,255,.55); }
+.difficulty-option strong { display:block; font-size:.68rem; letter-spacing:.05em; }
+.difficulty-option small { display:block; margin-top:.16rem; font-size:.55rem; opacity:.72; white-space:nowrap; }
+.difficulty-option.selected {
+  border-color:var(--clr-player);
+  background:linear-gradient(135deg,rgba(47,184,255,.2),rgba(228,108,255,.12));
+  color:#fff;
+  box-shadow:0 0 16px rgba(47,184,255,.2),inset 0 0 12px rgba(255,255,255,.04);
+}
+
 .btn-primary {
   appearance: none;
   border: none;
@@ -513,6 +549,9 @@ html, body {
   .panel.how-to-play { padding: 0.8rem 1rem; margin-bottom: 1.1rem; }
   .key-list { gap: 0.4rem; }
   .key-list li { font-size: 0.82rem; }
+  .difficulty-picker { grid-template-columns:repeat(3,minmax(0,1fr)); margin-top:-.35rem; }
+  .difficulty-title { grid-column:1/-1; padding:0; }
+  .difficulty-option small { white-space:normal; line-height:1.2; }
   .btn-primary { padding: 0.8rem 2rem; font-size: 1rem; }
 
   .coverage-bar-wrap { min-width: 0; max-width: 60vw; padding: 0.35rem 0.6rem; gap: 0.4rem; }
@@ -535,6 +574,7 @@ html, body {
   .panel.how-to-play { padding: 0.7rem 1rem; margin-bottom: 0.8rem; }
   .key-list { gap: 0.35rem 1rem; }
   .mouse-hint { margin-top: 0.5rem; }
+  .difficulty-picker { margin-bottom:.75rem; }
   .rule-hint { margin-top: 0.6rem; }
 }
 

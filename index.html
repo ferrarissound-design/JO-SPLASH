@@ -49,6 +49,19 @@
           <p class="mouse-hint">※ 画面左側をドラッグで移動、右側をドラッグでカメラ操作。ボタンは押している間だけ効果があります。</p>
         </div>
 
+        <div class="difficulty-picker" role="group" aria-label="CPU難易度">
+          <span class="difficulty-title">CPU LEVEL</span>
+          <button type="button" class="difficulty-option" data-difficulty="rookie" aria-pressed="false">
+            <strong>ROOKIE</strong><small>ゆっくり・狙いが甘い</small>
+          </button>
+          <button type="button" class="difficulty-option selected" data-difficulty="standard" aria-pressed="true">
+            <strong>STANDARD</strong><small>推奨バランス</small>
+          </button>
+          <button type="button" class="difficulty-option" data-difficulty="elite" aria-pressed="false">
+            <strong>ELITE</strong><small>高速判断・高精度</small>
+          </button>
+        </div>
+
         <button id="btn-start" class="btn-primary" type="button">START</button>
         <p class="rule-hint">制限時間 90秒 &mdash; 塗装面積が多い方が勝利</p>
       </div>
@@ -65,7 +78,7 @@
         <div class="match-strip" aria-label="試合状況">
           <div class="match-side match-player"><span class="side-tag side-player">YOU</span><span id="coverage-player-pct">0%</span></div>
           <div id="timer">01:30</div>
-          <div class="match-side match-cpu"><span class="side-tag side-cpu">CPU</span><span id="coverage-cpu-pct">0%</span></div>
+          <div class="match-side match-cpu"><span class="side-tag side-cpu" id="cpu-level-label">CPU · STANDARD</span><span id="coverage-cpu-pct">0%</span></div>
           <div class="coverage-bar" aria-hidden="true">
             <div id="coverage-bar-player" class="coverage-fill fill-player"></div>
             <div id="coverage-bar-cpu" class="coverage-fill fill-cpu"></div>

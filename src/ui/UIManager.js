@@ -15,6 +15,8 @@ export class UIManager {
       result: document.getElementById('screen-result'),
       btnStart: document.getElementById('btn-start'),
       btnRestart: document.getElementById('btn-restart'),
+      difficultyButtons: Array.from(document.querySelectorAll('[data-difficulty]')),
+      cpuLevelLabel: document.getElementById('cpu-level-label'),
 
       timer: document.getElementById('timer'),
       coveragePlayerPct: document.getElementById('coverage-player-pct'),
@@ -73,6 +75,20 @@ export class UIManager {
   bindStart(cb) { this.el.btnStart.addEventListener('click', cb); }
   bindRestart(cb) { this.el.btnRestart.addEventListener('click', cb); }
   bindCycleAppearance(cb) { this.el.btnCycleAppearance?.addEventListener('click', cb); }
+  bindDifficultySelection(cb) {
+    for (const button of this.el.difficultyButtons) {
+      button.addEventListener('click', () => cb(button.dataset.difficulty));
+    }
+  }
+
+  setDifficulty(id, label) {
+    for (const button of this.el.difficultyButtons) {
+      const selected = button.dataset.difficulty === id;
+      button.classList.toggle('selected', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    }
+    if (this.el.cpuLevelLabel) this.el.cpuLevelLabel.textContent = `CPU · ${label}`;
+  }
 
   /** Flashes the enemy archetype name (e.g. "SPEED PUNK") on (re)appearance; CSS fades it out. */
   showEnemyIntro(name, id, color = '#ffffff') {
