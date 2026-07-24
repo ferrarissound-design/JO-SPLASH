@@ -1,0 +1,20 @@
+{
+  "name": "jo-splash",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Three.js 製、ブラウザで動作する 1 対 1 のインク陣取り FPS ゲームです。床をインクで塗り合い、制限時間(90秒)終了時により広い面積を塗っていた側が勝利します。",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ferrarissound-design/jo-splash.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "vitest": "^4.1.10"
+  }
+}

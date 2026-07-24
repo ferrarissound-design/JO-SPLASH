@@ -18,6 +18,19 @@ npx serve .
 
 起動後、ブラウザで `http://localhost:8080/index.html` を開いてください。
 
+## テスト
+
+ゲーム自体はビルド不要ですが、ゲームロジックの単体テストに [Vitest](https://vitest.dev/) を使用しています。
+
+```bash
+npm install
+npm test
+```
+
+DOM/Canvas に依存するモジュール（`PaintSystem` / `WallPanel` / `AudioManager` / `UIManager` 等）は対象外とし、
+`Weapon` のチャージ計算、`Character` の HP・復活ロジック、`config.js` の整合性など、ブラウザ環境なしで検証できる
+ロジックを中心にテストしています。`.github/workflows/test.yml` で push / PR ごとに自動実行されます。
+
 ## 操作方法
 
 | 操作 | 内容 |
