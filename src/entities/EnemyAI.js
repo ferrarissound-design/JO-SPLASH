@@ -42,6 +42,7 @@ const _probeRay = new THREE.Raycaster();
 const _deflectDir = new THREE.Vector3();
 const _wishSnapshot = new THREE.Vector3();
 const _moveDir = new THREE.Vector3();
+const _paintRouteDir = new THREE.Vector3();
 
 function yawFromDirection(dx, dz) {
   return Math.atan2(-dx, -dz);
@@ -170,11 +171,15 @@ export class EnemyAI extends Character {
         * this.difficulty.decisionIntervalMult;
     }
 
-    this._act(dt, arena, paintSystem, projectileManager, particleManager, audioManager, player);
-
-    const wantsInkSurf = paintSystem.getOwnerAt(this.position.x, this.position.z) === TEAM.CPU;
+    // Travel through own ink in swim form, but surface before attacking so
+    // Weapon's shared "cannot fire while submerged" rule stays consistent.
+    const wantsInkSurf = this.state !== STATE.ATTACK
+      && paintSystem.getOwnerAt(this.position.x, this.position.z) === TEAM.CPU;
     const speedMult = this.updateFloorEffects(dt, paintSystem, wantsInkSurf);
     this._lastSpeedMult = speedMult;
+    this.updateHealthRegen(dt);
+
+    this._act(dt, arena, paintSystem, projectileManager, particleManager, audioManager, player);
     this.updateFloorParticles(dt, particleManager, paintSystem);
 
     this.syncMesh(ctx.elapsedTime);
@@ -331,9 +336,9 @@ export class EnemyAI extends Character {
     this.debugTarget = this.targetPoint;
 
     if (this.state === STATE.ATTACK) {
-      this._actAttack(dt, arena, projectileManager, particleManager, audioManager, player);
+      this._actAttack(dt, arena, paintSystem, projectileManager, particleManager, audioManager, player);
     } else {
-      this._actMoveTo(dt, arena, this.targetPoint);
+      this._actMoveTo(dt, arena, paintSystem, this.targetPoint);
       if (this.state === STATE.PAINT || this.state === STATE.RETAKE) {
         this._actPaintGround(projectileManager, particleManager, audioManager);
       }
@@ -360,7 +365,7 @@ export class EnemyAI extends Character {
     this.weapon.fire(this, _fireOrigin, _aimVec, projectileManager, audioManager, particleManager);
   }
 
-  _actMoveTo(dt, arena, target) {
+  _actMoveTo(dt, arena, paintSystem, target) {
     _toTarget.set(target.x - this.position.x, 0, target.z - this.position.z);
     const dist = _toTarget.length();
 
@@ -372,7 +377,8 @@ export class EnemyAI extends Character {
     }
     _toTarget.normalize();
 
-    const avoided = this._avoidObstacles(arena, _toTarget);
+    const paintAware = this._choosePaintAwareDirection(arena, paintSystem, _toTarget);
+    const avoided = this._avoidObstacles(arena, paintAware);
     const speedMult = this._lastSpeedMult ?? 1;
     const speed = MOVEMENT.walkSpeed * speedMult * AI.moveSpeedMult;
 
@@ -384,7 +390,7 @@ export class EnemyAI extends Character {
     this._checkStuck(dt, arena);
   }
 
-  _actAttack(dt, arena, projectileManager, particleManager, audioManager, player) {
+  _actAttack(dt, arena, paintSystem, projectileManager, particleManager, audioManager, player) {
     // Strafe to stay mobile rather than standing still while shooting.
     this._strafeTimer -= dt;
     if (this._strafeTimer <= 0) {
@@ -406,7 +412,8 @@ export class EnemyAI extends Character {
     else if (retreating) _steerDir.addScaledVector(_toPlayer, -0.8);
     _steerDir.normalize();
 
-    const avoided = this._avoidObstacles(arena, _steerDir);
+    const paintAware = this._choosePaintAwareDirection(arena, paintSystem, _steerDir, 0.45);
+    const avoided = this._avoidObstacles(arena, paintAware);
     const speedMult = this._lastSpeedMult ?? 1;
     const speed = MOVEMENT.walkSpeed * speedMult * AI.moveSpeedMult * 0.85;
     this.velocity.x = avoided.x * speed;
@@ -437,6 +444,45 @@ export class EnemyAI extends Character {
     _fireOrigin.set(this.position.x, this.position.y + this.eyeHeight, this.position.z)
       .addScaledVector(this._aimDir, 0.5);
     this.weapon.fire(this, _fireOrigin, this._aimDir, projectileManager, audioManager, particleManager);
+  }
+
+  /**
+   * Sample several nearby headings and prefer routes already painted by the
+   * CPU. Flee/refill states care most; attack strafing uses a lighter weight
+   * so combat positioning still wins over perfect ink economy.
+   */
+  _choosePaintAwareDirection(arena, paintSystem, wishDir, weightMult = 1) {
+    const angles = [0, 0.34, -0.34, 0.68, -0.68, 1.05, -1.05];
+    let bestScore = -Infinity;
+    let bestX = wishDir.x;
+    let bestZ = wishDir.z;
+    const stateMult = (this.state === STATE.FLEE || this.state === STATE.REFILL) ? 1.55 : 1;
+
+    for (const angle of angles) {
+      const cos = Math.cos(angle), sin = Math.sin(angle);
+      const dx = wishDir.x * cos - wishDir.z * sin;
+      const dz = wishDir.x * sin + wishDir.z * cos;
+      const [px, pz] = arena.clampToBounds(
+        this.position.x + dx * AI.routeProbeDist,
+        this.position.z + dz * AI.routeProbeDist,
+        1
+      );
+      const owner = paintSystem.getOwnerAt(px, pz);
+      let inkScore = 0;
+      if (owner === TEAM.CPU) inkScore = AI.ownInkRouteBonus;
+      else if (owner === TEAM.PLAYER) inkScore = -AI.enemyInkRoutePenalty;
+
+      const progress = dx * wishDir.x + dz * wishDir.z;
+      const turnPenalty = Math.abs(angle) * 0.16;
+      const score = progress * 1.8 + inkScore * weightMult * stateMult - turnPenalty;
+      if (score > bestScore) {
+        bestScore = score;
+        bestX = dx;
+        bestZ = dz;
+      }
+    }
+
+    return _paintRouteDir.set(bestX, 0, bestZ).normalize();
   }
 
   // NOTE: snapshots wishDir into a private scratch vector before probing, since

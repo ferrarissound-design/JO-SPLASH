@@ -41,6 +41,7 @@ export class Character {
     this._enemyFloorDamageAccum = 0;
     this._floorFxTimer = 0;
     this._paintTrailTimer = 0;
+    this._healthRegenTimer = 0;
 
     const isPlayer = team === TEAM.PLAYER;
     const color = isPlayer ? COLORS.player : COLORS.cpu;
@@ -124,9 +125,22 @@ export class Character {
     return CAMERA.eyeHeight;
   }
 
+  /** Dynamic collision height: diving into ink makes the target much flatter. */
+  get hitboxHeight() {
+    return this.inkSurfActive ? MOVEMENT.inkSurfHitboxHeight : MOVEMENT.capsuleHeight;
+  }
+
+  /** A stationary submerged character has no overhead marker and is almost invisible. */
+  get isConcealed() {
+    if (!this.inkSurfActive) return false;
+    const speedSq = this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z;
+    return speedSq <= MOVEMENT.inkSurfStillSpeed * MOVEMENT.inkSurfStillSpeed;
+  }
+
   /** Apply damage; returns true if this hit resulted in a KO. */
   takeDamage(amount) {
     if (!this.alive || this.invincibleTimer > 0) return false;
+    this._healthRegenTimer = HEALTH.regenDelaySec;
     this.hp = Math.max(0, this.hp - amount);
     if (this.hp <= 0) {
       this.die();
@@ -141,6 +155,7 @@ export class Character {
     this.inkSurfCooldown = 0;
     this.isClimbing = false;
     this._climbPanel = null;
+    this._healthRegenTimer = 0;
     this.deaths++;
     this.respawnTimer = MATCH.respawnDelaySec;
     this.velocity.set(0, 0, 0);
@@ -158,6 +173,7 @@ export class Character {
     this.inkSurfCooldown = 0;
     this.isClimbing = false;
     this._climbPanel = null;
+    this._healthRegenTimer = 0;
   }
 
   /** Resolve horizontal collisions against arena obstacles/walls (circle vs box/circle). */
@@ -245,7 +261,10 @@ export class Character {
         this._enemyFloorDamageAccum = 0;
         const tickDamage = ENEMY_FLOOR_EFFECT.damagePerSecond * ENEMY_FLOOR_EFFECT.tickIntervalSec;
         const dmg = Math.min(this.hp - 1, tickDamage); // environmental chip alone never finishes a KO
-        if (dmg > 0) this.hp -= dmg;
+        if (dmg > 0) {
+          this.hp -= dmg;
+          this._healthRegenTimer = HEALTH.regenDelaySec;
+        }
       }
       this.ink = Math.min(INK.max, this.ink + INK.regenEnemyFloor * dt);
     } else if (owner === this.team) {
@@ -257,16 +276,29 @@ export class Character {
     return speedMult;
   }
 
+  /** Recover after avoiding damage; own-ink diving is the fastest way back into the fight. */
+  updateHealthRegen(dt) {
+    if (!this.alive || this.hp >= HEALTH.max) return;
+    if (this._healthRegenTimer > 0) {
+      this._healthRegenTimer = Math.max(0, this._healthRegenTimer - dt);
+      return;
+    }
+    if (this.onEnemyFloor) return;
+    const rate = HEALTH.regenPerSec * (this.inkSurfActive ? HEALTH.regenDiveMultiplier : 1);
+    this.hp = Math.min(HEALTH.max, this.hp + rate * dt);
+  }
+
   /** Spawns lightweight footfall particles and thin movement paint ribbons. */
   updateFloorParticles(dt, particleManager, paintSystem = null) {
     this._floorFxTimer -= dt;
     this._paintTrailTimer -= dt;
-    if (!this.grounded) return;
+    if (!this.grounded) return 0;
 
     const speedSq = this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z;
+    let paintedCells = 0;
     if (paintSystem && speedSq > 1.2 && this._paintTrailTimer <= 0) {
       this._paintTrailTimer = PAINT.trailIntervalSec;
-      paintSystem.paintTrail(
+      paintedCells = paintSystem.paintTrail(
         this.position.x,
         this.position.z,
         PAINT.trailRadius * (this.inkSurfActive ? 1.35 : 1),
@@ -276,7 +308,7 @@ export class Character {
       );
     }
 
-    if (this._floorFxTimer > 0) return;
+    if (this._floorFxTimer > 0) return paintedCells;
 
     if (this.inkSurfActive) {
       this._floorFxTimer = 0.09;
@@ -289,6 +321,7 @@ export class Character {
       _floorFxPos.set(this.position.x, this.position.y + 0.05, this.position.z);
       particleManager.spawnEnemyFloorSpray(_floorFxPos, enemy);
     }
+    return paintedCells;
   }
 
   updateTimers(dt) {
@@ -313,6 +346,12 @@ export class Character {
       for (const m of this.materials) {
         m.transparent = true;
         m.opacity = flicker;
+      }
+    } else if (this.inkSurfActive) {
+      const opacity = this.isConcealed ? MOVEMENT.inkSurfStillOpacity : MOVEMENT.inkSurfMovingOpacity;
+      for (const m of this.materials) {
+        m.transparent = true;
+        m.opacity = opacity;
       }
     } else {
       for (const m of this.materials) {

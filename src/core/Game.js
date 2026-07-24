@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MATCH, TEAM, COLORS, THEME, PERF, MOVEMENT, ARENA } from '../config.js';
+import { MATCH, TEAM, COLORS, THEME, PERF, MOVEMENT, ARENA, PAINT } from '../config.js';
 import { InputManager } from './InputManager.js';
 import { CameraController } from './CameraController.js';
 import { TouchControls } from './TouchControls.js';
@@ -68,6 +68,9 @@ export class Game {
 
     this.player = new Player(this.arena.spawnPoints.player, this.cameraController, this.input);
     this.cpu = new EnemyAI(this.arena.spawnPoints.cpu);
+    this.projectileManager.onPaint = (team, paintedCells) => {
+      if (team === TEAM.PLAYER) this.player.special.addCharge(paintedCells);
+    };
     this.scene.add(this.player.mesh, this.cpu.mesh);
     this._setupCpuVisibilityAid();
     this._cpuHitFlashTimer = 0;
@@ -197,8 +200,12 @@ export class Game {
     this.player.isClimbing = false;
     this.player._climbPanel = null;
     this.player.invincibleTimer = 0;
+    this.player._healthRegenTimer = 0;
     this.player.koScored = 0;
     this.player.deaths = 0;
+    this.player.special.reset();
+    this.player.weapon.cooldown = 0;
+    this.player.subWeapon.cooldown = 0;
 
     this.cpu.position.copy(this.arena.spawnPoints.cpu);
     this.cpu.velocity.set(0, 0, 0);
@@ -208,6 +215,7 @@ export class Game {
     this.cpu.inkSurfActive = false;
     this.cpu.inkSurfCooldown = 0;
     this.cpu.invincibleTimer = 0;
+    this.cpu._healthRegenTimer = 0;
     this.cpu.koScored = 0;
     this.cpu.deaths = 0;
     this.cpu.state = 'explore';
@@ -281,6 +289,16 @@ export class Game {
     if (died) {
       shooter.koScored++;
       const color = targetTeam === TEAM.PLAYER ? COLORS.player : COLORS.cpu;
+      // A splat swings nearby turf as well as the duel, binding combat back
+      // into the mode's territory-control objective.
+      const paintedCells = this.paintSystem.paintSplat(
+        target.position.x,
+        target.position.z,
+        PAINT.koSplatRadius,
+        shooter.team,
+        { splatterScale: 1.3, glossScale: 1.2 }
+      );
+      shooter.special?.addCharge(paintedCells);
       this.particleManager.spawnKOExplosion(hitPoint, color);
       this.audioManager.playKO();
       this.ui.showStatusMessage(targetTeam === TEAM.PLAYER ? 'YOU WERE SPLATTED!' : 'CPU DEFEATED!', 1.8);
@@ -314,6 +332,9 @@ export class Game {
 
     // Debug: 'V' cycles the enemy appearance (Speed -> Street -> Heavy -> Technical).
     if (this.input.wasJustPressed('KeyV')) this._cycleEnemyAppearance();
+    if (this.debugMode && this.input.wasJustPressed('KeyP')) {
+      this.player.special.charge = 100;
+    }
 
     switch (this.state) {
       case STATE.TITLE:
@@ -386,6 +407,9 @@ export class Game {
       particleManager: this.particleManager,
       audioManager: this.audioManager,
       player: this.player,
+      cpu: this.cpu,
+      ui: this.ui,
+      onCharacterHit: (targetTeam, damage, hitPoint) => this._onCharacterHit(targetTeam, damage, hitPoint),
       controlsEnabled: true,
       elapsedTime: this.elapsedTime,
     };
@@ -422,6 +446,10 @@ export class Game {
       cpuPct: cov.cpuPct,
       hp: this.player.hp,
       ink: this.player.ink,
+      specialCharge: this.player.special.charge,
+      specialReady: this.player.special.ready,
+      specialActive: this.player.special.active,
+      weaponName: this.player.weapon.displayName,
       koPlayer: this.player.koScored,
       koCpu: this.cpu.koScored,
       firing: this.input.mouseDown && this.player.alive && !this.player.inkSurfActive,
@@ -475,8 +503,13 @@ export class Game {
       }
     }
 
-    this.cpuRing.visible = this.cpu.alive;
+    this.cpuRing.visible = this.cpu.alive && !this.cpu.inkSurfActive;
     if (!this.cpu.alive) {
+      this.ui.updateEnemyMarker({ visible: false });
+      return;
+    }
+
+    if (this.cpu.isConcealed) {
       this.ui.updateEnemyMarker({ visible: false });
       return;
     }
@@ -523,6 +556,9 @@ export class Game {
       `cpu target: ${this.cpu.debugTarget ? this.cpu.debugTarget.toArray().map((n) => n.toFixed(1)).join(',') : '-'}`,
       `player inv: ${this.player.invincibleTimer.toFixed(2)}  cpu inv: ${this.cpu.invincibleTimer.toFixed(2)}`,
       `coverage P:${cov.playerPct.toFixed(1)}% C:${cov.cpuPct.toFixed(1)}% N:${(100 - cov.playerPct - cov.cpuPct).toFixed(1)}%`,
+      `special: ${this.player.special.charge.toFixed(1)}%  active:${this.player.special.active}`,
+      `weapon: ${this.player.weapon.displayName}  bomb cd:${this.player.subWeapon.cooldown.toFixed(2)}`,
+      'debug keys: P=fill special  V=cycle enemy',
       `projectiles active: ${this.projectileManager.pool.filter((p) => p.active).length}/${this.projectileManager.pool.length}`,
       `particles active: ${this.particleManager.pool.filter((p) => p.active).length}/${this.particleManager.pool.length}`,
     ].join('\n');

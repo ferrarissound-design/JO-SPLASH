@@ -361,6 +361,13 @@ export class Arena {
       // ground-level lane besides the ramp/climb-panel routes.
       { type: 'cylinder', pos: [5.5, 1.1, -9.5], radius: 1.3, height: 2.2 },
       { type: 'box', pos: [-5, 1, 9.5], size: [2.2, 2, 2.2] },
+      // Jumpable waist-high cover divides the four approach lanes without
+      // becoming a hard wall. Players can shoot around it, hop over it, or
+      // use it to break line of sight while repainting an escape route.
+      { type: 'box', pos: [-11, 0.45, 0], size: [3.8, 0.9, 1.2] },
+      { type: 'box', pos: [11, 0.45, 0], size: [3.8, 0.9, 1.2] },
+      { type: 'box', pos: [0, 0.45, -11], size: [1.2, 0.9, 3.8] },
+      { type: 'box', pos: [0, 0.45, 11], size: [1.2, 0.9, 3.8] },
     ];
     this.obstacleDefs = defs;
 

@@ -151,6 +151,17 @@ export class AudioManager {
     this._noise(0.4, { peak: 0.25, filterFreq: 1400 });
   }
 
+  playSpecial() {
+    this._tone(180, 0.5, { type: 'sawtooth', peak: 0.2, freqEnd: 760 });
+    this._tone(360, 0.35, { type: 'triangle', peak: 0.16, freqEnd: 1100, delay: 0.08 });
+    this._noise(0.55, { peak: 0.2, filterFreq: 1800 });
+  }
+
+  playBombThrow() {
+    this._tone(310, 0.16, { type: 'triangle', peak: 0.15, freqEnd: 150 });
+    this._noise(0.09, { peak: 0.1, filterFreq: 1100 });
+  }
+
   playCountdownBeep() {
     this._tone(520, 0.12, { type: 'square', peak: 0.2 });
   }

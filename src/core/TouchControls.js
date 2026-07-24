@@ -25,6 +25,8 @@ export class TouchControls {
       fireBtn: container.querySelector('.touch-btn-fire'),
       jumpBtn: container.querySelector('.touch-btn-jump'),
       surfBtn: container.querySelector('.touch-btn-surf'),
+      specialBtn: container.querySelector('.touch-btn-special'),
+      bombBtn: container.querySelector('.touch-btn-bomb'),
     };
 
     this._joystickTouchId = null;
@@ -58,6 +60,8 @@ export class TouchControls {
     this._bindButton(this.el.fireBtn, (held) => this.input.setFireHeld(held));
     this._bindButton(this.el.jumpBtn, (held) => this.input.setVirtualKey('Space', held));
     this._bindButton(this.el.surfBtn, (held) => this.input.setVirtualKey('ShiftLeft', held));
+    this._bindButton(this.el.specialBtn, (held) => this.input.setVirtualKey('KeyQ', held));
+    this._bindButton(this.el.bombBtn, (held) => this.input.setVirtualKey('KeyE', held));
   }
 
   _bindButton(el, cb) {
@@ -203,10 +207,14 @@ export class TouchControls {
     this._setMoveKeys(0, 0);
     this.input.setVirtualKey('Space', false);
     this.input.setVirtualKey('ShiftLeft', false);
+    this.input.setVirtualKey('KeyQ', false);
+    this.input.setVirtualKey('KeyE', false);
     this.input.setFireHeld(false);
     this.el.fireBtn.classList.remove('pressed');
     this.el.jumpBtn.classList.remove('pressed');
     this.el.surfBtn.classList.remove('pressed');
+    this.el.specialBtn.classList.remove('pressed');
+    this.el.bombBtn.classList.remove('pressed');
   }
 
   dispose() {

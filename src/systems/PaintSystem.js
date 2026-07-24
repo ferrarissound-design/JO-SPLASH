@@ -218,12 +218,13 @@ export class PaintSystem {
   /** Paint a circular splat centered at world (x,z) with the given radius, owned by `team`. */
   paintSplat(x, z, radius, team, opts = {}) {
     const owner = OWNER_BY_TEAM[team];
-    if (!owner) return;
+    if (!owner) return 0;
 
-    this._paintGrid(x, z, radius, owner);
+    const paintedCells = this._paintGrid(x, z, radius, owner);
     this._paintCanvas(x, z, radius, team, opts);
     this._addGloss(x, z, radius, team, opts);
     this._dirty = true;
+    return paintedCells;
   }
 
   _paintGrid(x, z, radius, owner) {
@@ -239,6 +240,7 @@ export class PaintSystem {
     const maxGz = Math.min(res - 1, cz + cellRadius);
 
     const radiusSq = radius * radius;
+    let paintedCells = 0;
 
     for (let gz = minGz; gz <= maxGz; gz++) {
       for (let gx = minGx; gx <= maxGx; gx++) {
@@ -257,22 +259,25 @@ export class PaintSystem {
         else if (prev === OWNER_CPU) this.cpuCells--;
 
         grid[idx] = owner;
+        paintedCells++;
 
         if (owner === OWNER_PLAYER) this.playerCells++;
         else if (owner === OWNER_CPU) this.cpuCells++;
       }
     }
+    return paintedCells;
   }
 
   paintTrail(x, z, radius, team, dirX = 0, dirZ = 1) {
     const owner = OWNER_BY_TEAM[team];
-    if (!owner) return;
+    if (!owner) return 0;
 
-    this._paintGrid(x, z, radius * 0.65, owner);
+    const paintedCells = this._paintGrid(x, z, radius * 0.65, owner);
     const opts = { dirX, dirZ, stretch: 2.8, minorScale: 0.42, splatterScale: 0.2, glossScale: 0.45 };
     this._paintCanvas(x, z, radius, team, opts);
     this._addGloss(x, z, radius, team, opts);
     this._dirty = true;
+    return paintedCells;
   }
 
   _paintCanvas(x, z, radius, team, opts = {}) {

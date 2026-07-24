@@ -14,9 +14,25 @@ const _dir = new THREE.Vector3();
 // stays centralized.
 // ============================================================================
 export class Weapon {
-  constructor() {
+  constructor(type = WEAPON.defaultType) {
     this.cooldown = 0;
     this.recoilTimer = 0;
+    this.type = WEAPON.profiles[type] ? type : WEAPON.defaultType;
+  }
+
+  get profile() {
+    return WEAPON.profiles[this.type];
+  }
+
+  get displayName() {
+    return this.profile.name;
+  }
+
+  setType(type) {
+    if (!WEAPON.profiles[type] || type === this.type) return false;
+    this.type = type;
+    this.cooldown = Math.min(this.cooldown, this.profile.fireInterval);
+    return true;
   }
 
   update(dt) {
@@ -25,21 +41,29 @@ export class Weapon {
   }
 
   canFire(character) {
-    return character.alive && this.cooldown <= 0 && character.ink >= WEAPON.costPerShot;
+    return character.alive
+      && !character.inkSurfActive
+      && !character.isClimbing
+      && this.cooldown <= 0
+      && character.ink >= this.profile.costPerShot;
   }
 
   /** Attempts to fire; returns true if a shot was produced. */
   fire(character, origin, direction, projectileManager, audioManager, particleManager) {
     if (!this.canFire(character)) return false;
 
-    character.ink -= WEAPON.costPerShot;
-    this.cooldown = WEAPON.fireInterval;
-    this.recoilTimer = 1;
-
     _dir.copy(direction).normalize();
-    const spreadDir = this._applySpread(_dir);
+    const profile = this.profile;
+    let spawned = 0;
+    for (let i = 0; i < profile.pelletCount; i++) {
+      const spreadDir = this._applySpread(_dir, profile.spreadRad);
+      if (projectileManager.spawn(origin, spreadDir, character.team, profile)) spawned++;
+    }
+    if (spawned === 0) return false;
 
-    projectileManager.spawn(origin, spreadDir, character.team);
+    character.ink -= profile.costPerShot;
+    this.cooldown = profile.fireInterval;
+    this.recoilTimer = 1;
 
     const color = character.team === TEAM.PLAYER ? 0x2fb8ff : 0xff7a2f;
     particleManager?.spawnMuzzle(origin, color);
@@ -48,12 +72,11 @@ export class Weapon {
     return true;
   }
 
-  _applySpread(dir) {
+  _applySpread(dir, spread) {
     const useAlt = Math.abs(dir.y) > 0.98;
     _right.crossVectors(dir, useAlt ? _altUp : _worldUp).normalize();
     _up.crossVectors(_right, dir).normalize();
 
-    const spread = WEAPON.spreadRad;
     const a = (Math.random() - 0.5) * 2 * spread;
     const b = (Math.random() - 0.5) * 2 * spread;
 
