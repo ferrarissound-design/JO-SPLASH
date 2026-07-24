@@ -350,6 +350,9 @@ export class Player extends Character {
     const moveAmount = THREE.MathUtils.clamp(horizontalSpeed / MOVEMENT.walkSpeed, 0, 1.5);
     const stride = elapsedTime * (7.5 + moveAmount * 3.5);
     const surfScale = this.inkSurfActive ? 0.82 : 1;
+    const runBlend = THREE.MathUtils.clamp((moveAmount - 0.45) / 0.85, 0, 1);
+    const strideSwing = Math.sin(stride) * THREE.MathUtils.lerp(0.34, 0.78, runBlend)
+      * Math.min(1, moveAmount * 1.4);
 
     parts.motionRoot.position.y = Math.sin(stride * 2) * 0.025 * moveAmount;
     parts.motionRoot.rotation.z = Math.sin(stride) * 0.035 * moveAmount;
@@ -358,6 +361,29 @@ export class Player extends Character {
     parts.hairGroup.rotation.x = -0.05 - Math.min(0.16, moveAmount * 0.09);
     parts.shooter.rotation.x = Math.sin(stride * 2 + 0.7) * 0.025 * moveAmount;
     parts.tank.rotation.z = -Math.sin(stride) * 0.02 * moveAmount;
+
+    if (this.isClimbing) {
+      const climbSwing = Math.sin(elapsedTime * 9) * 0.48;
+      parts.legLPivot.rotation.x = climbSwing;
+      parts.legRPivot.rotation.x = -climbSwing;
+      parts.armLPivot.rotation.x = -climbSwing;
+      parts.armRPivot.rotation.x = climbSwing * 0.65;
+    } else if (this.inkSurfActive) {
+      parts.legLPivot.rotation.x = 0.52;
+      parts.legRPivot.rotation.x = 0.52;
+      parts.armLPivot.rotation.x = -0.18;
+      parts.armRPivot.rotation.x = -0.08;
+    } else if (!this.grounded) {
+      parts.legLPivot.rotation.x = -0.3;
+      parts.legRPivot.rotation.x = 0.18;
+      parts.armLPivot.rotation.x = 0.24;
+      parts.armRPivot.rotation.x = -0.12;
+    } else {
+      parts.legLPivot.rotation.x = strideSwing;
+      parts.legRPivot.rotation.x = -strideSwing;
+      parts.armLPivot.rotation.x = -strideSwing * 0.62;
+      parts.armRPivot.rotation.x = strideSwing * 0.38;
+    }
   }
 
   /** Player uses shared cached body geometry plus a small owned detail set. */

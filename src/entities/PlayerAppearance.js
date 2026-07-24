@@ -80,7 +80,46 @@ export function createPlayerCharacter() {
   motionRoot.add(bodyGroup, headGroup, hairGroup, gearGroup);
 
   const mats = applyEnemyPalette(PLAYER_STYLE, materials);
-  for (const mesh of createEnemyBody(PLAYER_STYLE, mats)) bodyGroup.add(mesh);
+  const [
+    hips,
+    legL,
+    legR,
+    shoeL,
+    shoeR,
+    torso,
+    armL,
+    armR,
+    handL,
+    handR,
+  ] = createEnemyBody(PLAYER_STYLE, mats);
+
+  // Re-parent limbs under anatomical pivots. The shared appearance builder
+  // returns parts in feet-origin space, so preserve their world positions by
+  // subtracting each new joint's position before attaching them.
+  const legLPivot = new THREE.Group();
+  const legRPivot = new THREE.Group();
+  const armLPivot = new THREE.Group();
+  const armRPivot = new THREE.Group();
+  legLPivot.position.set(-0.16, 0.7, 0);
+  legRPivot.position.set(0.16, 0.7, 0);
+  armLPivot.position.set(-0.4, 1.36, 0);
+  armRPivot.position.set(0.4, 1.36, 0);
+
+  legL.position.sub(legLPivot.position);
+  shoeL.position.sub(legLPivot.position);
+  legR.position.sub(legRPivot.position);
+  shoeR.position.sub(legRPivot.position);
+  armL.position.sub(armLPivot.position);
+  handL.position.sub(armLPivot.position);
+  armR.position.sub(armRPivot.position);
+  handR.position.sub(armRPivot.position);
+
+  legLPivot.add(legL, shoeL);
+  legRPivot.add(legR, shoeR);
+  armLPivot.add(armL, handL);
+  armRPivot.add(armR, handR);
+  bodyGroup.add(hips, torso, legLPivot, legRPivot, armLPivot, armRPivot);
+
   for (const mesh of createEnemyHead(PLAYER_STYLE, mats)) headGroup.add(mesh);
   for (const mesh of createEnemyTentacleHair(PLAYER_STYLE, mats)) hairGroup.add(mesh);
   for (const mesh of createEnemyOutfit(PLAYER_STYLE, mats)) bodyGroup.add(mesh);
@@ -264,7 +303,9 @@ export function createPlayerCharacter() {
   for (const side of [-1, 1]) {
     const sole = new THREE.Mesh(soleGeometry, mats.sub);
     sole.position.set(side * 0.16, 0.025, -0.075);
-    bodyGroup.add(sole);
+    const legPivot = side < 0 ? legLPivot : legRPivot;
+    sole.position.sub(legPivot.position);
+    legPivot.add(sole);
   }
 
   group.userData.appearanceParts = {
@@ -273,6 +314,10 @@ export function createPlayerCharacter() {
     gearGroup,
     shooter,
     tank,
+    legLPivot,
+    legRPivot,
+    armLPivot,
+    armRPivot,
   };
   group.userData.ownedGeometries = ownedGeometries;
 
