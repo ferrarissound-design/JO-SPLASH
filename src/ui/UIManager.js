@@ -1,4 +1,32 @@
 import { ARENA } from '../config.js';
+import { DEFAULT_KEY_BINDINGS } from '../core/InputManager.js';
+
+const KEY_LABEL_OVERRIDES = {
+  Space: 'Space',
+  ShiftLeft: 'Shift',
+  ShiftRight: 'Shift R',
+  ControlLeft: 'Ctrl',
+  ControlRight: 'Ctrl R',
+  AltLeft: 'Alt',
+  AltRight: 'Alt R',
+  Tab: 'Tab',
+  CapsLock: 'Caps',
+  Enter: 'Enter',
+  Backquote: '`',
+  ArrowUp: '↑',
+  ArrowDown: '↓',
+  ArrowLeft: '←',
+  ArrowRight: '→',
+};
+
+/** Turns a KeyboardEvent.code into a short human-readable label for the keybind buttons. */
+function codeToLabel(code) {
+  if (!code) return '?';
+  if (code in KEY_LABEL_OVERRIDES) return KEY_LABEL_OVERRIDES[code];
+  if (code.startsWith('Key')) return code.slice(3);
+  if (code.startsWith('Digit')) return code.slice(5);
+  return code;
+}
 
 const MAP_COLORS = {
   neutralA: [17, 27, 44, 255],
@@ -16,6 +44,11 @@ export class UIManager {
   constructor() {
     this.el = {
       title: document.getElementById('screen-title'),
+      matchRecord: document.getElementById('match-record'),
+      mrWins: document.getElementById('mr-wins'),
+      mrLosses: document.getElementById('mr-losses'),
+      mrDraws: document.getElementById('mr-draws'),
+      mrAvgPct: document.getElementById('mr-avg-pct'),
       howtoDesktop: document.getElementById('howto-desktop'),
       howtoTouch: document.getElementById('howto-touch'),
       pause: document.getElementById('screen-pause'),
@@ -33,6 +66,9 @@ export class UIManager {
       settingMasterVolumeValue: document.getElementById('setting-master-volume-value'),
       settingMusicVolume: document.getElementById('setting-music-volume'),
       settingMusicVolumeValue: document.getElementById('setting-music-volume-value'),
+      settingInvertY: document.getElementById('setting-invert-y'),
+      keybindButtons: Array.from(document.querySelectorAll('.keybind-btn')),
+      btnResetKeybinds: document.getElementById('btn-reset-keybinds'),
       countdown: document.getElementById('screen-countdown'),
       countdownNumber: document.getElementById('countdown-number'),
       hud: document.getElementById('hud'),
@@ -41,6 +77,7 @@ export class UIManager {
       btnRestart: document.getElementById('btn-restart'),
       difficultyButtons: Array.from(document.querySelectorAll('[data-difficulty]')),
       cpuLevelLabel: document.getElementById('cpu-level-label'),
+      practiceModeToggle: document.getElementById('practice-mode-toggle'),
 
       timer: document.getElementById('timer'),
       coveragePlayerPct: document.getElementById('coverage-player-pct'),
@@ -94,6 +131,10 @@ export class UIManager {
       resultPctNeutral: document.getElementById('result-pct-neutral'),
       resultKoPlayer: document.getElementById('result-ko-player'),
       resultKoCpu: document.getElementById('result-ko-cpu'),
+      resultStatSpecials: document.getElementById('result-stat-specials'),
+      resultStatBombs: document.getElementById('result-stat-bombs'),
+      resultStatClimbs: document.getElementById('result-stat-climbs'),
+      resultStatRolls: document.getElementById('result-stat-rolls'),
 
       debugOverlay: document.getElementById('debug-overlay'),
       debugFps: document.getElementById('debug-fps'),
@@ -152,8 +193,40 @@ export class UIManager {
     });
   }
 
+  bindInvertYChange(cb) {
+    const el = this.el.settingInvertY;
+    if (!el) return;
+    el.addEventListener('change', () => cb(el.checked));
+  }
+
+  /** cb(action, buttonEl) fires when a keybind "変更" button is clicked. */
+  bindKeybindButtons(cb) {
+    for (const btn of this.el.keybindButtons) {
+      btn.addEventListener('click', () => cb(btn.dataset.action, btn));
+    }
+  }
+
+  bindResetKeybinds(cb) { this.el.btnResetKeybinds?.addEventListener('click', cb); }
+
+  /** Toggles a keybind button into/out of its "press a key..." capture state. */
+  setKeybindListening(button, isListening) {
+    if (!button) return;
+    button.classList.toggle('listening', isListening);
+    if (isListening) button.textContent = '入力待ち…';
+  }
+
+  /** Refreshes every keybind button's label from the effective (default + override) bindings. */
+  updateKeybindLabels(keyBindingOverrides = {}) {
+    for (const btn of this.el.keybindButtons) {
+      const action = btn.dataset.action;
+      const code = keyBindingOverrides[action] ?? DEFAULT_KEY_BINDINGS[action];
+      btn.textContent = codeToLabel(code);
+      btn.classList.remove('listening');
+    }
+  }
+
   /** Syncs slider positions/labels to persisted values whenever the settings screen opens. */
-  setSettingsValues({ sensitivityMult, masterVolume, musicVolume }) {
+  setSettingsValues({ sensitivityMult, masterVolume, musicVolume, invertY }) {
     if (this.el.settingSensitivity) {
       this.el.settingSensitivity.value = String(sensitivityMult);
       if (this.el.settingSensitivityValue) this.el.settingSensitivityValue.textContent = `x${sensitivityMult.toFixed(1)}`;
@@ -168,6 +241,7 @@ export class UIManager {
       this.el.settingMusicVolume.value = String(pct);
       if (this.el.settingMusicVolumeValue) this.el.settingMusicVolumeValue.textContent = `${pct}%`;
     }
+    if (this.el.settingInvertY) this.el.settingInvertY.checked = Boolean(invertY);
   }
 
   showSettings() { this.el.settings?.classList.remove('hidden'); }
@@ -177,6 +251,9 @@ export class UIManager {
     for (const button of this.el.difficultyButtons) {
       button.addEventListener('click', () => cb(button.dataset.difficulty));
     }
+  }
+  bindPracticeModeChange(cb) {
+    this.el.practiceModeToggle?.addEventListener('change', () => cb(this.el.practiceModeToggle.checked));
   }
 
   setDifficulty(id, label) {
@@ -212,6 +289,21 @@ export class UIManager {
 
   showTitle() { this.el.title.classList.remove('hidden'); }
   hideTitle() { this.el.title.classList.add('hidden'); }
+
+  /** Shows the lifetime win/loss/draw record on the title screen, hidden until a first match completes. */
+  updateMatchRecord(matchRecord) {
+    const el = this.el.matchRecord;
+    if (!el) return;
+    if (matchRecord.totalMatches <= 0) {
+      el.classList.add('hidden');
+      return;
+    }
+    this.el.mrWins.textContent = String(matchRecord.values.wins);
+    this.el.mrLosses.textContent = String(matchRecord.values.losses);
+    this.el.mrDraws.textContent = String(matchRecord.values.draws);
+    this.el.mrAvgPct.textContent = `${matchRecord.averagePlayerPct.toFixed(1)}%`;
+    el.classList.remove('hidden');
+  }
 
   showPause() { this.el.pause?.classList.remove('hidden'); }
   hidePause() { this.el.pause?.classList.add('hidden'); }
@@ -469,8 +561,8 @@ export class UIManager {
     const playerMapZ = toMap(playerZ, halfDepth);
     const cpuMapX = toMap(cpuX, halfWidth);
     const cpuMapZ = toMap(cpuZ, halfDepth);
-    if (playerAlive) this._drawTurfMapMarker(ctx, playerMapX, playerMapZ, playerYaw, '#2fb8ff');
-    if (cpuVisible) this._drawTurfMapMarker(ctx, cpuMapX, cpuMapZ, cpuYaw, '#ff7a2f');
+    if (playerAlive) this._drawTurfMapMarker(ctx, playerMapX, playerMapZ, playerYaw, '#2fb8ff', true);
+    if (cpuVisible) this._drawTurfMapMarker(ctx, cpuMapX, cpuMapZ, cpuYaw, '#ff7a2f', false);
 
     const map = this.el.turfMap;
     if (map) {
@@ -510,7 +602,12 @@ export class UIManager {
     ctx.restore();
   }
 
-  _drawTurfMapMarker(ctx, x, z, yaw, color) {
+  /**
+   * isPlayer picks the marker's silhouette (chevron vs diamond) so the two
+   * sides read apart by shape as well as hue — useful for colorblind players
+   * since this is otherwise the map's only cyan-vs-orange distinction.
+   */
+  _drawTurfMapMarker(ctx, x, z, yaw, color, isPlayer = true) {
     const radius = Math.max(4, ctx.canvas.width * 0.035);
     ctx.save();
     ctx.translate(x, z);
@@ -521,10 +618,19 @@ export class UIManager {
     ctx.shadowColor = 'rgba(0,0,0,.8)';
     ctx.shadowBlur = radius;
     ctx.beginPath();
-    ctx.moveTo(0, -radius * 1.55);
-    ctx.lineTo(radius, radius);
-    ctx.lineTo(0, radius * 0.55);
-    ctx.lineTo(-radius, radius);
+    if (isPlayer) {
+      // Chevron/arrow — the original marker shape.
+      ctx.moveTo(0, -radius * 1.55);
+      ctx.lineTo(radius, radius);
+      ctx.lineTo(0, radius * 0.55);
+      ctx.lineTo(-radius, radius);
+    } else {
+      // Diamond — distinct silhouette, still yaw-oriented via the same rotate above.
+      ctx.moveTo(0, -radius * 1.35);
+      ctx.lineTo(radius * 0.95, 0);
+      ctx.lineTo(0, radius * 1.35);
+      ctx.lineTo(-radius * 0.95, 0);
+    }
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
@@ -535,7 +641,7 @@ export class UIManager {
   hideRespawnBanner() { this.el.respawnBanner.classList.add('hidden'); }
 
   /** Animates the result percentages counting up from 0 to their final values. */
-  showResult({ playerPct, cpuPct, koPlayer, koCpu, outcome }) {
+  showResult({ playerPct, cpuPct, koPlayer, koCpu, outcome, stats = null }) {
     this.el.resultTitle.textContent = outcome === 'win' ? 'VICTORY' : outcome === 'lose' ? 'DEFEAT' : 'DRAW';
     this.el.resultTitle.classList.remove('win', 'lose', 'draw');
     this.el.resultTitle.classList.add(outcome === 'win' ? 'win' : outcome === 'lose' ? 'lose' : 'draw');
@@ -557,6 +663,14 @@ export class UIManager {
 
     this.el.resultKoPlayer.textContent = String(koPlayer);
     this.el.resultKoCpu.textContent = String(koCpu);
+
+    if (stats) {
+      if (this.el.resultStatSpecials) this.el.resultStatSpecials.textContent = `${stats.specials.player} / ${stats.specials.cpu}`;
+      if (this.el.resultStatBombs) this.el.resultStatBombs.textContent = `${stats.bombs.player} / ${stats.bombs.cpu}`;
+      if (this.el.resultStatClimbs) this.el.resultStatClimbs.textContent = `${stats.climbs.player} / ${stats.climbs.cpu}`;
+      // CPU never ink-rolls (player-only mechanic), so this line is YOU-only.
+      if (this.el.resultStatRolls) this.el.resultStatRolls.textContent = String(stats.inkRolls.player);
+    }
 
     if (this._countUpAnim) cancelAnimationFrame(this._countUpAnim);
     const duration = 1100;

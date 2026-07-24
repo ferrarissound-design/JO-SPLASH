@@ -32,7 +32,49 @@ describe('Settings defaults and persistence', () => {
       masterVolume: 1,
       musicVolume: 1,
       difficultyId: 'standard',
+      invertY: false,
+      keyBindings: {},
     });
+  });
+
+  it('setKeyBinding stores only known actions and persists across instances', async () => {
+    const { Settings } = await import('../src/core/Settings.js?fresh7');
+    const a = new Settings();
+    a.setKeyBinding('jump', 'ArrowUp');
+    a.setKeyBinding('bogusAction', 'KeyZ'); // unknown action, should be ignored
+
+    expect(a.values.keyBindings).toEqual({ jump: 'ArrowUp' });
+
+    const b = new Settings();
+    expect(b.values.keyBindings).toEqual({ jump: 'ArrowUp' });
+  });
+
+  it('resetKeyBindings clears all customizations', async () => {
+    const { Settings } = await import('../src/core/Settings.js?fresh8');
+    const settings = new Settings();
+    settings.setKeyBinding('jump', 'ArrowUp');
+    settings.resetKeyBindings();
+    expect(settings.values.keyBindings).toEqual({});
+  });
+
+  it('sanitizes stored keyBindings, dropping unknown actions and non-string codes', async () => {
+    localStorage.setItem(
+      'chromaDuel.settings.v1',
+      JSON.stringify({ keyBindings: { jump: 'ArrowUp', special: 42, notReal: 'KeyZ' } }),
+    );
+    const { Settings } = await import('../src/core/Settings.js?fresh9');
+    const settings = new Settings();
+    expect(settings.values.keyBindings).toEqual({ jump: 'ArrowUp' });
+  });
+
+  it('setInvertY toggles CAMERA.invertY and persists', async () => {
+    const { Settings } = await import('../src/core/Settings.js?fresh6');
+    const a = new Settings();
+    a.setInvertY(true);
+    expect(CAMERA.invertY).toBe(true);
+
+    const b = new Settings();
+    expect(b.values.invertY).toBe(true);
   });
 
   it('round-trips a changed value through localStorage', async () => {
@@ -51,7 +93,7 @@ describe('Settings defaults and persistence', () => {
   it('clamps out-of-range values on load instead of trusting stored JSON blindly', async () => {
     localStorage.setItem(
       'chromaDuel.settings.v1',
-      JSON.stringify({ sensitivityMult: 99, masterVolume: -5, musicVolume: 5, difficultyId: 42 }),
+      JSON.stringify({ sensitivityMult: 99, masterVolume: -5, musicVolume: 5, difficultyId: 42, invertY: 'yes' }),
     );
     const { Settings } = await import('../src/core/Settings.js?fresh3');
     const settings = new Settings();
@@ -60,6 +102,7 @@ describe('Settings defaults and persistence', () => {
     expect(settings.values.masterVolume).toBeGreaterThanOrEqual(0);
     expect(settings.values.musicVolume).toBeLessThanOrEqual(1);
     expect(settings.values.difficultyId).toBe('standard'); // non-string rejected
+    expect(settings.values.invertY).toBe(false); // non-boolean rejected
   });
 
   it('falls back to defaults on corrupt stored JSON rather than throwing', async () => {

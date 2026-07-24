@@ -332,6 +332,7 @@ export const CAMERA = {
   minPitch: -1.05,
   maxPitch: 1.0,
   sensitivity: 0.0022,
+  invertY: false, // user-facing toggle, see Settings.setInvertY()
 };
 
 export const AI = {

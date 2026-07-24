@@ -6,6 +6,7 @@ import { InputManager } from './InputManager.js';
 import { CameraController } from './CameraController.js';
 import { TouchControls } from './TouchControls.js';
 import { Settings } from './Settings.js';
+import { MatchRecord } from './MatchRecord.js';
 import { Arena } from '../systems/Arena.js';
 import { StageDecor } from '../systems/StageDecor.js';
 import { PaintSystem } from '../systems/PaintSystem.js';
@@ -41,6 +42,7 @@ export class Game {
 
     this.settings = new Settings();
     this.settings.apply();
+    this.matchRecord = new MatchRecord();
 
     this._setupRenderer();
     this._setupScene();
@@ -54,6 +56,7 @@ export class Game {
     this.paintSystem.applyToMaterial(this.arena.rampTopMesh.material);
 
     this.input = new InputManager(this.canvas);
+    this.settings.attachInput(this.input);
     this.touchControls = this.input.isTouch
       ? new TouchControls(this.input, document.getElementById('touch-controls'))
       : null;
@@ -79,6 +82,7 @@ export class Game {
     this.player = new Player(this.arena.spawnPoints.player, this.cameraController, this.input);
     this.touchControls?.setWeaponType(this.player.weapon.type);
     this.selectedDifficulty = AI_DIFFICULTY[this.settings.values.difficultyId] ? this.settings.values.difficultyId : 'standard';
+    this.practiceMode = false;
     this.cpu = new EnemyAI(this.arena.spawnPoints.cpu, AI_DIFFICULTY[this.selectedDifficulty]);
     this.projectileManager.onPaint = (team, paintedCells) => {
       if (team === TEAM.PLAYER) this.player.special.addCharge(paintedCells);
@@ -111,6 +115,7 @@ export class Game {
     this._bindUI();
     this._selectDifficulty(this.selectedDifficulty);
     this._bindWindow();
+    this.ui.updateMatchRecord(this.matchRecord);
     this.input.onLockLost = () => this._pauseFromLockLoss();
 
     this.clock = new THREE.Clock();
@@ -170,6 +175,7 @@ export class Game {
     this.ui.bindRestart(() => this._startMatch());
     this.ui.bindCycleAppearance(() => this._cycleEnemyAppearance());
     this.ui.bindDifficultySelection((difficultyId) => this._selectDifficulty(difficultyId));
+    this.ui.bindPracticeModeChange((checked) => { this.practiceMode = checked; });
     this.ui.bindResume(() => this._resumeFromPause());
     this.ui.bindQuit(() => this._quitToTitle());
     this.ui.bindPause(() => this._pauseMatch());
@@ -185,6 +191,12 @@ export class Game {
       this.settings.setMusicVolume(v);
       this.audioManager.setMusicVolume(v);
     });
+    this.ui.bindInvertYChange((checked) => this.settings.setInvertY(checked));
+    this.ui.bindKeybindButtons((action, button) => this._startKeyRebind(action, button));
+    this.ui.bindResetKeybinds(() => {
+      this.settings.resetKeyBindings();
+      this.ui.updateKeybindLabels(this.settings.values.keyBindings);
+    });
   }
 
   _selectDifficulty(difficultyId) {
@@ -197,13 +209,37 @@ export class Game {
 
   _openSettings() {
     this.ui.setSettingsValues(this.settings.values);
+    this.ui.updateKeybindLabels(this.settings.values.keyBindings);
     this.ui.hideTitle();
     this.ui.showSettings();
   }
 
   _closeSettings() {
+    // Abandon an in-progress "press a key..." capture so it can't swallow
+    // the next real gameplay keypress after leaving the settings screen.
+    this.input.cancelKeyListen();
+    if (this._activeKeybindButton) {
+      this.ui.setKeybindListening(this._activeKeybindButton, false);
+      this.ui.updateKeybindLabels(this.settings.values.keyBindings);
+      this._activeKeybindButton = null;
+    }
     this.ui.hideSettings();
     this.ui.showTitle();
+  }
+
+  /** Starts a "press a key to rebind" capture for the given action/button, safely abandoning any prior capture. */
+  _startKeyRebind(action, button) {
+    if (this._activeKeybindButton && this._activeKeybindButton !== button) {
+      this.ui.setKeybindListening(this._activeKeybindButton, false);
+      this.ui.updateKeybindLabels(this.settings.values.keyBindings);
+    }
+    this._activeKeybindButton = button;
+    this.ui.setKeybindListening(button, true);
+    this.input.listenForNextKey((code) => {
+      this._activeKeybindButton = null;
+      if (code !== 'Escape') this.settings.setKeyBinding(action, code);
+      this.ui.updateKeybindLabels(this.settings.values.keyBindings);
+    });
   }
 
   /** Debug: advance the enemy's appearance type and re-show its intro banner. */
@@ -274,6 +310,9 @@ export class Game {
     this.player._healthRegenTimer = 0;
     this.player.koScored = 0;
     this.player.deaths = 0;
+    this.player.specialsUsed = 0;
+    this.player.bombsThrown = 0;
+    this.player.climbsCompleted = 0;
     this.player.special.reset();
     this.player.weapon.cooldown = 0;
     this.player.weapon.resetCharge();
@@ -291,6 +330,7 @@ export class Game {
     this.cpu._healthRegenTimer = 0;
     this.cpu.koScored = 0;
     this.cpu.deaths = 0;
+    this.cpu.practiceMode = this.practiceMode;
     this.cpu.resetTactics({ newMatch: true });
     // Fresh random look each match; the entrance animation plays once the
     // countdown ends (see _updateCountdown), not during the reset.
@@ -398,12 +438,31 @@ export class Game {
     if (outcome === 'win') this.audioManager.playWin();
     else if (outcome === 'lose') this.audioManager.playLose();
 
+    // Practice matches are a safe sandbox, not a real result — don't let them
+    // skew the persisted win/loss record.
+    if (!this.practiceMode) {
+      this.matchRecord.recordMatch({
+        outcome,
+        difficultyId: this.selectedDifficulty,
+        playerPct: cov.playerPct,
+        koPlayer: this.player.koScored,
+        koCpu: this.cpu.koScored,
+      });
+      this.ui.updateMatchRecord(this.matchRecord);
+    }
+
     this.ui.showResult({
       playerPct: cov.playerPct,
       cpuPct: cov.cpuPct,
       koPlayer: this.player.koScored,
       koCpu: this.cpu.koScored,
       outcome,
+      stats: {
+        inkRolls: { player: this.player.inkRollsUsed, cpu: 0 }, // CPU never ink-rolls
+        climbs: { player: this.player.climbsCompleted, cpu: this.cpu.climbsCompleted },
+        bombs: { player: this.player.bombsThrown, cpu: this.cpu.bombsThrown },
+        specials: { player: this.player.specialsUsed, cpu: this.cpu.specialsUsed },
+      },
     });
   }
 
@@ -627,6 +686,7 @@ export class Game {
       this.cpu.playIntro(); // enemy "appears" as play begins
       this.state = STATE.PLAYING;
       this.audioManager.playBattleBGM();
+      if (this.practiceMode) this.ui.showStatusMessage('練習モード — CPUは攻撃しません', 2.5);
     }
   }
 

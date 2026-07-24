@@ -114,6 +114,17 @@ html, body {
   font-size: 0.95rem;
 }
 
+.match-record {
+  margin: -0.9rem 0 1.3rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--clr-panel-border);
+  display: inline-block;
+}
+.mr-line { font-size: 0.76rem; color: var(--clr-text-dim); }
+.mr-line b { color: var(--clr-text); font-weight: 700; font-variant-numeric: tabular-nums; }
+
 .panel.how-to-play {
   background: rgba(255,255,255,0.03);
   border: 1px solid var(--clr-panel-border);
@@ -196,6 +207,23 @@ html, body {
   background:linear-gradient(135deg,rgba(47,184,255,.2),rgba(228,108,255,.12));
   color:#fff;
   box-shadow:0 0 16px rgba(47,184,255,.2),inset 0 0 12px rgba(255,255,255,.04);
+}
+
+.practice-mode-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: -0.5rem 0 1.1rem;
+  font-size: 0.78rem;
+  color: var(--clr-text-dim);
+  cursor: pointer;
+}
+.practice-mode-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--clr-player);
+  cursor: pointer;
 }
 
 .btn-primary {
@@ -345,6 +373,64 @@ html, body {
   box-shadow: 0 0 8px rgba(47,184,255,0.6);
   cursor: pointer;
 }
+.settings-row-checkbox {
+  grid-template-columns: 1fr auto;
+}
+.settings-row-checkbox input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--clr-player);
+  cursor: pointer;
+  justify-self: end;
+}
+
+.keybind-title {
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  color: var(--clr-text-dim);
+  text-transform: uppercase;
+  margin: 1rem 0 0.5rem;
+  text-align: left;
+}
+.keybind-list {
+  list-style: none;
+  margin: 0 0 0.6rem;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.keybind-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.32rem 0;
+  font-size: 0.8rem;
+  color: var(--clr-text-dim);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.keybind-btn {
+  appearance: none;
+  cursor: pointer;
+  min-width: 4.6rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.22);
+  background: rgba(255,255,255,0.06);
+  color: var(--clr-text);
+  font-size: 0.76rem;
+  font-weight: 700;
+  font-family: inherit;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.keybind-btn:hover { border-color: rgba(47,184,255,0.5); }
+.keybind-btn.listening {
+  border-color: #fff27a;
+  background: rgba(255,242,122,0.14);
+  color: #fff27a;
+  animation: keybind-listen-pulse 0.7s ease-in-out infinite alternate;
+}
+@keyframes keybind-listen-pulse { to { filter: brightness(1.3); } }
 
 /* ============ Countdown ============ */
 #screen-countdown {
@@ -636,7 +722,22 @@ html, body {
 
 .result-detail { color: var(--clr-text-dim); font-size: 0.82rem; margin-bottom: 0.6rem; }
 .result-detail b { color: var(--clr-text); font-weight: 700; }
-.result-ko { color: var(--clr-text-dim); font-size: 0.9rem; margin-bottom: 1.4rem; }
+.result-ko { color: var(--clr-text-dim); font-size: 0.9rem; margin-bottom: 0.9rem; }
+
+.result-stats {
+  list-style: none;
+  margin: 0 0 1.3rem;
+  padding: 0.7rem 0.9rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem 1rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--clr-panel-border);
+  border-radius: 10px;
+  text-align: left;
+}
+.result-stats li { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; font-size: 0.76rem; color: var(--clr-text-dim); }
+.result-stats b { color: var(--clr-text); font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .result-margin {
   display: inline-block;

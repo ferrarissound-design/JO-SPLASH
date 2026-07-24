@@ -44,6 +44,11 @@ export class Player extends Character {
     this.inkRollCooldown = 0;
     this.inkRollArmorTimer = 0;
     this.inkRollsUsed = 0;
+    // Mirrors EnemyAI's equivalent counters so the result screen can show a
+    // symmetric YOU/CPU stat line (see Game._endMatch).
+    this.specialsUsed = 0;
+    this.bombsThrown = 0;
+    this.climbsCompleted = 0;
     this._fireWasHeld = false;
     this._debugClimbHold = false;
   }
@@ -91,7 +96,7 @@ export class Player extends Character {
 
     const wasInkSurfing = this.inkSurfActive;
     if (controlsEnabled && !this.isInkRolling && this.input.wasJustPressed('KeyQ')) {
-      this.special.activate(this, audioManager, ctx.ui);
+      if (this.special.activate(this, audioManager, ctx.ui)) this.specialsUsed++;
     }
     if (controlsEnabled) this._handleWeaponSelection(ctx.ui);
 
@@ -340,6 +345,7 @@ export class Player extends Character {
     this.position.y = panel.topY;
     this.velocity.set(panel.normal.x * 2.2, 3, panel.normal.z * 2.2);
     this.grounded = false;
+    this.climbsCompleted++;
     this._endClimb();
   }
 
@@ -514,6 +520,8 @@ export class Player extends Character {
   _handleSubWeapon(projectileManager, particleManager, audioManager) {
     if (!this.input.wasJustPressed('KeyE') || this.special.active || this.isInkRolling) return;
     this._prepareShot();
-    this.subWeapon.fire(this, _fireOrigin, _aimDir, projectileManager, audioManager, particleManager);
+    if (this.subWeapon.fire(this, _fireOrigin, _aimDir, projectileManager, audioManager, particleManager)) {
+      this.bombsThrown++;
+    }
   }
 }

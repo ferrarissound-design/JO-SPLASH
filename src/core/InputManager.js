@@ -1,3 +1,22 @@
+// Physical-key -> canonical-action-code defaults. The canonical code is
+// deliberately the same string every other system already reads (Player.js,
+// TouchControls) so rebinding needs no changes anywhere outside this file:
+// whatever physical key is currently bound to "jump" gets translated into a
+// 'Space' keydown/keyup, exactly as if Space itself had been pressed.
+export const DEFAULT_KEY_BINDINGS = Object.freeze({
+  moveForward: 'KeyW',
+  moveBack: 'KeyS',
+  moveLeft: 'KeyA',
+  moveRight: 'KeyD',
+  jump: 'Space',
+  inkSurf: 'ShiftLeft',
+  special: 'KeyQ',
+  bomb: 'KeyE',
+  weapon1: 'Digit1',
+  weapon2: 'Digit2',
+  weapon3: 'Digit3',
+});
+
 // ============================================================================
 // InputManager — keyboard + mouse + touch state and pointer-lock handling.
 // Exposes plain state (`keys`, `mouseDown`, mouse deltas) that other systems
@@ -8,6 +27,11 @@
 // public `setVirtualKey`, `addLookDelta`, and `setFireHeld` methods, so
 // Player/CameraController/Game never need to know whether an input came
 // from a keyboard+mouse or a finger.
+//
+// Rebindable keys: setKeyBindings() lets a physical key other than the
+// default trigger the same canonical action (see DEFAULT_KEY_BINDINGS above).
+// Any physical code not part of that fixed action set (Escape, R, debug
+// keys, ShiftRight, ...) always passes through untouched.
 // ============================================================================
 export class InputManager {
   constructor(domElement) {
@@ -27,10 +51,26 @@ export class InputManager {
 
     this._justPressed = Object.create(null);
 
+    this._canonicalCodes = new Set(Object.values(DEFAULT_KEY_BINDINGS));
+    this._rebindListener = null;
+    this.setKeyBindings({});
+
     this._onKeyDown = (e) => {
+      if (this._rebindListener) {
+        const listener = this._rebindListener;
+        this._rebindListener = null;
+        listener(e.code);
+        return;
+      }
+      const canonical = this._physicalToCanonical.get(e.code);
+      if (canonical) { this.setVirtualKey(canonical, true); return; }
+      if (this._canonicalCodes.has(e.code)) return; // reassigned to a different physical key; ignore the stale one
       this.setVirtualKey(e.code, true);
     };
     this._onKeyUp = (e) => {
+      const canonical = this._physicalToCanonical.get(e.code);
+      if (canonical) { this.setVirtualKey(canonical, false); return; }
+      if (this._canonicalCodes.has(e.code)) return;
       this.setVirtualKey(e.code, false);
     };
     this._onMouseDown = (e) => {
@@ -120,6 +160,31 @@ export class InputManager {
   setVirtualKey(code, isDown) {
     if (isDown && !this.keys[code]) this._justPressed[code] = true;
     this.keys[code] = isDown;
+  }
+
+  /** Merges action->physicalCode overrides onto the defaults and rebuilds the reverse lookup. */
+  setKeyBindings(overrides = {}) {
+    this.keyBindings = { ...DEFAULT_KEY_BINDINGS, ...overrides };
+    this._physicalToCanonical = new Map();
+    for (const action of Object.keys(DEFAULT_KEY_BINDINGS)) {
+      const physical = this.keyBindings[action] ?? DEFAULT_KEY_BINDINGS[action];
+      const canonical = DEFAULT_KEY_BINDINGS[action];
+      this._physicalToCanonical.set(physical, canonical);
+    }
+  }
+
+  /**
+   * Captures the next physical keydown instead of applying it as gameplay
+   * input, for a settings-screen "press a key to rebind" flow. Calls back
+   * with the captured e.code once, then stops listening automatically.
+   */
+  listenForNextKey(callback) {
+    this._rebindListener = callback;
+  }
+
+  /** Aborts an in-progress listenForNextKey() without capturing anything. */
+  cancelKeyListen() {
+    this._rebindListener = null;
   }
 
   /** Feeds a look-drag delta (in CSS pixels) into the same accumulator mouse movement uses. */
