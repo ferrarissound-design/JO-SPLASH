@@ -1,3 +1,12 @@
+import { ARENA } from '../config.js';
+
+const MAP_COLORS = {
+  neutralA: [17, 27, 44, 255],
+  neutralB: [21, 34, 53, 255],
+  player: [47, 184, 255, 255],
+  cpu: [255, 122, 47, 255],
+};
+
 // ============================================================================
 // UIManager — all DOM reads/writes live here. Game.js calls plain methods
 // with already-computed numbers; this class never touches gameplay state
@@ -24,6 +33,9 @@ export class UIManager {
       coverageBarPlayer: document.getElementById('coverage-bar-player'),
       coverageBarCpu: document.getElementById('coverage-bar-cpu'),
       statusMsg: document.getElementById('status-msg'),
+      turfMap: document.getElementById('turf-map'),
+      turfMapCanvas: document.getElementById('turf-map-canvas'),
+      turfMapStatus: document.getElementById('turf-map-status'),
 
       hpRow: document.getElementById('hp-row'),
       hpFill: document.getElementById('hp-fill'),
@@ -70,6 +82,10 @@ export class UIManager {
     this._lastKoPlayer = 0;
     this._lastKoCpu = 0;
     this._crosshairTimer = 0;
+    this._turfMapTimer = 0;
+    this._turfMapCtx = this.el.turfMapCanvas?.getContext('2d') ?? null;
+    this._turfMapImage = null;
+    this.resetTurfMap();
   }
 
   bindStart(cb) { this.el.btnStart.addEventListener('click', cb); }
@@ -231,6 +247,137 @@ export class UIManager {
     if (this.el.enemySpecialWarningLabel) {
       this.el.enemySpecialWarningLabel.textContent = active ? 'CPU INK BURST' : 'CPU BURST CHARGING';
     }
+  }
+
+  resetTurfMap() {
+    const canvas = this.el.turfMapCanvas;
+    const ctx = this._turfMapCtx;
+    if (!canvas || !ctx) return;
+    ctx.fillStyle = '#111b2c';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    this._drawTurfMapStage(ctx, canvas.width);
+    this._turfMapTimer = 0;
+    this._turfMapImage = null;
+    this.el.turfMap?.classList.remove('cpu-hidden');
+    if (this.el.turfMap) {
+      this.el.turfMap.dataset.cpuVisible = 'false';
+      this.el.turfMap.dataset.playerCell = '-';
+      this.el.turfMap.dataset.cpuCell = '-';
+    }
+    if (this.el.turfMapStatus) this.el.turfMapStatus.textContent = '塗装マップを準備中';
+  }
+
+  updateTurfMap(dt, {
+    ownerGrid, gridRes, halfWidth, halfDepth,
+    playerX, playerZ, playerYaw, playerAlive,
+    cpuX, cpuZ, cpuYaw, cpuVisible,
+    playerPct, cpuPct,
+  }) {
+    const canvas = this.el.turfMapCanvas;
+    let ctx = this._turfMapCtx;
+    if (!canvas || !ctx || !ownerGrid) return;
+
+    this._turfMapTimer -= dt;
+    if (this._turfMapTimer > 0) return;
+    this._turfMapTimer = 0.12;
+
+    if (canvas.width !== gridRes || canvas.height !== gridRes) {
+      canvas.width = gridRes;
+      canvas.height = gridRes;
+      ctx = canvas.getContext('2d');
+      this._turfMapCtx = ctx;
+      this._turfMapImage = null;
+    }
+    if (!this._turfMapImage || this._turfMapImage.width !== gridRes) {
+      this._turfMapImage = ctx.createImageData(gridRes, gridRes);
+    }
+
+    const pixels = this._turfMapImage.data;
+    for (let i = 0; i < ownerGrid.length; i++) {
+      const owner = ownerGrid[i];
+      const x = i % gridRes;
+      const z = Math.floor(i / gridRes);
+      const color = owner === 1
+        ? MAP_COLORS.player
+        : owner === 2
+          ? MAP_COLORS.cpu
+          : ((x >> 3) + (z >> 3)) % 2
+            ? MAP_COLORS.neutralA
+            : MAP_COLORS.neutralB;
+      const p = i * 4;
+      pixels[p] = color[0];
+      pixels[p + 1] = color[1];
+      pixels[p + 2] = color[2];
+      pixels[p + 3] = color[3];
+    }
+    ctx.putImageData(this._turfMapImage, 0, 0);
+    this._drawTurfMapStage(ctx, gridRes);
+
+    const toMap = (value, halfExtent) => ((value + halfExtent) / (halfExtent * 2)) * gridRes;
+    const playerMapX = toMap(playerX, halfWidth);
+    const playerMapZ = toMap(playerZ, halfDepth);
+    const cpuMapX = toMap(cpuX, halfWidth);
+    const cpuMapZ = toMap(cpuZ, halfDepth);
+    if (playerAlive) this._drawTurfMapMarker(ctx, playerMapX, playerMapZ, playerYaw, '#2fb8ff');
+    if (cpuVisible) this._drawTurfMapMarker(ctx, cpuMapX, cpuMapZ, cpuYaw, '#ff7a2f');
+
+    const map = this.el.turfMap;
+    if (map) {
+      map.classList.toggle('cpu-hidden', !cpuVisible);
+      map.dataset.cpuVisible = String(cpuVisible);
+      map.dataset.playerCell = `${Math.round(playerMapX)},${Math.round(playerMapZ)}`;
+      map.dataset.cpuCell = cpuVisible ? `${Math.round(cpuMapX)},${Math.round(cpuMapZ)}` : 'hidden';
+    }
+    if (this.el.turfMapStatus) {
+      const enemyStatus = cpuVisible ? 'CPU表示中' : 'CPU潜伏または撃破中';
+      this.el.turfMapStatus.textContent =
+        `塗装マップ: YOU ${playerPct.toFixed(0)}%、CPU ${cpuPct.toFixed(0)}%、${enemyStatus}`;
+    }
+  }
+
+  _drawTurfMapStage(ctx, size) {
+    const platformSize = size * (ARENA.platformSize / ARENA.width);
+    const platformStart = (size - platformSize) / 2;
+    const rampWidth = size * (ARENA.rampWidth / ARENA.width);
+    const rampLength = size * (ARENA.rampLength / ARENA.depth);
+    const rampX = size / 2 + size * (ARENA.rampOffsetX / ARENA.width) - rampWidth / 2;
+    const rampZ = platformStart + platformSize;
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,.28)';
+    ctx.lineWidth = Math.max(1, size / 128);
+    ctx.strokeRect(1, 1, size - 2, size - 2);
+    ctx.strokeStyle = 'rgba(255,242,122,.46)';
+    ctx.strokeRect(platformStart, platformStart, platformSize, platformSize);
+    ctx.strokeStyle = 'rgba(255,242,122,.28)';
+    ctx.strokeRect(rampX, rampZ, rampWidth, rampLength);
+    ctx.beginPath();
+    ctx.moveTo(size / 2 - 4, 5);
+    ctx.lineTo(size / 2, 1);
+    ctx.lineTo(size / 2 + 4, 5);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  _drawTurfMapMarker(ctx, x, z, yaw, color) {
+    const radius = Math.max(4, ctx.canvas.width * 0.035);
+    ctx.save();
+    ctx.translate(x, z);
+    ctx.rotate(-yaw);
+    ctx.fillStyle = color;
+    ctx.strokeStyle = 'rgba(255,255,255,.95)';
+    ctx.lineWidth = Math.max(1.4, ctx.canvas.width / 90);
+    ctx.shadowColor = 'rgba(0,0,0,.8)';
+    ctx.shadowBlur = radius;
+    ctx.beginPath();
+    ctx.moveTo(0, -radius * 1.55);
+    ctx.lineTo(radius, radius);
+    ctx.lineTo(0, radius * 0.55);
+    ctx.lineTo(-radius, radius);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
   }
 
   showRespawnBanner() { this.el.respawnBanner.classList.remove('hidden'); }

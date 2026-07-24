@@ -111,6 +111,15 @@
         </div>
       </div>
 
+      <aside id="turf-map" class="turf-map" aria-label="ライブ塗装マップ">
+        <div class="turf-map-heading"><strong>TURF MAP</strong><span>N</span></div>
+        <canvas id="turf-map-canvas" width="128" height="128" aria-hidden="true"></canvas>
+        <div class="turf-map-legend" aria-hidden="true">
+          <span class="map-you">YOU</span><span class="map-cpu">CPU</span>
+        </div>
+        <span id="turf-map-status" class="sr-only">塗装マップを準備中</span>
+      </aside>
+
       <div id="crosshair">
         <span class="ch-line ch-top"></span>
         <span class="ch-line ch-bottom"></span>

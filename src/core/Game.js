@@ -253,6 +253,7 @@ export class Game {
     this.ui.hideRespawnBanner();
     this.ui.updateEnemyMarker({ visible: false });
     this.ui.updateEnemySpecialWarning({ visible: false });
+    this.ui.resetTurfMap();
     this._cpuHitFlashTimer = 0;
     this._wasPlayerInkSurfing = false;
     this._currentCameraSink = 0;
@@ -478,6 +479,22 @@ export class Game {
     this._updateCpuVisibility(dt);
 
     const cov = this.paintSystem.getCoverage();
+    this.ui.updateTurfMap(dt, {
+      ownerGrid: this.paintSystem.ownerGrid,
+      gridRes: this.paintSystem.gridRes,
+      halfWidth: this.paintSystem.halfWidth,
+      halfDepth: this.paintSystem.halfDepth,
+      playerX: this.player.position.x,
+      playerZ: this.player.position.z,
+      playerYaw: this.player.yaw,
+      playerAlive: this.player.alive,
+      cpuX: this.cpu.position.x,
+      cpuZ: this.cpu.position.z,
+      cpuYaw: this.cpu.yaw,
+      cpuVisible: this.cpu.alive && !this.cpu.isConcealed,
+      playerPct: cov.playerPct,
+      cpuPct: cov.cpuPct,
+    });
     this.ui.updateHUD({
       timeRemaining: this.matchTimeRemaining,
       playerPct: cov.playerPct,
@@ -593,6 +610,7 @@ export class Game {
       `cpu ai state: ${this.cpu.state}  wall:${this.cpu._climbPlanPanel?.label ?? '-'}`,
       `cpu climbs: ${this.cpu.climbsCompleted}/${this.cpu.climbAttempts}`,
       `cpu difficulty: ${this.cpu.difficulty.id}`,
+      `map cpu visible: ${this.cpu.alive && !this.cpu.isConcealed}`,
       `cpu weapon: ${this.cpu.weapon.displayName}  switches:${this.cpu.weaponSwitches}`,
       `cpu bombs: ${this.cpu.bombsThrown}  cd:${this.cpu.subWeapon.cooldown.toFixed(2)}  think:${this.cpu._bombDecisionCooldown.toFixed(2)}`,
       `cpu special: ${this.cpu.special.charge.toFixed(1)}%  windup:${this.cpu.specialWindingUp}  active:${this.cpu.special.active}  used:${this.cpu.specialsUsed}`,
