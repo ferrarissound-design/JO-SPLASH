@@ -222,7 +222,7 @@ export class PaintSystem {
 
     const paintedCells = this._paintGrid(x, z, radius, owner);
     this._paintCanvas(x, z, radius, team, opts);
-    this._addGloss(x, z, radius, team, opts);
+    if (!opts.skipGloss) this._addGloss(x, z, radius, team, opts);
     this._dirty = true;
     return paintedCells;
   }

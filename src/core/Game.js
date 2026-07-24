@@ -690,6 +690,7 @@ export class Game {
       `special: ${this.player.special.charge.toFixed(1)}%  active:${this.player.special.active}`,
       `ink roll: ${this.player.isInkRolling}  armor:${this.player.inkRollArmorTimer.toFixed(2)}  cd:${this.player.inkRollCooldown.toFixed(2)}  used:${this.player.inkRollsUsed}`,
       `weapon: ${this.player.weapon.displayName}  charge:${(this.player.weapon.charge * 100).toFixed(0)}%  charging:${this.player.weapon.charging}  bomb cd:${this.player.subWeapon.cooldown.toFixed(2)}`,
+      `precision lines: ${this.projectileManager.chargeLinesFired}  cells:${this.projectileManager.chargeLinePaintedCells}  walls:${this.projectileManager.chargeWallStrokes}`,
       'debug keys: C=full charge  G=ink roll  T=final 12s  P=player special  O=CPU special  L=CPU climb  B=CPU bomb  K=CPU weapon  V=enemy',
       `projectiles active: ${this.projectileManager.pool.filter((p) => p.active).length}/${this.projectileManager.pool.length}`,
       `particles active: ${this.particleManager.pool.filter((p) => p.active).length}/${this.particleManager.pool.length}`,

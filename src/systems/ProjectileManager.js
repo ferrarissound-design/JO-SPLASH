@@ -5,6 +5,9 @@ const _p1 = new THREE.Vector3();
 const _p2 = new THREE.Vector3();
 const _closestOnSeg = new THREE.Vector3();
 const _raySegDir = new THREE.Vector3();
+const _paintSample = new THREE.Vector3();
+const _paintRayOrigin = new THREE.Vector3();
+const _down = new THREE.Vector3(0, -1, 0);
 const _raycaster = new THREE.Raycaster();
 
 /** Closest squared distance between a moving point's swept segment (a0->a1) and a
@@ -71,6 +74,9 @@ export class ProjectileManager {
 
     this.onCharacterHit = null; // (targetTeam, damage, hitPoint) => void, set by Game
     this.onPaint = null; // (team, changedCells) => void, set by Game
+    this.chargeLinesFired = 0;
+    this.chargeLinePaintedCells = 0;
+    this.chargeWallStrokes = 0;
   }
 
   _createSlot() {
@@ -100,6 +106,13 @@ export class ProjectileManager {
       maxLifeSec: WEAPON.maxLifeSec,
       gravity: 0,
       speed: WEAPON.projectileSpeed,
+      chargeRatio: 0,
+      paintLineRadius: 0,
+      paintLineSpacing: 0,
+      paintLineDrop: 0,
+      wallPaintLength: 0,
+      nextLinePaintDistance: 0,
+      linePaintedCells: 0,
       active: false,
     };
   }
@@ -121,7 +134,15 @@ export class ProjectileManager {
     slot.maxLifeSec = profile.maxLifeSec;
     slot.gravity = profile.gravity ?? 0;
     slot.speed = profile.projectileSpeed;
+    slot.chargeRatio = profile.chargeRatio ?? 0;
+    slot.paintLineRadius = profile.paintLineRadius ?? 0;
+    slot.paintLineSpacing = profile.paintLineSpacing ?? 0;
+    slot.paintLineDrop = profile.paintLineDrop ?? 0;
+    slot.wallPaintLength = profile.wallPaintLength ?? 0;
+    slot.nextLinePaintDistance = Math.max(0.9, slot.paintLineSpacing);
+    slot.linePaintedCells = 0;
     slot.active = true;
+    if (slot.paintLineRadius > 0) this.chargeLinesFired++;
 
     const color = team === TEAM.PLAYER ? 0x2fb8ff : 0xff7a2f;
     slot.headMat.color.setHex(color);
@@ -149,6 +170,8 @@ export class ProjectileManager {
       slot.life += dt;
       slot.distance += slot.speed * dt;
 
+      if (slot.paintLineRadius > 0) this._paintChargedLine(slot);
+
       if (slot.life >= slot.maxLifeSec || slot.distance >= slot.maxRange) {
         this._deactivate(slot);
         continue;
@@ -158,6 +181,55 @@ export class ProjectileManager {
       if (this._checkTerrainHit(slot)) continue;
 
       slot.group.position.copy(slot.position);
+    }
+  }
+
+  _paintChargedLine(slot) {
+    const segmentLength = slot.position.distanceTo(slot.prevPosition);
+    if (segmentLength <= 1e-6 || slot.paintLineSpacing <= 0) return;
+
+    const segmentStartDistance = Math.max(0, slot.distance - segmentLength);
+    const color = slot.team === TEAM.PLAYER ? 0x2fb8ff : 0xff7a2f;
+    const paintThroughDistance = Math.min(slot.distance, slot.maxRange);
+    while (slot.nextLinePaintDistance <= paintThroughDistance) {
+      const stampIndex = Math.floor(slot.nextLinePaintDistance / slot.paintLineSpacing);
+      const t = THREE.MathUtils.clamp(
+        (slot.nextLinePaintDistance - segmentStartDistance) / segmentLength,
+        0,
+        1,
+      );
+      _paintSample.lerpVectors(slot.prevPosition, slot.position, t);
+      _paintRayOrigin.copy(_paintSample);
+
+      _raycaster.set(_paintRayOrigin, _down);
+      _raycaster.near = 0;
+      _raycaster.far = slot.paintLineDrop;
+      const hits = _raycaster.intersectObjects(this.arenaMeshes, false);
+      if (hits.length > 0 && this.arena.paintableFloorMeshes.has(hits[0].object)) {
+        const floorHit = hits[0];
+        const paintedCells = this.paintSystem.paintSplat(
+          floorHit.point.x,
+          floorHit.point.z,
+          slot.paintLineRadius,
+          slot.team,
+          {
+            dirX: slot.velocity.x,
+            dirZ: slot.velocity.z,
+            stretch: 1.18,
+            minorScale: 0.78,
+            splatterScale: 0.08 + slot.chargeRatio * 0.08,
+            glossScale: 0.34 + slot.chargeRatio * 0.18,
+            skipGloss: stampIndex % 3 !== 0,
+          },
+        );
+        slot.linePaintedCells += paintedCells;
+        this.chargeLinePaintedCells += paintedCells;
+        this.onPaint?.(slot.team, paintedCells);
+        if (paintedCells > 0 && stampIndex % 3 === 0) {
+          this.particleManager?.spawnInkLineSpray(floorHit.point, color, slot.chargeRatio);
+        }
+      }
+      slot.nextLinePaintDistance += slot.paintLineSpacing;
     }
   }
 
@@ -174,7 +246,12 @@ export class ProjectileManager {
         const hitPoint = _closestOnSeg.clone();
         // Game's onCharacterHit callback plays the damage sound; nothing further needed here.
         this.onCharacterHit?.(target.team, slot.damage, hitPoint);
-        this.particleManager?.spawnSplat(hitPoint, slot.team === TEAM.PLAYER ? 0x2fb8ff : 0xff7a2f);
+        const color = slot.team === TEAM.PLAYER ? 0x2fb8ff : 0xff7a2f;
+        if (slot.chargeRatio > 0) {
+          this.particleManager?.spawnChargedImpact(hitPoint, color, slot.chargeRatio);
+        } else {
+          this.particleManager?.spawnSplat(hitPoint, color);
+        }
         this._deactivate(slot);
         return true;
       }
@@ -206,10 +283,26 @@ export class ProjectileManager {
         stretch: 1.45,
       });
       this.onPaint?.(slot.team, paintedCells);
-      this.particleManager?.spawnSplat(hit.point, color, true);
+      if (slot.chargeRatio > 0) {
+        this.particleManager?.spawnChargedImpact(hit.point, color, slot.chargeRatio);
+      } else {
+        this.particleManager?.spawnSplat(hit.point, color, true);
+      }
     } else if (climbPanel) {
-      climbPanel.paint.paintSplat(hit.point, slot.paintRadius, slot.team);
-      this.particleManager?.spawnSplat(hit.point, color, true);
+      if (slot.wallPaintLength > 0) {
+        climbPanel.paint.paintStroke(
+          hit.point,
+          slot.velocity,
+          slot.wallPaintLength,
+          Math.max(slot.paintLineRadius, slot.paintRadius * 0.42),
+          slot.team,
+        );
+        this.chargeWallStrokes++;
+        this.particleManager?.spawnChargedImpact(hit.point, color, slot.chargeRatio);
+      } else {
+        climbPanel.paint.paintSplat(hit.point, slot.paintRadius, slot.team);
+        this.particleManager?.spawnSplat(hit.point, color, true);
+      }
     } else {
       this.particleManager?.spawnSplat(hit.point, color, false);
     }
@@ -226,6 +319,9 @@ export class ProjectileManager {
 
   reset() {
     for (const slot of this.pool) this._deactivate(slot);
+    this.chargeLinesFired = 0;
+    this.chargeLinePaintedCells = 0;
+    this.chargeWallStrokes = 0;
   }
 
   dispose() {

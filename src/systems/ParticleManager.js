@@ -92,6 +92,45 @@ export class ParticleManager {
     }
   }
 
+  spawnInkLineSpray(position, color, chargeRatio = 0) {
+    const ratio = Math.max(0, Math.min(1, chargeRatio));
+    const count = ratio >= 0.8 ? 2 : 1;
+    for (let i = 0; i < count; i++) {
+      const v = new THREE.Vector3(
+        (Math.random() - 0.5) * (0.7 + ratio),
+        0.35 + Math.random() * (0.65 + ratio * 0.55),
+        (Math.random() - 0.5) * (0.7 + ratio),
+      );
+      this._spawnOne(position, color, {
+        velocity: v,
+        life: 0.18 + ratio * 0.18,
+        gravity: -6,
+        scale: 0.035 + Math.random() * (0.035 + ratio * 0.025),
+        opacity: 0.68,
+      });
+    }
+  }
+
+  spawnChargedImpact(position, color, chargeRatio = 0) {
+    const ratio = Math.max(0, Math.min(1, chargeRatio));
+    const count = Math.ceil(PARTICLES.splatCount * (0.65 + ratio * 0.7));
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 1.4 + Math.random() * (2.8 + ratio * 2.4);
+      const v = new THREE.Vector3(
+        Math.cos(angle) * speed,
+        0.5 + Math.random() * (2.2 + ratio * 1.6),
+        Math.sin(angle) * speed,
+      );
+      this._spawnOne(position, color, {
+        velocity: v,
+        life: PARTICLES.splatLifeSec * (0.8 + ratio * 0.65),
+        gravity: -9.5,
+        scale: 0.055 + Math.random() * (0.075 + ratio * 0.07),
+      });
+    }
+  }
+
   spawnKOExplosion(position, color) {
     for (let i = 0; i < PARTICLES.koCount; i++) {
       const angle = Math.random() * Math.PI * 2;

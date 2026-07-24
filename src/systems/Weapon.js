@@ -163,6 +163,10 @@ export class Weapon {
       damage: lerp(charge.minDamage, charge.fullDamage, eased),
       spreadRad: lerp(charge.minSpreadRad, charge.fullSpreadRad, eased),
       paintRadius: lerp(charge.minPaintRadius, charge.fullPaintRadius, eased),
+      paintLineRadius: lerp(charge.minLineRadius, charge.fullLineRadius, eased),
+      paintLineSpacing: lerp(charge.minLineSpacing, charge.fullLineSpacing, eased),
+      paintLineDrop: lerp(charge.minLineDrop, charge.fullLineDrop, eased),
+      wallPaintLength: lerp(charge.minWallLineLength, charge.fullWallLineLength, eased),
       fireInterval: lerp(charge.minFireInterval, charge.fullFireInterval, eased),
       chargeRatio: ratio,
     };

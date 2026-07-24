@@ -8,6 +8,7 @@ const OWNER_BY_TEAM = { [TEAM.PLAYER]: OWNER_PLAYER, [TEAM.CPU]: OWNER_CPU };
 const COLOR_BY_TEAM = { [TEAM.PLAYER]: '#2fb8ff', [TEAM.CPU]: '#ff7a2f' };
 
 const _rel = new THREE.Vector3();
+const _strokeSample = new THREE.Vector3();
 
 function hexToCss(hex) {
   return `#${hex.toString(16).padStart(6, '0')}`;
@@ -97,7 +98,7 @@ export class WallPanel {
   /** Paint a circular splat (world-space radius) centered at a world point, owned by `team`. */
   paintSplat(point, radiusWorld, team) {
     const owner = OWNER_BY_TEAM[team];
-    if (!owner) return;
+    if (!owner) return 0;
 
     const [u, v] = this._worldToUV(point);
     const ru = radiusWorld / this.width;
@@ -113,6 +114,7 @@ export class WallPanel {
     const minR = Math.max(0, cv - cellRv);
     const maxR = Math.min(this.rows - 1, cv + cellRv);
 
+    let paintedCells = 0;
     for (let r = minR; r <= maxR; r++) {
       for (let c = minC; c <= maxC; c++) {
         const du = (c + 0.5) / this.cols - u;
@@ -125,6 +127,7 @@ export class WallPanel {
         if (prev === OWNER_PLAYER) this.playerCells--;
         else if (prev === OWNER_CPU) this.cpuCells--;
         this.grid[idx] = owner;
+        paintedCells++;
         if (owner === OWNER_PLAYER) this.playerCells++;
         else this.cpuCells++;
       }
@@ -143,6 +146,45 @@ export class WallPanel {
     this.ctx.arc(px, py, pr, 0, Math.PI * 2);
     this.ctx.fill();
     this.texture.needsUpdate = true;
+    return paintedCells;
+  }
+
+  /**
+   * Paints a charger-style stripe ending at `point`. The incoming shot
+   * direction is projected onto the wall plane; a near-perpendicular hit
+   * falls back to a vertical bottom-to-top stroke so a charged shot remains
+   * useful for opening a climb route.
+   */
+  paintStroke(point, direction, lengthWorld, radiusWorld, team) {
+    if (lengthWorld <= 0 || radiusWorld <= 0) return 0;
+
+    const along = direction.dot(this.tangent);
+    let vertical = direction.y;
+    let projectedLength = Math.hypot(along, vertical);
+    let alongNorm = along;
+    if (projectedLength < 0.12) {
+      alongNorm = 0;
+      vertical = 1;
+      projectedLength = 1;
+    }
+    alongNorm /= projectedLength;
+    vertical /= projectedLength;
+
+    const spacing = Math.max(0.2, radiusWorld * 0.72);
+    const steps = Math.max(1, Math.ceil(lengthWorld / spacing));
+    let paintedCells = 0;
+    for (let i = 0; i <= steps; i++) {
+      const distanceBack = lengthWorld * (1 - i / steps);
+      _strokeSample.copy(point).addScaledVector(this.tangent, -alongNorm * distanceBack);
+      _strokeSample.y -= vertical * distanceBack;
+
+      _rel.subVectors(_strokeSample, this.origin);
+      const rawU = _rel.dot(this.tangent) / this.width;
+      const rawV = _rel.y / this.height;
+      if (rawU < 0 || rawU > 1 || rawV < 0 || rawV > 1) continue;
+      paintedCells += this.paintSplat(_strokeSample, radiusWorld, team);
+    }
+    return paintedCells;
   }
 
   reset() {
