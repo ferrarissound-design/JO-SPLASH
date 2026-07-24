@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PAINT, TEAM, COLORS } from '../config.js';
+import { PAINT, TEAM } from '../config.js';
 
 const OWNER_NONE = 0;
 const OWNER_PLAYER = 1;
@@ -9,10 +9,6 @@ const COLOR_BY_TEAM = { [TEAM.PLAYER]: '#2fb8ff', [TEAM.CPU]: '#ff7a2f' };
 
 const _rel = new THREE.Vector3();
 const _strokeSample = new THREE.Vector3();
-
-function hexToCss(hex) {
-  return `#${hex.toString(16).padStart(6, '0')}`;
-}
 
 // ============================================================================
 // WallPanel — a small paintable vertical surface. Unlike PaintSystem's floor
@@ -29,7 +25,11 @@ export class WallPanel {
     this.width = width;
     this.height = height;
 
-    this.cols = PAINT.wallGridCols;
+    this.cols = THREE.MathUtils.clamp(
+      Math.ceil(PAINT.wallGridRows * width / Math.max(0.1, height)),
+      4,
+      96,
+    );
     this.rows = PAINT.wallGridRows;
     this.grid = new Uint8Array(this.cols * this.rows);
     this.playerCells = 0;
@@ -135,16 +135,21 @@ export class WallPanel {
 
     const px = u * this.textureSize;
     const py = v * this.textureSize;
-    const pr = Math.max(ru, rv) * this.textureSize * 0.8;
+    const prx = Math.max(1, ru * this.textureSize * 0.8);
+    const pry = Math.max(1, rv * this.textureSize * 0.8);
     const color = COLOR_BY_TEAM[team];
-    const grad = this.ctx.createRadialGradient(px, py, 0, px, py, pr);
+    this.ctx.save();
+    this.ctx.translate(px, py);
+    this.ctx.scale(prx, pry);
+    const grad = this.ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
     grad.addColorStop(0, `${color}f0`);
     grad.addColorStop(0.7, `${color}90`);
     grad.addColorStop(1, `${color}00`);
     this.ctx.fillStyle = grad;
     this.ctx.beginPath();
-    this.ctx.arc(px, py, pr, 0, Math.PI * 2);
+    this.ctx.arc(0, 0, 1, 0, Math.PI * 2);
     this.ctx.fill();
+    this.ctx.restore();
     this.texture.needsUpdate = true;
     return paintedCells;
   }
@@ -162,10 +167,23 @@ export class WallPanel {
     let vertical = direction.y;
     let projectedLength = Math.hypot(along, vertical);
     let alongNorm = along;
-    if (projectedLength < 0.12) {
-      alongNorm = 0;
-      vertical = 1;
-      projectedLength = 1;
+    if (projectedLength < 0.45) {
+      // A shot arriving almost straight into the wall has no meaningful
+      // in-plane direction. Stamp upward from the wall base at the impact
+      // column so a full charge creates one continuous climb route.
+      _rel.subVectors(point, this.origin);
+      const impactU = THREE.MathUtils.clamp(_rel.dot(this.tangent), 0, this.width);
+      const paintedHeight = Math.min(this.height, lengthWorld);
+      const spacing = Math.max(0.2, radiusWorld * 0.72);
+      const steps = Math.max(1, Math.ceil(paintedHeight / spacing));
+      let paintedCells = 0;
+      for (let i = 0; i <= steps; i++) {
+        _strokeSample.copy(this.origin)
+          .addScaledVector(this.tangent, impactU);
+        _strokeSample.y = this.origin.y + paintedHeight * (i / steps);
+        paintedCells += this.paintSplat(_strokeSample, radiusWorld, team);
+      }
+      return paintedCells;
     }
     alongNorm /= projectedLength;
     vertical /= projectedLength;
@@ -192,8 +210,6 @@ export class WallPanel {
     this.playerCells = 0;
     this.cpuCells = 0;
     this.ctx.clearRect(0, 0, this.textureSize, this.textureSize);
-    this.ctx.fillStyle = hexToCss(COLORS.climbPanelBase);
-    this.ctx.fillRect(0, 0, this.textureSize, this.textureSize);
     this.texture.needsUpdate = true;
   }
 

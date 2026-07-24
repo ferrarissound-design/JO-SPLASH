@@ -7,8 +7,8 @@ const _up = new THREE.Vector3(0, 1, 0);
 
 // ============================================================================
 // Arena — builds the single starter stage: a rectangular floor, a raised
-// central platform reached by an off-center ramp and three paintable climb
-// panels, scattered obstacles, and perimeter walls that double as the
+// central platform reached by an off-center ramp and paintable climb
+// surfaces, scattered obstacles, and perimeter walls that double as the
 // fall-off boundary.
 //
 // Exposes lightweight collision data (AABBs / cylinders) consumed by
@@ -20,9 +20,8 @@ const _up = new THREE.Vector3(0, 1, 0);
 // all share PaintSystem's single world-space grid/texture (mapped straight
 // from world XZ, same as the floor), so painting any of them is a plain
 // paintSystem.paintSplat(x, z, ...) call — no special-casing needed outside
-// of recognizing which mesh a projectile hit. The three climb panels are a
-// different, much smaller surface (vertical, independent of XZ) and carry
-// their own WallPanel paint grid instead.
+// of recognizing which mesh a projectile hit. Vertical surfaces use separate
+// grids because their paint is also gameplay state for climbing.
 // ============================================================================
 export class Arena {
   constructor() {
@@ -36,9 +35,11 @@ export class Arena {
     this.boxColliders = [];
     /** @type {{center: THREE.Vector2, radius:number, height:number}[]} */
     this.cylinderColliders = [];
-    /** @type {ReturnType<Arena['_buildClimbPanel']>[]} paintable/climbable wall sections */
+    /** All vertical paint surfaces; climbPanels is the climbable subset. */
+    this.wallPanels = [];
     this.climbPanels = [];
-    this.climbPanelByMesh = new Map();
+    this.wallPanelByMesh = new Map();
+    this.climbPanelByMesh = this.wallPanelByMesh;
     /** @type {{pos:number[], size?:number[], radius?:number, height:number, type:string}[]} exposed read-only for StageDecor's accent lights/no-collision dressing */
     this.obstacleDefs = [];
     /** @type {{pos:number[], size:number[]}[]} exposed read-only for StageDecor's perimeter fence/lights */
@@ -218,8 +219,8 @@ export class Arena {
     ]);
 
     // Ramp offset from center along X so the climb isn't perfectly symmetric.
-    // Attached to the platform's +Z face; the other three faces get plain
-    // walls (see _buildPlatformSideWalls) with three paintable climb panels.
+    // Attached to the platform's +Z face; the remaining faces are blocked by
+    // walls (see _buildPlatformSideWalls) and every exposed side is paintable.
     const rampWidth = ARENA.rampWidth;
     const rampLen = ARENA.rampLength;
     const rampOffsetX = ARENA.rampOffsetX;
@@ -264,8 +265,8 @@ export class Arena {
   }
 
   // Blocks direct horizontal walk-in on 3 of the platform's 4 sides (the 4th
-  // is the ramp opening), so the ramp and the three paint-gated climb panels
-  // become the only ways up. Zero-thickness AABBs act as flat wall planes —
+  // is the ramp opening), so reaching the top requires the ramp or a painted
+  // climbing route. Zero-thickness AABBs act as flat wall planes —
   // resolveObstacleCollisions() only needs a nonzero radius overlap check,
   // not real box volume — and (like every other collider here) they stop
   // blocking once a climber's y reaches the platform height.
@@ -279,58 +280,78 @@ export class Arena {
     add([rampMaxX, hp], [hp, hp]); // north face, right of the ramp opening
   }
 
-  // Three "paintable panel" faces (a subset of the platform's walls, per the
-  // "don't make every wall paintable" guidance): once a team has painted
-  // enough of one, Player's wall-climb logic lets them scale straight up it
-  // instead of detouring to the ramp.
+  // Cover every blocked platform face. The north side is split around the
+  // ramp opening so players never start a wall climb on empty space.
   _buildClimbPanels(hp, h) {
-    const panelWidth = ARENA.climbPanelWidth;
-    const half = panelWidth / 2;
-
-    this.climbPanels.push(this._buildClimbPanel({
-      label: 'WEST',
-      origin: new THREE.Vector3(-hp, 0, -half),
+    this._registerWallPanel({
+      label: 'PLATFORM WEST',
+      origin: new THREE.Vector3(-hp, 0, -hp),
       tangent: new THREE.Vector3(0, 0, 1),
       normal: new THREE.Vector3(1, 0, 0),
-      planeAxis: 'x',
-      planeValue: -hp,
-      tangentMin: -half,
-      tangentMax: half,
       height: h,
-      width: panelWidth,
+      width: hp * 2,
       visualOffset: new THREE.Vector3(-0.03, 0, 0),
-    }));
+    });
 
-    this.climbPanels.push(this._buildClimbPanel({
-      label: 'SOUTH',
-      origin: new THREE.Vector3(-half, 0, -hp),
+    this._registerWallPanel({
+      label: 'PLATFORM SOUTH',
+      origin: new THREE.Vector3(-hp, 0, -hp),
       tangent: new THREE.Vector3(1, 0, 0),
       normal: new THREE.Vector3(0, 0, 1),
-      planeAxis: 'z',
-      planeValue: -hp,
-      tangentMin: -half,
-      tangentMax: half,
       height: h,
-      width: panelWidth,
+      width: hp * 2,
       visualOffset: new THREE.Vector3(0, 0, -0.03),
-    }));
+    });
 
-    this.climbPanels.push(this._buildClimbPanel({
-      label: 'EAST',
-      origin: new THREE.Vector3(hp, 0, -half),
+    this._registerWallPanel({
+      label: 'PLATFORM EAST',
+      origin: new THREE.Vector3(hp, 0, -hp),
       tangent: new THREE.Vector3(0, 0, 1),
       normal: new THREE.Vector3(-1, 0, 0),
-      planeAxis: 'x',
-      planeValue: hp,
-      tangentMin: -half,
-      tangentMax: half,
       height: h,
-      width: panelWidth,
+      width: hp * 2,
       visualOffset: new THREE.Vector3(0.03, 0, 0),
-    }));
+    });
+
+    const rampMinX = this.ramp.minX;
+    const rampMaxX = this.ramp.maxX;
+    this._registerWallPanel({
+      label: 'PLATFORM NORTH WEST',
+      origin: new THREE.Vector3(-hp, 0, hp),
+      tangent: new THREE.Vector3(1, 0, 0),
+      normal: new THREE.Vector3(0, 0, -1),
+      height: h,
+      width: rampMinX + hp,
+      visualOffset: new THREE.Vector3(0, 0, 0.03),
+    });
+    this._registerWallPanel({
+      label: 'PLATFORM NORTH EAST',
+      origin: new THREE.Vector3(rampMaxX, 0, hp),
+      tangent: new THREE.Vector3(1, 0, 0),
+      normal: new THREE.Vector3(0, 0, -1),
+      height: h,
+      width: hp - rampMaxX,
+      visualOffset: new THREE.Vector3(0, 0, 0.03),
+    });
   }
 
-  _buildClimbPanel({ label, origin, tangent, normal, planeAxis, planeValue, tangentMin, tangentMax, height, width, visualOffset }) {
+  _registerWallPanel(options) {
+    const panel = this._buildClimbPanel(options);
+    this.wallPanels.push(panel);
+    if (panel.climbable) this.climbPanels.push(panel);
+    return panel;
+  }
+
+  _buildClimbPanel({
+    label,
+    origin,
+    tangent,
+    normal,
+    height,
+    width,
+    visualOffset,
+    climbable = true,
+  }) {
     const paint = new WallPanel(origin, tangent, width, height);
 
     const c0 = origin.clone().add(visualOffset);
@@ -353,13 +374,30 @@ export class Arena {
     geo.setIndex(indices);
     geo.computeVertexNormals();
 
-    const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7, side: THREE.DoubleSide });
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.7,
+      side: THREE.DoubleSide,
+      transparent: true,
+      alphaTest: 0.01,
+      depthWrite: false,
+    });
     mat.map = paint.texture;
     const mesh = new THREE.Mesh(geo, mat);
+    mesh.renderOrder = 2;
     this.group.add(mesh);
 
-    const panel = { label, paint, mesh, normal: normal.clone(), planeAxis, planeValue, tangentMin, tangentMax, height };
-    this.climbPanelByMesh.set(mesh, panel);
+    const panel = {
+      label,
+      paint,
+      mesh,
+      normal: normal.clone().normalize(),
+      height,
+      baseY: origin.y,
+      topY: origin.y + height,
+      climbable,
+    };
+    this.wallPanelByMesh.set(mesh, panel);
     return panel;
   }
 
@@ -419,6 +457,7 @@ export class Arena {
           max: new THREE.Vector2(def.pos[0] + sx / 2, def.pos[2] + sz / 2),
           height: sy,
         });
+        this._registerBoxWallPanels(def, this.obstacleDefs.indexOf(def));
       } else {
         const geo = new THREE.CylinderGeometry(def.radius, def.radius, def.height, 16);
         const mesh = new THREE.Mesh(geo, mat);
@@ -429,7 +468,99 @@ export class Arena {
           radius: def.radius,
           height: def.height,
         });
+        this._registerCylinderWallPanels(def, this.obstacleDefs.indexOf(def));
       }
+    }
+  }
+
+  _registerBoxWallPanels(def, index) {
+    const [cx, cy, cz] = def.pos;
+    const [sx, sy, sz] = def.size;
+    const baseY = cy - sy / 2;
+    const eps = 0.035;
+    const faces = [
+      {
+        suffix: 'WEST',
+        origin: new THREE.Vector3(cx - sx / 2, baseY, cz - sz / 2),
+        tangent: new THREE.Vector3(0, 0, 1),
+        normal: new THREE.Vector3(1, 0, 0),
+        width: sz,
+        offset: new THREE.Vector3(-eps, 0, 0),
+      },
+      {
+        suffix: 'EAST',
+        origin: new THREE.Vector3(cx + sx / 2, baseY, cz - sz / 2),
+        tangent: new THREE.Vector3(0, 0, 1),
+        normal: new THREE.Vector3(-1, 0, 0),
+        width: sz,
+        offset: new THREE.Vector3(eps, 0, 0),
+      },
+      {
+        suffix: 'SOUTH',
+        origin: new THREE.Vector3(cx - sx / 2, baseY, cz - sz / 2),
+        tangent: new THREE.Vector3(1, 0, 0),
+        normal: new THREE.Vector3(0, 0, 1),
+        width: sx,
+        offset: new THREE.Vector3(0, 0, -eps),
+      },
+      {
+        suffix: 'NORTH',
+        origin: new THREE.Vector3(cx - sx / 2, baseY, cz + sz / 2),
+        tangent: new THREE.Vector3(1, 0, 0),
+        normal: new THREE.Vector3(0, 0, -1),
+        width: sx,
+        offset: new THREE.Vector3(0, 0, eps),
+      },
+    ];
+    for (const face of faces) {
+      this._registerWallPanel({
+        label: `BOX ${index + 1} ${face.suffix}`,
+        origin: face.origin,
+        tangent: face.tangent,
+        normal: face.normal,
+        width: face.width,
+        height: sy,
+        visualOffset: face.offset,
+      });
+    }
+  }
+
+  _registerCylinderWallPanels(def, index) {
+    const [cx, cy, cz] = def.pos;
+    const baseY = cy - def.height / 2;
+    const segments = 8;
+    const step = Math.PI * 2 / segments;
+    const sagitta = def.radius * (1 - Math.cos(step / 2));
+
+    for (let i = 0; i < segments; i++) {
+      const a0 = i * step;
+      const a1 = (i + 1) * step;
+      const p0 = new THREE.Vector3(
+        cx + Math.cos(a0) * def.radius,
+        baseY,
+        cz + Math.sin(a0) * def.radius,
+      );
+      const p1 = new THREE.Vector3(
+        cx + Math.cos(a1) * def.radius,
+        baseY,
+        cz + Math.sin(a1) * def.radius,
+      );
+      const tangent = p1.clone().sub(p0);
+      const width = tangent.length();
+      tangent.normalize();
+      const midpoint = p0.clone().add(p1).multiplyScalar(0.5);
+      const normal = new THREE.Vector3(cx - midpoint.x, 0, cz - midpoint.z).normalize();
+      const visualOffset = normal.clone().multiplyScalar(-(sagitta + 0.035));
+
+      this._registerWallPanel({
+        label: `CYLINDER ${index + 1} FACE ${i + 1}`,
+        origin: p0,
+        tangent,
+        normal,
+        width,
+        height: def.height,
+        visualOffset,
+      });
     }
   }
 
@@ -472,20 +603,87 @@ export class Arena {
         height: wallH,
       });
     }
+
+    // Paint overlays face inward. Perimeter panels deliberately remain
+    // non-climbable because mounting their top would move a player outside
+    // the playable bounds; every arena-interior wall remains climbable.
+    const boundaryPanels = [
+      {
+        label: 'BOUNDARY NORTH',
+        origin: new THREE.Vector3(-w / 2, 0, d / 2),
+        tangent: new THREE.Vector3(1, 0, 0),
+        normal: new THREE.Vector3(0, 0, 1),
+        width: w,
+        offset: new THREE.Vector3(0, 0, -0.035),
+      },
+      {
+        label: 'BOUNDARY SOUTH',
+        origin: new THREE.Vector3(-w / 2, 0, -d / 2),
+        tangent: new THREE.Vector3(1, 0, 0),
+        normal: new THREE.Vector3(0, 0, -1),
+        width: w,
+        offset: new THREE.Vector3(0, 0, 0.035),
+      },
+      {
+        label: 'BOUNDARY EAST',
+        origin: new THREE.Vector3(w / 2, 0, -d / 2),
+        tangent: new THREE.Vector3(0, 0, 1),
+        normal: new THREE.Vector3(1, 0, 0),
+        width: d,
+        offset: new THREE.Vector3(-0.035, 0, 0),
+      },
+      {
+        label: 'BOUNDARY WEST',
+        origin: new THREE.Vector3(-w / 2, 0, -d / 2),
+        tangent: new THREE.Vector3(0, 0, 1),
+        normal: new THREE.Vector3(-1, 0, 0),
+        width: d,
+        offset: new THREE.Vector3(0.035, 0, 0),
+      },
+    ];
+    for (const panel of boundaryPanels) {
+      this._registerWallPanel({
+        label: panel.label,
+        origin: panel.origin,
+        tangent: panel.tangent,
+        normal: panel.normal,
+        width: panel.width,
+        height: wallH,
+        visualOffset: panel.offset,
+        climbable: false,
+      });
+    }
   }
 
   /** Ground height (y) at a given XZ, accounting for platform + ramp. Does not include obstacles. */
   getGroundHeight(x, z) {
+    let groundHeight = 0;
     const p = this.platform;
     if (x >= p.min.x && x <= p.max.x && z >= p.min.y && z <= p.max.y) {
-      return p.height;
+      groundHeight = p.height;
     }
     const r = this.ramp;
     if (x >= r.minX && x <= r.maxX && z >= r.minZ && z <= r.maxZ) {
       const t = (z - r.minZ) / r.length; // 0 at floor edge, 1 at platform edge
-      return THREE.MathUtils.clamp(t, 0, 1) * r.height;
+      groundHeight = Math.max(groundHeight, THREE.MathUtils.clamp(t, 0, 1) * r.height);
     }
-    return 0;
+
+    // Once a painted obstacle wall is climbed, its top becomes ordinary
+    // walkable ground. This query mirrors the existing collider footprints.
+    for (const box of this.boxColliders) {
+      if (box.min.x === box.max.x || box.min.y === box.max.y) continue;
+      if (x >= box.min.x && x <= box.max.x && z >= box.min.y && z <= box.max.y) {
+        groundHeight = Math.max(groundHeight, box.height);
+      }
+    }
+    for (const cylinder of this.cylinderColliders) {
+      const dx = x - cylinder.center.x;
+      const dz = z - cylinder.center.y;
+      if (dx * dx + dz * dz <= cylinder.radius * cylinder.radius) {
+        groundHeight = Math.max(groundHeight, cylinder.height);
+      }
+    }
+    return groundHeight;
   }
 
   /** Clamp a horizontal position to remain within the playable floor (inside the walls). */

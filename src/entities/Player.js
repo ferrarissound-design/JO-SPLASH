@@ -13,6 +13,7 @@ const _fireOrigin = new THREE.Vector3();
 const _aimDir = new THREE.Vector3();
 const _surfExitSplatPos = new THREE.Vector3();
 const _inkRollFxPos = new THREE.Vector3();
+const _wallRel = new THREE.Vector3();
 
 // ============================================================================
 // Player — human-controlled Character. Reads InputManager state and the
@@ -38,6 +39,7 @@ export class Player extends Character {
     this.inkRollArmorTimer = 0;
     this.inkRollsUsed = 0;
     this._fireWasHeld = false;
+    this._debugClimbHold = false;
   }
 
   takeDamage(amount) {
@@ -53,6 +55,7 @@ export class Player extends Character {
     this.resetInkRoll();
     this.weapon.resetCharge();
     this._fireWasHeld = false;
+    this._debugClimbHold = false;
   }
 
   respawn() {
@@ -60,6 +63,7 @@ export class Player extends Character {
     this.resetInkRoll();
     this.weapon.resetCharge();
     this._fireWasHeld = false;
+    this._debugClimbHold = false;
   }
 
   update(dt, ctx) {
@@ -269,14 +273,13 @@ export class Player extends Character {
   _findClimbablePanel(arena) {
     const r = MOVEMENT.capsuleRadius;
     for (const panel of arena.climbPanels) {
-      const dist = panel.planeAxis === 'x'
-        ? Math.abs(this.position.x - panel.planeValue)
-        : Math.abs(this.position.z - panel.planeValue);
+      _wallRel.subVectors(this.position, panel.paint.origin);
+      const dist = Math.abs(_wallRel.dot(panel.normal));
       if (dist > r + MOVEMENT.wallClimbApproachDist) continue;
 
-      const tan = panel.planeAxis === 'x' ? this.position.z : this.position.x;
-      if (tan < panel.tangentMin || tan > panel.tangentMax) continue;
-      if (this.position.y >= panel.height - 0.05) continue;
+      const tangentPos = _wallRel.dot(panel.paint.tangent);
+      if (tangentPos < -0.05 || tangentPos > panel.paint.width + 0.05) continue;
+      if (this.position.y >= panel.topY - 0.05) continue;
       if (!panel.paint.hasVerticalPath(this.team, this.position)) continue;
       return panel;
     }
@@ -285,13 +288,12 @@ export class Player extends Character {
 
   _isTouchingPanel(panel) {
     const r = MOVEMENT.capsuleRadius;
-    const dist = panel.planeAxis === 'x'
-      ? Math.abs(this.position.x - panel.planeValue)
-      : Math.abs(this.position.z - panel.planeValue);
+    _wallRel.subVectors(this.position, panel.paint.origin);
+    const dist = Math.abs(_wallRel.dot(panel.normal));
     if (dist > r + MOVEMENT.wallClimbApproachDist + 0.3) return false;
 
-    const tan = panel.planeAxis === 'x' ? this.position.z : this.position.x;
-    return tan >= panel.tangentMin - 0.2 && tan <= panel.tangentMax + 0.2;
+    const tangentPos = _wallRel.dot(panel.paint.tangent);
+    return tangentPos >= -0.2 && tangentPos <= panel.paint.width + 0.2;
   }
 
   _startClimb(panel) {
@@ -308,7 +310,8 @@ export class Player extends Character {
     this._climbTimer -= dt;
     this.ink = Math.max(0, this.ink - MOVEMENT.wallClimbInkCostPerSec * dt);
 
-    const canContinue = panel && this.input.isDown('KeyW') && this._isTouchingPanel(panel)
+    const canContinue = panel && (this.input.isDown('KeyW') || this._debugClimbHold)
+      && this._isTouchingPanel(panel)
       && this.ink > 0 && this._climbTimer > 0;
 
     if (!canContinue) {
@@ -321,14 +324,14 @@ export class Player extends Character {
     this.position.y += MOVEMENT.wallClimbSpeed * dt;
     this.grounded = false;
 
-    if (this.position.y >= panel.height) this._mountClimb(panel);
+    if (this.position.y >= panel.topY) this._mountClimb(panel);
   }
 
   /** Pops the player up and inward onto the ledge once a climb reaches the panel's top. */
   _mountClimb(panel) {
     this.position.x += panel.normal.x * MOVEMENT.wallClimbMountInward;
     this.position.z += panel.normal.z * MOVEMENT.wallClimbMountInward;
-    this.position.y = panel.height;
+    this.position.y = panel.topY;
     this.velocity.set(panel.normal.x * 2.2, 3, panel.normal.z * 2.2);
     this.grounded = false;
     this._endClimb();
@@ -337,6 +340,7 @@ export class Player extends Character {
   _endClimb() {
     this.isClimbing = false;
     this._climbPanel = null;
+    this._debugClimbHold = false;
   }
 
   /** Third-person view keeps the rig visible unless camera collision pushes inside it. */

@@ -48,6 +48,7 @@ const _deflectDir = new THREE.Vector3();
 const _wishSnapshot = new THREE.Vector3();
 const _moveDir = new THREE.Vector3();
 const _paintRouteDir = new THREE.Vector3();
+const _wallRel = new THREE.Vector3();
 
 function yawFromDirection(dx, dz) {
   return Math.atan2(-dx, -dz);
@@ -708,11 +709,10 @@ export class EnemyAI extends Character {
       return;
     }
 
-    const planeDist = panel.planeAxis === 'x'
-      ? Math.abs(this.position.x - panel.planeValue)
-      : Math.abs(this.position.z - panel.planeValue);
-    const tangentPos = panel.planeAxis === 'x' ? this.position.z : this.position.x;
-    const aligned = tangentPos >= panel.tangentMin - 0.15 && tangentPos <= panel.tangentMax + 0.15;
+    _wallRel.subVectors(this.position, panel.paint.origin);
+    const planeDist = Math.abs(_wallRel.dot(panel.normal));
+    const tangentPos = _wallRel.dot(panel.paint.tangent);
+    const aligned = tangentPos >= -0.15 && tangentPos <= panel.paint.width + 0.15;
     const inPaintRange = planeDist <= MOVEMENT.capsuleRadius + MOVEMENT.wallClimbApproachDist + 0.3;
 
     if (!aligned || !inPaintRange) {
@@ -737,7 +737,8 @@ export class EnemyAI extends Character {
     const aimHeights = [0.16, 0.5, 0.84];
     _predictedPos.copy(panel.paint.origin)
       .addScaledVector(panel.paint.tangent, panel.paint.width * 0.5);
-    _predictedPos.y = panel.height * aimHeights[this._climbPaintAimIndex % aimHeights.length];
+    _predictedPos.y = panel.baseY
+      + panel.height * aimHeights[this._climbPaintAimIndex % aimHeights.length];
     _eyeA.set(this.position.x, this.position.y + this.eyeHeight, this.position.z);
     _aimVec.subVectors(_predictedPos, _eyeA).normalize();
     _fireOrigin.copy(_eyeA).addScaledVector(_aimVec, 0.4);
@@ -767,8 +768,9 @@ export class EnemyAI extends Character {
 
   _startCpuClimb(panel) {
     const outside = MOVEMENT.capsuleRadius + 0.02;
-    if (panel.planeAxis === 'x') this.position.x = panel.planeValue - panel.normal.x * outside;
-    else this.position.z = panel.planeValue - panel.normal.z * outside;
+    _wallRel.subVectors(this.position, panel.paint.origin);
+    const signedDistance = _wallRel.dot(panel.normal);
+    this.position.addScaledVector(panel.normal, -outside - signedDistance);
     this.isClimbing = true;
     this._climbPanel = panel;
     this._climbTimer = MOVEMENT.wallClimbMaxDurationSec;
@@ -792,10 +794,10 @@ export class EnemyAI extends Character {
     this.position.y += MOVEMENT.wallClimbSpeed * dt;
     this.grounded = false;
 
-    if (this.position.y >= panel.height) {
+    if (this.position.y >= panel.topY) {
       this.position.x += panel.normal.x * MOVEMENT.wallClimbMountInward;
       this.position.z += panel.normal.z * MOVEMENT.wallClimbMountInward;
-      this.position.y = panel.height;
+      this.position.y = panel.topY;
       this.velocity.set(panel.normal.x * 2.2, 3, panel.normal.z * 2.2);
       this.grounded = false;
       this.isClimbing = false;

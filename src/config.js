@@ -128,7 +128,7 @@ export const PAINT = {
   wallGridCols: 12, // small independent coverage grid for each climbable wall panel
   wallGridRows: 10,
   wallTextureSize: 128,
-  wallPathToleranceCols: 1, // how far a climb path may bend sideways between adjacent grid rows
+  wallPathToleranceCols: 2, // allows shoulder-fired ink routes to connect beneath the character
 };
 
 export const MOVEMENT = {

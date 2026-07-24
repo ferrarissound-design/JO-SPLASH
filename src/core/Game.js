@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  MATCH, TEAM, COLORS, THEME, PERF, MOVEMENT, ARENA, PAINT, AI, AI_DIFFICULTY,
+  MATCH, TEAM, COLORS, THEME, PERF, MOVEMENT, CAMERA, ARENA, PAINT, AI, AI_DIFFICULTY,
 } from '../config.js';
 import { InputManager } from './InputManager.js';
 import { CameraController } from './CameraController.js';
@@ -204,7 +204,7 @@ export class Game {
   // -------------------------------------------------------------- flow
   _startMatch() {
     this.paintSystem.reset();
-    for (const panel of this.arena.climbPanels) panel.paint.reset();
+    for (const panel of this.arena.wallPanels) panel.paint.reset();
     this.projectileManager.reset();
     this.particleManager.reset();
     this._paintSpawnSafeZone(this.arena.spawnPoints.player, TEAM.PLAYER);
@@ -418,6 +418,54 @@ export class Game {
       this.cameraController.yaw = 0;
       this.cameraController.pitch = -0.05;
       this.ui.showStatusMessage('CAMERA COLLISION TEST', 0.8);
+    }
+    if (this.debugMode && this.state === STATE.PLAYING && this.input.wasJustPressed('KeyN')) {
+      this.player.position.set(0, 0, this.arena.halfDepth - 2.2);
+      this.player.velocity.set(0, 0, 0);
+      this.player.grounded = true;
+      this.cameraController.yaw = Math.PI;
+      this.cameraController.pitch = 0;
+      this.ui.showStatusMessage('BOUNDARY WALL PAINT TEST', 0.8);
+    }
+    if (this.debugMode && this.state === STATE.PLAYING && this.input.wasJustPressed('KeyM')) {
+      this.player.position.set(-9, 0, 3.8);
+      this.player.velocity.set(0, 0, 0);
+      this.player.grounded = true;
+      this.cameraController.yaw = Math.PI;
+      this.cameraController.pitch = 0;
+      this.ui.showStatusMessage('OBSTACLE WALL PAINT TEST', 0.8);
+    }
+    if (this.debugMode && this.state === STATE.PLAYING && this.input.wasJustPressed('KeyI')) {
+      const panel = this.arena.climbPanels.find(
+        (candidate) => candidate.label === 'CYLINDER 3 FACE 6',
+      );
+      if (panel) {
+        const center = panel.paint.origin.clone()
+          .addScaledVector(panel.paint.tangent, panel.paint.width * 0.5);
+        this.player.position.copy(center)
+          .addScaledVector(panel.normal, -(MOVEMENT.capsuleRadius + 0.58));
+        this.player.position.y = panel.baseY;
+        this.cameraController.yaw = Math.atan2(-panel.normal.x, -panel.normal.z);
+        this.cameraController.getFlatRight(_enemyScreenPos);
+        this.player.position.addScaledVector(_enemyScreenPos, -CAMERA.muzzleShoulderOffset);
+      } else {
+        this.player.position.set(-6.5, 0, -12.45);
+        this.cameraController.yaw = Math.PI;
+      }
+      this.player.velocity.set(0, 0, 0);
+      this.player.grounded = true;
+      this.cameraController.pitch = 0;
+      this.ui.showStatusMessage('CYLINDER WALL PAINT TEST', 0.8);
+    }
+    if (this.debugMode && this.state === STATE.PLAYING && this.input.wasJustPressed('KeyR')) {
+      const panel = this.player._findClimbablePanel(this.arena);
+      if (panel) {
+        this.player._debugClimbHold = true;
+        this.player._startClimb(panel);
+        this.ui.showStatusMessage(`CLIMB TEST: ${panel.label}`, 0.8);
+      } else {
+        this.ui.showStatusMessage('CLIMB TEST: NO INK PATH', 0.8);
+      }
     }
 
     switch (this.state) {
@@ -686,6 +734,12 @@ export class Game {
     const [pgx, pgz] = this.paintSystem.worldToGrid(this.player.position.x, this.player.position.z);
     const [cgx, cgz] = this.paintSystem.worldToGrid(this.cpu.position.x, this.cpu.position.z);
     const cov = this.paintSystem.getCoverage();
+    const playerWallPaths = this.arena.climbPanels
+      .filter((panel) => panel.paint.hasVerticalPath(TEAM.PLAYER, this.player.position))
+      .map((panel) => panel.label);
+    const playerPaintedWalls = this.arena.wallPanels
+      .filter((panel) => panel.paint.playerCells > 0)
+      .map((panel) => panel.label);
     const info = [
       `state: ${this.state}`,
       `player cell: (${pgx}, ${pgz})  grounded:${this.player.grounded}  climbing:${this.player.isClimbing}`,
@@ -706,7 +760,10 @@ export class Game {
       `weapon: ${this.player.weapon.displayName}  charge:${(this.player.weapon.charge * 100).toFixed(0)}%  charging:${this.player.weapon.charging}  stored:${this.player.weapon.chargeStored}(${this.player.weapon.chargeStoreTimer.toFixed(2)})  bomb cd:${this.player.subWeapon.cooldown.toFixed(2)}`,
       `camera: shoulder dist:${this.cameraController.currentDistance.toFixed(2)}  blocked:${this.cameraController.cameraBlocked}`,
       `precision lines: ${this.projectileManager.chargeLinesFired}  cells:${this.projectileManager.chargeLinePaintedCells}  walls:${this.projectileManager.chargeWallStrokes}`,
-      'debug keys: J=camera wall  C=full charge  H=keep charge  G=ink roll  T=final 12s  P=player special  O=CPU special  L=CPU climb  B=CPU bomb  K=CPU weapon  V=enemy',
+      `wall panels: ${this.arena.wallPanels.length}  climbable:${this.arena.climbPanels.length}  player-painted:${this.arena.wallPanels.filter((p) => p.paint.playerCells > 0).length}`,
+      `player painted walls: ${playerPaintedWalls.join(', ') || '-'}`,
+      `player wall paths: ${playerWallPaths.join(', ') || '-'}`,
+      'debug keys: N=boundary paint  M=box paint  I=cylinder paint  R=climb path  J=camera wall  C=full charge  H=keep charge  G=ink roll  T=final 12s  P=player special  O=CPU special  L=CPU climb  B=CPU bomb  K=CPU weapon  V=enemy',
       `projectiles active: ${this.projectileManager.pool.filter((p) => p.active).length}/${this.projectileManager.pool.length}`,
       `particles active: ${this.particleManager.pool.filter((p) => p.active).length}/${this.particleManager.pool.length}`,
     ].join('\n');
