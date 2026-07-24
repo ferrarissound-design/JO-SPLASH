@@ -120,12 +120,21 @@ export class AudioManager {
 
   playBattleBGM() {
     this.bgm.currentTime = 0;
+    this.bgm.playbackRate = 1;
+    this.bgm.volume = 0.35;
     this.bgm.play().catch(() => {});
+  }
+
+  setBattleFinale(active) {
+    this.bgm.playbackRate = active ? 1.08 : 1;
+    this.bgm.volume = active ? 0.43 : 0.35;
   }
 
   stopBattleBGM() {
     this.bgm.pause();
     this.bgm.currentTime = 0;
+    this.bgm.playbackRate = 1;
+    this.bgm.volume = 0.35;
   }
 
   playInkSurfExit() {
@@ -164,6 +173,24 @@ export class AudioManager {
 
   playCountdownBeep() {
     this._tone(520, 0.12, { type: 'square', peak: 0.2 });
+  }
+
+  playFinalCountdown(second, totalSeconds = 10) {
+    const urgencySpan = Math.max(1, totalSeconds - 1);
+    const urgency = Math.max(0, Math.min(1, (totalSeconds - second) / urgencySpan));
+    const frequency = 560 + urgency * 320;
+    this._tone(frequency, second <= 3 ? 0.16 : 0.1, {
+      type: 'square',
+      peak: second <= 3 ? 0.24 : 0.16,
+      freqEnd: frequency * (second <= 3 ? 1.18 : 1),
+    });
+    if (second === totalSeconds) this._noise(0.32, { peak: 0.14, filterFreq: 1900 });
+  }
+
+  playTimeUp() {
+    this._tone(880, 0.2, { type: 'square', peak: 0.24, freqEnd: 440 });
+    this._tone(440, 0.34, { type: 'sawtooth', peak: 0.2, freqEnd: 110, delay: 0.17 });
+    this._noise(0.42, { peak: 0.2, filterFreq: 1300 });
   }
 
   playStart() {

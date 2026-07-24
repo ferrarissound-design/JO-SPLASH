@@ -59,6 +59,9 @@ export class UIManager {
       enemyHpFill: document.getElementById('enemy-hp-fill'),
       enemySpecialWarning: document.getElementById('enemy-special-warning'),
       enemySpecialWarningLabel: document.getElementById('enemy-special-warning-label'),
+      finalCountdown: document.getElementById('final-countdown'),
+      finalCountdownValue: document.getElementById('final-countdown-value'),
+      timeUpOverlay: document.getElementById('time-up-overlay'),
       hitFlash: document.getElementById('hit-flash'),
       respawnBanner: document.getElementById('respawn-banner'),
 
@@ -247,6 +250,37 @@ export class UIManager {
     if (this.el.enemySpecialWarningLabel) {
       this.el.enemySpecialWarningLabel.textContent = active ? 'CPU INK BURST' : 'CPU BURST CHARGING';
     }
+  }
+
+  showFinalCountdown(second) {
+    const el = this.el.finalCountdown;
+    if (!el) return;
+    this.el.finalCountdownValue.textContent = String(second);
+    el.classList.remove('hidden', 'tick');
+    el.classList.toggle('urgent', second <= 3);
+    void el.offsetWidth;
+    el.classList.add('tick');
+  }
+
+  hideFinalCountdown() {
+    this.el.finalCountdown?.classList.add('hidden');
+  }
+
+  showTimeUp() {
+    this.hideFinalCountdown();
+    const el = this.el.timeUpOverlay;
+    if (!el) return;
+    el.classList.remove('hidden');
+  }
+
+  hideTimeUp() {
+    this.el.timeUpOverlay?.classList.add('hidden');
+  }
+
+  resetFinale() {
+    this.hideFinalCountdown();
+    this.hideTimeUp();
+    this.el.finalCountdown?.classList.remove('urgent', 'tick');
   }
 
   resetTurfMap() {

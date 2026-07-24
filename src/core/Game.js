@@ -22,6 +22,7 @@ const STATE = {
   TITLE: 'title',
   COUNTDOWN: 'countdown',
   PLAYING: 'playing',
+  JUDGING: 'judging',
   RESULT: 'result',
 };
 
@@ -87,6 +88,7 @@ export class Game {
 
     this.state = STATE.TITLE;
     this.countdownRemaining = 0;
+    this.judgingRemaining = 0;
     this.matchTimeRemaining = MATCH.durationSec;
     this.elapsedTime = 0;
 
@@ -245,6 +247,8 @@ export class Game {
 
     this.matchTimeRemaining = MATCH.durationSec;
     this.countdownRemaining = MATCH.countdownSec + MATCH.startFlashSec;
+    this.judgingRemaining = 0;
+    this._lastFinalSecond = null;
 
     this.ui.hideTitle();
     this.ui.hideResultScreen();
@@ -253,12 +257,14 @@ export class Game {
     this.ui.hideRespawnBanner();
     this.ui.updateEnemyMarker({ visible: false });
     this.ui.updateEnemySpecialWarning({ visible: false });
+    this.ui.resetFinale();
     this.ui.resetTurfMap();
     this._cpuHitFlashTimer = 0;
     this._wasPlayerInkSurfing = false;
     this._currentCameraSink = 0;
     this.audioManager.stopInkSurfLoop();
     this.audioManager.stopBattleBGM();
+    this.audioManager.setBattleFinale(false);
     this.touchControls?.show();
 
     this._lastCountdownDigit = null;
@@ -268,13 +274,23 @@ export class Game {
     this.input.requestPointerLock();
   }
 
-  _endMatch() {
-    this.state = STATE.RESULT;
+  _beginJudging() {
+    if (this.state !== STATE.PLAYING) return;
+    this.state = STATE.JUDGING;
+    this.judgingRemaining = MATCH.judgingDelaySec;
     this.paintSystem.flush();
     this.input.exitPointerLock();
     this.touchControls?.hide();
+    this.audioManager.stopInkSurfLoop();
     this.audioManager.stopBattleBGM();
+    this.audioManager.playTimeUp();
     this.ui.updateEnemySpecialWarning({ visible: false });
+    this.ui.showTimeUp();
+  }
+
+  _endMatch() {
+    this.state = STATE.RESULT;
+    this.ui.hideTimeUp();
 
     const cov = this.paintSystem.getCoverage();
     const outcome = cov.playerCells === cov.cpuCells ? 'draw' : (cov.playerCells > cov.cpuCells ? 'win' : 'lose');
@@ -370,6 +386,12 @@ export class Game {
     if (this.debugMode && this.state === STATE.PLAYING && this.input.wasJustPressed('KeyO')) {
       this.cpu.debugStartSpecial(this.player, this.ui);
     }
+    if (this.debugMode && this.state === STATE.PLAYING && this.input.wasJustPressed('KeyT')) {
+      this.matchTimeRemaining = Math.min(this.matchTimeRemaining, 12);
+      this._lastFinalSecond = null;
+      this.ui.hideFinalCountdown();
+      this.audioManager.setBattleFinale(false);
+    }
 
     switch (this.state) {
       case STATE.TITLE:
@@ -380,6 +402,9 @@ export class Game {
         break;
       case STATE.PLAYING:
         this._updatePlaying(dt);
+        break;
+      case STATE.JUDGING:
+        this._updateJudging(dt);
         break;
       case STATE.RESULT:
         this._updateResult(dt);
@@ -431,6 +456,7 @@ export class Game {
     this.matchTimeRemaining -= dt;
     const matchOver = this.matchTimeRemaining <= 0;
     this.matchTimeRemaining = Math.max(0, this.matchTimeRemaining);
+    this._updateFinalCountdown();
 
     const [dx, dy] = this.input.consumeMouseDelta();
     if (this.input.pointerLocked || this.input.isTouch) this.cameraController.applyLook(dx, dy);
@@ -512,7 +538,28 @@ export class Game {
       enemyFloor: this.player.onEnemyFloor,
     });
 
-    if (matchOver) this._endMatch();
+    if (matchOver) this._beginJudging();
+  }
+
+  _updateFinalCountdown() {
+    const second = Math.ceil(this.matchTimeRemaining);
+    if (second <= 0 || second > MATCH.finalCountdownSec) return;
+    if (second === this._lastFinalSecond) return;
+
+    this._lastFinalSecond = second;
+    if (second === MATCH.finalCountdownSec) this.audioManager.setBattleFinale(true);
+    this.audioManager.playFinalCountdown(second, MATCH.finalCountdownSec);
+    this.ui.showFinalCountdown(second);
+  }
+
+  _updateJudging(dt) {
+    this.judgingRemaining = Math.max(0, this.judgingRemaining - dt);
+    this.particleManager.update(dt);
+    this._updateSurfFeedback(dt, false);
+    this.cameraController.update(dt, this.player.position);
+    this.player.syncMesh(this.elapsedTime);
+    this.cpu.syncMesh(this.elapsedTime);
+    if (this.judgingRemaining <= 0) this._endMatch();
   }
 
   _updateResult(dt) {
@@ -620,7 +667,7 @@ export class Game {
       `coverage P:${cov.playerPct.toFixed(1)}% C:${cov.cpuPct.toFixed(1)}% N:${(100 - cov.playerPct - cov.cpuPct).toFixed(1)}%`,
       `special: ${this.player.special.charge.toFixed(1)}%  active:${this.player.special.active}`,
       `weapon: ${this.player.weapon.displayName}  bomb cd:${this.player.subWeapon.cooldown.toFixed(2)}`,
-      'debug keys: P=player special  O=CPU special  L=CPU climb  B=CPU bomb  K=CPU weapon  V=enemy',
+      'debug keys: T=final 12s  P=player special  O=CPU special  L=CPU climb  B=CPU bomb  K=CPU weapon  V=enemy',
       `projectiles active: ${this.projectileManager.pool.filter((p) => p.active).length}/${this.projectileManager.pool.length}`,
       `particles active: ${this.particleManager.pool.filter((p) => p.active).length}/${this.particleManager.pool.length}`,
     ].join('\n');

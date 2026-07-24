@@ -95,6 +95,8 @@ export const MATCH = {
   durationSec: 90,
   countdownSec: 3,
   startFlashSec: 0.6,
+  finalCountdownSec: 10,
+  judgingDelaySec: 1.4,
   respawnDelaySec: 3,
   invincibleSec: 1.5,
 };
