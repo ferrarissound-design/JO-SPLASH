@@ -47,6 +47,7 @@ export class UIManager {
       btnRestart: document.getElementById('btn-restart'),
       difficultyButtons: Array.from(document.querySelectorAll('[data-difficulty]')),
       cpuLevelLabel: document.getElementById('cpu-level-label'),
+      practiceModeToggle: document.getElementById('practice-mode-toggle'),
 
       timer: document.getElementById('timer'),
       coveragePlayerPct: document.getElementById('coverage-player-pct'),
@@ -194,6 +195,9 @@ export class UIManager {
     for (const button of this.el.difficultyButtons) {
       button.addEventListener('click', () => cb(button.dataset.difficulty));
     }
+  }
+  bindPracticeModeChange(cb) {
+    this.el.practiceModeToggle?.addEventListener('change', () => cb(this.el.practiceModeToggle.checked));
   }
 
   setDifficulty(id, label) {

@@ -81,6 +81,7 @@ export class Game {
     this.player = new Player(this.arena.spawnPoints.player, this.cameraController, this.input);
     this.touchControls?.setWeaponType(this.player.weapon.type);
     this.selectedDifficulty = AI_DIFFICULTY[this.settings.values.difficultyId] ? this.settings.values.difficultyId : 'standard';
+    this.practiceMode = false;
     this.cpu = new EnemyAI(this.arena.spawnPoints.cpu, AI_DIFFICULTY[this.selectedDifficulty]);
     this.projectileManager.onPaint = (team, paintedCells) => {
       if (team === TEAM.PLAYER) this.player.special.addCharge(paintedCells);
@@ -173,6 +174,7 @@ export class Game {
     this.ui.bindRestart(() => this._startMatch());
     this.ui.bindCycleAppearance(() => this._cycleEnemyAppearance());
     this.ui.bindDifficultySelection((difficultyId) => this._selectDifficulty(difficultyId));
+    this.ui.bindPracticeModeChange((checked) => { this.practiceMode = checked; });
     this.ui.bindResume(() => this._resumeFromPause());
     this.ui.bindQuit(() => this._quitToTitle());
     this.ui.bindPause(() => this._pauseMatch());
@@ -298,6 +300,7 @@ export class Game {
     this.cpu._healthRegenTimer = 0;
     this.cpu.koScored = 0;
     this.cpu.deaths = 0;
+    this.cpu.practiceMode = this.practiceMode;
     this.cpu.resetTactics({ newMatch: true });
     // Fresh random look each match; the entrance animation plays once the
     // countdown ends (see _updateCountdown), not during the reset.
@@ -405,14 +408,18 @@ export class Game {
     if (outcome === 'win') this.audioManager.playWin();
     else if (outcome === 'lose') this.audioManager.playLose();
 
-    this.matchRecord.recordMatch({
-      outcome,
-      difficultyId: this.selectedDifficulty,
-      playerPct: cov.playerPct,
-      koPlayer: this.player.koScored,
-      koCpu: this.cpu.koScored,
-    });
-    this.ui.updateMatchRecord(this.matchRecord);
+    // Practice matches are a safe sandbox, not a real result — don't let them
+    // skew the persisted win/loss record.
+    if (!this.practiceMode) {
+      this.matchRecord.recordMatch({
+        outcome,
+        difficultyId: this.selectedDifficulty,
+        playerPct: cov.playerPct,
+        koPlayer: this.player.koScored,
+        koCpu: this.cpu.koScored,
+      });
+      this.ui.updateMatchRecord(this.matchRecord);
+    }
 
     this.ui.showResult({
       playerPct: cov.playerPct,
@@ -649,6 +656,7 @@ export class Game {
       this.cpu.playIntro(); // enemy "appears" as play begins
       this.state = STATE.PLAYING;
       this.audioManager.playBattleBGM();
+      if (this.practiceMode) this.ui.showStatusMessage('練習モード — CPUは攻撃しません', 2.5);
     }
   }
 

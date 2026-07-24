@@ -71,6 +71,10 @@ export class EnemyAI extends Character {
     this._introBannerPending = false;
 
     this.setDifficulty(difficulty);
+    // When true (practice mode), _reevaluate never lets the CPU enter
+    // ATTACK/BOMB/SPECIAL — it just wanders and paints, a passive target
+    // the player can safely practice against.
+    this.practiceMode = false;
 
     this.state = STATE.EXPLORE;
     this._decisionTimer = 0;
@@ -280,6 +284,19 @@ export class EnemyAI extends Character {
     if (this.state === STATE.CLIMB) this._finishClimbPlan(false);
     if (this.state === STATE.BOMB && this._bombPlanTimer > 0) return;
     if (this.state === STATE.SPECIAL && this._specialWindupTimer > 0) return;
+
+    if (this.practiceMode) {
+      const survey = this._surveySurroundings(arena, paintSystem);
+      this._selectUtilityWeapon();
+      if (survey.neutralPoint) {
+        this.state = STATE.PAINT;
+        this.targetPoint = survey.neutralPoint;
+      } else {
+        this.state = STATE.EXPLORE;
+        this.targetPoint = this._findExploreTarget(arena);
+      }
+      return;
+    }
 
     const dist = this.position.distanceTo(player.position);
     const hasLOS = this._hasLineOfSight(arena, player);

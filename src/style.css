@@ -209,6 +209,23 @@ html, body {
   box-shadow:0 0 16px rgba(47,184,255,.2),inset 0 0 12px rgba(255,255,255,.04);
 }
 
+.practice-mode-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: -0.5rem 0 1.1rem;
+  font-size: 0.78rem;
+  color: var(--clr-text-dim);
+  cursor: pointer;
+}
+.practice-mode-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--clr-player);
+  cursor: pointer;
+}
+
 .btn-primary {
   appearance: none;
   border: none;
