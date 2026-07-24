@@ -38,6 +38,7 @@ export class UIManager {
       settingMasterVolumeValue: document.getElementById('setting-master-volume-value'),
       settingMusicVolume: document.getElementById('setting-music-volume'),
       settingMusicVolumeValue: document.getElementById('setting-music-volume-value'),
+      settingInvertY: document.getElementById('setting-invert-y'),
       countdown: document.getElementById('screen-countdown'),
       countdownNumber: document.getElementById('countdown-number'),
       hud: document.getElementById('hud'),
@@ -161,8 +162,14 @@ export class UIManager {
     });
   }
 
+  bindInvertYChange(cb) {
+    const el = this.el.settingInvertY;
+    if (!el) return;
+    el.addEventListener('change', () => cb(el.checked));
+  }
+
   /** Syncs slider positions/labels to persisted values whenever the settings screen opens. */
-  setSettingsValues({ sensitivityMult, masterVolume, musicVolume }) {
+  setSettingsValues({ sensitivityMult, masterVolume, musicVolume, invertY }) {
     if (this.el.settingSensitivity) {
       this.el.settingSensitivity.value = String(sensitivityMult);
       if (this.el.settingSensitivityValue) this.el.settingSensitivityValue.textContent = `x${sensitivityMult.toFixed(1)}`;
@@ -177,6 +184,7 @@ export class UIManager {
       this.el.settingMusicVolume.value = String(pct);
       if (this.el.settingMusicVolumeValue) this.el.settingMusicVolumeValue.textContent = `${pct}%`;
     }
+    if (this.el.settingInvertY) this.el.settingInvertY.checked = Boolean(invertY);
   }
 
   showSettings() { this.el.settings?.classList.remove('hidden'); }

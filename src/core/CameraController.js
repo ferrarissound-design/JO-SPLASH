@@ -32,7 +32,7 @@ export class CameraController {
   /** Apply raw mouse/touch movement deltas (pixels) to yaw/pitch. */
   applyLook(dx, dy) {
     this.yaw -= dx * CAMERA.sensitivity;
-    this.pitch -= dy * CAMERA.sensitivity;
+    this.pitch -= dy * CAMERA.sensitivity * (CAMERA.invertY ? -1 : 1);
     this.pitch = THREE.MathUtils.clamp(this.pitch, CAMERA.minPitch, CAMERA.maxPitch);
   }
 

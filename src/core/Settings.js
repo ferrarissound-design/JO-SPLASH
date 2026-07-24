@@ -12,6 +12,7 @@ const DEFAULTS = Object.freeze({
   masterVolume: 1,
   musicVolume: 1,
   difficultyId: 'standard',
+  invertY: false,
 });
 
 function clampNumber(value, min, max, fallback) {
@@ -35,6 +36,7 @@ function load() {
     masterVolume: clampNumber(parsed.masterVolume, 0, 1, DEFAULTS.masterVolume),
     musicVolume: clampNumber(parsed.musicVolume, 0, 1, DEFAULTS.musicVolume),
     difficultyId: typeof parsed.difficultyId === 'string' ? parsed.difficultyId : DEFAULTS.difficultyId,
+    invertY: typeof parsed.invertY === 'boolean' ? parsed.invertY : DEFAULTS.invertY,
   };
 }
 
@@ -52,6 +54,7 @@ export class Settings {
   /** Pushes the current values onto the live systems that read them. */
   apply() {
     CAMERA.sensitivity = BASE_SENSITIVITY * this.values.sensitivityMult;
+    CAMERA.invertY = this.values.invertY;
   }
 
   _save() {
@@ -80,6 +83,12 @@ export class Settings {
 
   setDifficultyId(id) {
     this.values.difficultyId = id;
+    this._save();
+  }
+
+  setInvertY(v) {
+    this.values.invertY = Boolean(v);
+    this.apply();
     this._save();
   }
 }

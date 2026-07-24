@@ -188,6 +188,7 @@ export class Game {
       this.settings.setMusicVolume(v);
       this.audioManager.setMusicVolume(v);
     });
+    this.ui.bindInvertYChange((checked) => this.settings.setInvertY(checked));
   }
 
   _selectDifficulty(difficultyId) {

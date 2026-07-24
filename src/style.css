@@ -356,6 +356,16 @@ html, body {
   box-shadow: 0 0 8px rgba(47,184,255,0.6);
   cursor: pointer;
 }
+.settings-row-checkbox {
+  grid-template-columns: 1fr auto;
+}
+.settings-row-checkbox input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--clr-player);
+  cursor: pointer;
+  justify-self: end;
+}
 
 /* ============ Countdown ============ */
 #screen-countdown {
