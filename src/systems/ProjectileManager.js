@@ -70,6 +70,7 @@ export class ProjectileManager {
     }
 
     this.onCharacterHit = null; // (targetTeam, damage, hitPoint) => void, set by Game
+    this.onPaint = null; // (team, changedCells) => void, set by Game
   }
 
   _createSlot() {
@@ -92,20 +93,34 @@ export class ProjectileManager {
       team: null,
       life: 0,
       distance: 0,
+      damage: WEAPON.damage,
+      hitRadius: WEAPON.projectileRadius,
+      paintRadius: PAINT.splatRadius,
+      maxRange: WEAPON.maxRange,
+      maxLifeSec: WEAPON.maxLifeSec,
+      gravity: 0,
+      speed: WEAPON.projectileSpeed,
       active: false,
     };
   }
 
-  spawn(origin, direction, team) {
+  spawn(origin, direction, team, profile = WEAPON) {
     const slot = this.pool.find((s) => !s.active);
-    if (!slot) return; // pool exhausted; drop the shot rather than allocate
+    if (!slot) return false; // pool exhausted; drop the shot rather than allocate
 
     slot.position.copy(origin);
     slot.prevPosition.copy(origin);
-    slot.velocity.copy(direction).multiplyScalar(WEAPON.projectileSpeed);
+    slot.velocity.copy(direction).multiplyScalar(profile.projectileSpeed);
     slot.team = team;
     slot.life = 0;
     slot.distance = 0;
+    slot.damage = profile.damage;
+    slot.hitRadius = profile.projectileRadius;
+    slot.paintRadius = profile.paintRadius ?? PAINT.splatRadius;
+    slot.maxRange = profile.maxRange;
+    slot.maxLifeSec = profile.maxLifeSec;
+    slot.gravity = profile.gravity ?? 0;
+    slot.speed = profile.projectileSpeed;
     slot.active = true;
 
     const color = team === TEAM.PLAYER ? 0x2fb8ff : 0xff7a2f;
@@ -113,11 +128,13 @@ export class ProjectileManager {
     slot.tailMat.color.setHex(color);
 
     slot.group.position.copy(origin);
+    slot.group.scale.setScalar(profile.projectileRadius / WEAPON.projectileRadius);
     slot.group.visible = true;
     if (direction.lengthSq() > 1e-6) {
       const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
       slot.group.quaternion.copy(quat);
     }
+    return true;
   }
 
   /** targets: array of alive-or-dead Character instances (player, cpu). */
@@ -126,11 +143,12 @@ export class ProjectileManager {
       if (!slot.active) continue;
 
       slot.prevPosition.copy(slot.position);
+      slot.velocity.y += slot.gravity * dt;
       slot.position.addScaledVector(slot.velocity, dt);
       slot.life += dt;
-      slot.distance += WEAPON.projectileSpeed * dt;
+      slot.distance += slot.speed * dt;
 
-      if (slot.life >= WEAPON.maxLifeSec || slot.distance >= WEAPON.maxRange) {
+      if (slot.life >= slot.maxLifeSec || slot.distance >= slot.maxRange) {
         this._deactivate(slot);
         continue;
       }
@@ -147,14 +165,14 @@ export class ProjectileManager {
       if (target.team === slot.team || !target.alive || target.invincibleTimer > 0) continue;
 
       _p1.set(target.position.x, target.position.y, target.position.z);
-      _p2.set(target.position.x, target.position.y + MOVEMENT.capsuleHeight, target.position.z);
-      const hitRadius = MOVEMENT.capsuleRadius + WEAPON.projectileRadius;
+      _p2.set(target.position.x, target.position.y + target.hitboxHeight, target.position.z);
+      const hitRadius = MOVEMENT.capsuleRadius + slot.hitRadius;
 
       const distSq = closestDistSqSegmentToSegment(slot.prevPosition, slot.position, _p1, _p2);
       if (distSq <= hitRadius * hitRadius) {
         const hitPoint = _closestOnSeg.clone();
         // Game's onCharacterHit callback plays the damage sound; nothing further needed here.
-        this.onCharacterHit?.(target.team, WEAPON.damage, hitPoint);
+        this.onCharacterHit?.(target.team, slot.damage, hitPoint);
         this.particleManager?.spawnSplat(hitPoint, slot.team === TEAM.PLAYER ? 0x2fb8ff : 0xff7a2f);
         this._deactivate(slot);
         return true;
@@ -181,14 +199,15 @@ export class ProjectileManager {
     const climbPanel = this.arena.climbPanelByMesh.get(hit.object);
 
     if (this.arena.paintableFloorMeshes.has(hit.object)) {
-      this.paintSystem.paintSplat(hit.point.x, hit.point.z, PAINT.splatRadius, slot.team, {
+      const paintedCells = this.paintSystem.paintSplat(hit.point.x, hit.point.z, slot.paintRadius, slot.team, {
         dirX: slot.velocity.x,
         dirZ: slot.velocity.z,
         stretch: 1.45,
       });
+      this.onPaint?.(slot.team, paintedCells);
       this.particleManager?.spawnSplat(hit.point, color, true);
     } else if (climbPanel) {
-      climbPanel.paint.paintSplat(hit.point, PAINT.splatRadius, slot.team);
+      climbPanel.paint.paintSplat(hit.point, slot.paintRadius, slot.team);
       this.particleManager?.spawnSplat(hit.point, color, true);
     } else {
       this.particleManager?.spawnSplat(hit.point, color, false);

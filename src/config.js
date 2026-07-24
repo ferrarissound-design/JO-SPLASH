@@ -116,6 +116,7 @@ export const PAINT = {
   gridResolution: 128, // cells per axis for the coverage grid (independent of visual texture)
   textureSize: 512, // canvas texture pixel resolution
   splatRadius: 2.1, // world-units radius painted per projectile hit
+  koSplatRadius: 3.4, // large burst painted by the attacker when an opponent is splatted
   updateIntervalMs: 45, // throttle canvas texture upload
   splatterMin: 7, // tiny random flecks around each impact
   splatterMax: 13,
@@ -125,7 +126,7 @@ export const PAINT = {
   wallGridCols: 12, // small independent coverage grid for each climbable wall panel
   wallGridRows: 10,
   wallTextureSize: 128,
-  wallOwnThreshold: 0.14, // fraction of a panel that must already be your own ink before you can climb it
+  wallPathToleranceCols: 1, // how far a climb path may bend sideways between adjacent grid rows
 };
 
 export const MOVEMENT = {
@@ -135,6 +136,10 @@ export const MOVEMENT = {
   inkSurfFovLerp: 8.5, // how quickly the FOV eases into/out of surf mode
   inkSurfCameraSink: 0.82, // lowers the first-person camera while submerged in own ink
   inkSurfBodySink: -1.05, // pulls the character rig below the floor for a true dive silhouette
+  inkSurfHitboxHeight: 0.62, // smaller target while fully submerged
+  inkSurfStillSpeed: 0.45, // below this horizontal speed the character is considered concealed
+  inkSurfMovingOpacity: 0.34, // moving swimmers remain readable through ripples / a faint silhouette
+  inkSurfStillOpacity: 0.08,
   inkSurfExitCooldownSec: 0.12,
   inkSurfExitHopSpeed: 3.2, // small pop upward when releasing surf on own ink
   enemyPaintSlowMult: 0.62,
@@ -161,6 +166,9 @@ export const ENEMY_FLOOR_EFFECT = {
 
 export const HEALTH = {
   max: 100,
+  regenDelaySec: 3.0,
+  regenPerSec: 14,
+  regenDiveMultiplier: 2,
 };
 
 export const INK = {
@@ -173,6 +181,7 @@ export const INK = {
 };
 
 export const WEAPON = {
+  defaultType: 'stream',
   fireInterval: 0.16, // seconds between shots
   costPerShot: 6,
   projectileSpeed: 34,
@@ -182,6 +191,59 @@ export const WEAPON = {
   damage: 9,
   spreadRad: 0.018,
   recoilKick: 0.02,
+  profiles: {
+    stream: {
+      name: 'STREAM',
+      fireInterval: 0.16,
+      costPerShot: 6,
+      projectileSpeed: 34,
+      projectileRadius: 0.16,
+      maxRange: 40,
+      maxLifeSec: 2.2,
+      damage: 9,
+      spreadRad: 0.018,
+      pelletCount: 1,
+      paintRadius: 2.1,
+    },
+    spread: {
+      name: 'SPREAD',
+      fireInterval: 0.52,
+      costPerShot: 16,
+      projectileSpeed: 27,
+      projectileRadius: 0.18,
+      maxRange: 24,
+      maxLifeSec: 1.15,
+      damage: 6,
+      spreadRad: 0.12,
+      pelletCount: 5,
+      paintRadius: 1.45,
+    },
+    precision: {
+      name: 'PRECISION',
+      fireInterval: 0.88,
+      costPerShot: 18,
+      projectileSpeed: 54,
+      projectileRadius: 0.13,
+      maxRange: 55,
+      maxLifeSec: 1.2,
+      damage: 38,
+      spreadRad: 0.004,
+      pelletCount: 1,
+      paintRadius: 1.35,
+    },
+  },
+};
+
+export const SUB_WEAPON = {
+  cooldownSec: 1.1,
+  cost: 28,
+  projectileSpeed: 22,
+  projectileRadius: 0.28,
+  maxRange: 28,
+  maxLifeSec: 1.7,
+  damage: 26,
+  paintRadius: 3.5,
+  gravity: -11,
 };
 
 export const PROJECTILE_POOL = {
@@ -196,6 +258,16 @@ export const PARTICLES = {
   koLifeSec: 0.9,
   trailCount: 2,
   trailLifeSec: 0.35,
+};
+
+export const SPECIAL = {
+  maxCharge: 100,
+  cellsPerCharge: 95, // roughly 12-18 seconds of productive painting
+  durationSec: 1.15,
+  pulseIntervalSec: 0.16,
+  minRadius: 2.4,
+  maxRadius: 8.2,
+  damage: 36,
 };
 
 export const CAMERA = {
@@ -217,6 +289,9 @@ export const AI = {
   refillInkThreshold: 22,
   visionHalfAngle: Math.PI, // CPU "senses" rather than strict FOV in v1
   moveSpeedMult: 1.0,
+  routeProbeDist: 3.4,
+  ownInkRouteBonus: 0.85,
+  enemyInkRoutePenalty: 1.35,
 };
 
 export const DEBUG_DEFAULTS = {

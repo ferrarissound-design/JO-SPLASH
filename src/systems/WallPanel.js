@@ -62,6 +62,38 @@ export class WallPanel {
     return (team === TEAM.PLAYER ? this.playerCells : this.cpuCells) / this.totalCells;
   }
 
+  /**
+   * Whether the team's ink forms a continuous bottom-to-top route near the
+   * supplied world position. Each next row may bend sideways by the configured
+   * tolerance, so a real painted stripe works while scattered blobs do not.
+   */
+  hasVerticalPath(team, point) {
+    const owner = OWNER_BY_TEAM[team];
+    if (!owner) return false;
+
+    const [u] = this._worldToUV(point);
+    const centerCol = THREE.MathUtils.clamp(Math.floor(u * this.cols), 0, this.cols - 1);
+    const tolerance = PAINT.wallPathToleranceCols;
+
+    let reachable = new Set();
+    for (let c = Math.max(0, centerCol - tolerance); c <= Math.min(this.cols - 1, centerCol + tolerance); c++) {
+      if (this.grid[c] === owner) reachable.add(c);
+    }
+    if (reachable.size === 0) return false;
+
+    for (let r = 1; r < this.rows; r++) {
+      const next = new Set();
+      for (const prevCol of reachable) {
+        for (let c = Math.max(0, prevCol - tolerance); c <= Math.min(this.cols - 1, prevCol + tolerance); c++) {
+          if (this.grid[r * this.cols + c] === owner) next.add(c);
+        }
+      }
+      if (next.size === 0) return false;
+      reachable = next;
+    }
+    return true;
+  }
+
   /** Paint a circular splat (world-space radius) centered at a world point, owned by `team`. */
   paintSplat(point, radiusWorld, team) {
     const owner = OWNER_BY_TEAM[team];

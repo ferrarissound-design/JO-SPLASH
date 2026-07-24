@@ -23,9 +23,12 @@
             <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>移動</span></li>
             <li><kbd>マウス</kbd><span>カメラ / 照準</span></li>
             <li><kbd>左クリック</kbd><span>インク発射</span></li>
+            <li><kbd>E</kbd><span>インクボム</span></li>
+            <li><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><span>メイン武器切替</span></li>
             <li><kbd>Space</kbd><span>ジャンプ</span></li>
             <li><kbd>W</kbd>+<kbd>Space</kbd><span>自分色の壁パネルをよじ登る</span></li>
             <li><kbd>Shift</kbd><span>自分のインクに潜って高速移動</span></li>
+            <li><kbd>Q</kbd><span>満タン時にインクバースト</span></li>
             <li><kbd>Esc</kbd><span>マウスロック解除</span></li>
           </ul>
           <p class="mouse-hint">※ クリックでマウスがロックされます。開始後は画面内でマウスを動かして狙いましょう。</p>
@@ -37,9 +40,11 @@
             <li><kbd>左スティック</kbd><span>移動</span></li>
             <li><kbd>右側ドラッグ</kbd><span>カメラ / 照準</span></li>
             <li><kbd>◎ボタン</kbd><span>インク発射</span></li>
+            <li><kbd>BOMB</kbd><span>広範囲インク弾</span></li>
             <li><kbd>JUMP</kbd><span>ジャンプ</span></li>
             <li><kbd>前進+JUMP</kbd><span>自分色の壁パネルをよじ登る</span></li>
             <li><kbd>DIVE</kbd><span>自分のインクに潜って移動</span></li>
+            <li><kbd>BURST</kbd><span>満タン時に広範囲を塗装</span></li>
           </ul>
           <p class="mouse-hint">※ 画面左側をドラッグで移動、右側をドラッグでカメラ操作。ボタンは押している間だけ効果があります。</p>
         </div>
@@ -82,7 +87,13 @@
               <div class="gauge-track"><div id="ink-fill" class="gauge-fill ink-fill"></div></div>
               <span id="ink-value" class="gauge-value">100</span>
             </div>
+            <div class="gauge-row" id="special-row">
+              <span class="gauge-icon special-icon">SP</span>
+              <div class="gauge-track"><div id="special-fill" class="gauge-fill special-fill"></div></div>
+              <span id="special-value" class="gauge-value">0%</span>
+            </div>
           </div>
+          <div class="weapon-strip"><span>MAIN</span><strong id="weapon-name">STREAM</strong><small>1 / 2 / 3</small></div>
           <div class="ko-cluster"><span class="ko-title">KO</span><span id="ko-player" class="ko-player">0</span><span class="ko-sep">-</span><span id="ko-cpu" class="ko-cpu">0</span></div>
         </div>
       </div>
@@ -141,6 +152,8 @@
       <div class="touch-buttons">
         <button type="button" class="touch-btn touch-btn-surf" aria-label="DIVE 自分のインクに潜って移動"><span>DIVE</span><small>潜って加速</small></button>
         <button type="button" class="touch-btn touch-btn-jump">JUMP</button>
+        <button type="button" class="touch-btn touch-btn-special">BURST</button>
+        <button type="button" class="touch-btn touch-btn-bomb">BOMB</button>
         <button type="button" class="touch-btn touch-btn-fire">FIRE</button>
       </div>
     </section>

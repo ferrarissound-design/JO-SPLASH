@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { Character } from './Character.js';
-import { MOVEMENT, TEAM, COLORS, PAINT } from '../config.js';
+import { MOVEMENT, TEAM, COLORS } from '../config.js';
+import { InkBurstSpecial } from '../systems/SpecialWeapon.js';
+import { InkBomb } from '../systems/SubWeapon.js';
 
 const _wish = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
@@ -21,6 +23,15 @@ export class Player extends Character {
     super(TEAM.PLAYER, spawnPoint);
     this.camera = cameraController;
     this.input = inputManager;
+    this.special = new InkBurstSpecial(this.team);
+    this.subWeapon = new InkBomb();
+  }
+
+  die() {
+    super.die();
+    this.special.active = false;
+    this.special.timer = 0;
+    this.special.charge *= 0.5;
   }
 
   update(dt, ctx) {
@@ -34,16 +45,27 @@ export class Player extends Character {
 
     if (controlsEnabled) {
       this._handleMovement(dt, arena);
-      this._handleFiring(dt, projectileManager, particleManager, audioManager);
     } else {
       // Still settle vertically so the player doesn't float during countdown/result.
       this.applyVerticalPhysics(dt, arena);
     }
 
     const wasInkSurfing = this.inkSurfActive;
-    const wantsInkSurf = controlsEnabled && (this.input.isDown('ShiftLeft') || this.input.isDown('ShiftRight'));
+    if (controlsEnabled && this.input.wasJustPressed('KeyQ')) {
+      this.special.activate(this, audioManager, ctx.ui);
+    }
+    if (controlsEnabled) this._handleWeaponSelection(ctx.ui);
+
+    const wantsInkSurf = controlsEnabled && !this.special.active
+      && (this.input.isDown('ShiftLeft') || this.input.isDown('ShiftRight'));
     const speedMult = this.updateFloorEffects(dt, paintSystem, wantsInkSurf);
     this._lastSpeedMult = speedMult;
+    this.updateHealthRegen(dt);
+    if (controlsEnabled) {
+      this.subWeapon.update(dt);
+      this._handleSubWeapon(projectileManager, particleManager, audioManager);
+      this._handleFiring(dt, projectileManager, particleManager, audioManager);
+    }
 
     if (controlsEnabled && wasInkSurfing && !this.inkSurfActive && !wantsInkSurf && this.grounded) {
       this.velocity.y = Math.max(this.velocity.y, MOVEMENT.inkSurfExitHopSpeed);
@@ -53,7 +75,15 @@ export class Player extends Character {
       particleManager.spawnSplat(_surfExitSplatPos, COLORS.player, true);
     }
 
-    this.updateFloorParticles(dt, particleManager, paintSystem);
+    this.special.update(dt, this, {
+      paintSystem,
+      particleManager,
+      opponent: ctx.cpu,
+      onCharacterHit: ctx.onCharacterHit,
+    });
+
+    const trailPaintedCells = this.updateFloorParticles(dt, particleManager, paintSystem);
+    this.special.addCharge(trailPaintedCells);
 
     this.yaw = this.camera.yaw;
     this.syncMesh(ctx.elapsedTime);
@@ -135,7 +165,7 @@ export class Player extends Character {
       const tan = panel.planeAxis === 'x' ? this.position.z : this.position.x;
       if (tan < panel.tangentMin || tan > panel.tangentMax) continue;
       if (this.position.y >= panel.height - 0.05) continue;
-      if (panel.paint.coverageFraction(this.team) < PAINT.wallOwnThreshold) continue;
+      if (!panel.paint.hasVerticalPath(this.team, this.position)) continue;
       return panel;
     }
     return null;
@@ -205,12 +235,32 @@ export class Player extends Character {
 
   _handleFiring(dt, projectileManager, particleManager, audioManager) {
     this.weapon.update(dt);
-    if (this.inkSurfActive || this.isClimbing) return;
+    if (this.inkSurfActive || this.isClimbing || this.special.active) return;
     if (!this.input.mouseDown) return;
 
     this.camera.getAimDirection(_aimDir);
     _fireOrigin.copy(this.camera.camera.position).addScaledVector(_aimDir, 0.35);
 
     this.weapon.fire(this, _fireOrigin, _aimDir, projectileManager, audioManager, particleManager);
+  }
+
+  _handleWeaponSelection(ui) {
+    const choices = [
+      ['Digit1', 'stream'],
+      ['Digit2', 'spread'],
+      ['Digit3', 'precision'],
+    ];
+    for (const [key, type] of choices) {
+      if (this.input.wasJustPressed(key) && this.weapon.setType(type)) {
+        ui?.showStatusMessage(`MAIN: ${this.weapon.displayName}`, 1);
+      }
+    }
+  }
+
+  _handleSubWeapon(projectileManager, particleManager, audioManager) {
+    if (!this.input.wasJustPressed('KeyE') || this.special.active) return;
+    this.camera.getAimDirection(_aimDir);
+    _fireOrigin.copy(this.camera.camera.position).addScaledVector(_aimDir, 0.45);
+    this.subWeapon.fire(this, _fireOrigin, _aimDir, projectileManager, audioManager, particleManager);
   }
 }

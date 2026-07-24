@@ -29,6 +29,10 @@ export class UIManager {
       inkRow: document.getElementById('ink-row'),
       inkFill: document.getElementById('ink-fill'),
       inkValue: document.getElementById('ink-value'),
+      specialRow: document.getElementById('special-row'),
+      specialFill: document.getElementById('special-fill'),
+      specialValue: document.getElementById('special-value'),
+      weaponName: document.getElementById('weapon-name'),
 
       koPlayer: document.getElementById('ko-player'),
       koCpu: document.getElementById('ko-cpu'),
@@ -100,7 +104,12 @@ export class UIManager {
   showResultScreen() { this.el.result.classList.remove('hidden'); }
   hideResultScreen() { this.el.result.classList.add('hidden'); }
 
-  updateHUD({ timeRemaining, playerPct, cpuPct, hp, ink, koPlayer, koCpu, firing, submerged = false, enemyFloor = false }) {
+  updateHUD({
+    timeRemaining, playerPct, cpuPct, hp, ink, specialCharge = 0,
+    specialReady = false, specialActive = false, weaponName = 'STREAM',
+    koPlayer, koCpu, firing,
+    submerged = false, enemyFloor = false,
+  }) {
     const t = Math.max(0, Math.ceil(timeRemaining));
     const minutes = Math.floor(t / 60);
     const seconds = String(t % 60).padStart(2, '0');
@@ -120,6 +129,13 @@ export class UIManager {
     this.el.inkFill.style.width = `${Math.max(0, ink)}%`;
     this.el.inkRow.classList.toggle('ink-alert', ink <= 18);
     this.el.inkValue.textContent = String(Math.ceil(ink));
+
+    const specialPct = Math.max(0, Math.min(100, specialCharge));
+    this.el.specialFill.style.width = `${specialPct}%`;
+    this.el.specialRow.classList.toggle('special-ready', specialReady);
+    this.el.specialRow.classList.toggle('special-active', specialActive);
+    this.el.specialValue.textContent = specialActive ? 'NOW' : specialReady ? 'Q!' : `${Math.floor(specialPct)}%`;
+    this.el.weaponName.textContent = weaponName;
 
     if (koPlayer !== this._lastKoPlayer) {
       this.el.koPlayer.classList.remove('ko-pop');

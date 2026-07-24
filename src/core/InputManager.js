@@ -65,7 +65,15 @@ export class InputManager {
   requestPointerLock() {
     if (this.isTouch) return; // no pointer-lock concept on touch devices
     if (document.pointerLockElement !== this.domElement) {
-      this.domElement.requestPointerLock();
+      // Embedded previews and automation surfaces may reject pointer lock
+      // even though the game itself can continue normally. Do not let that
+      // expected capability failure trip the global boot-error screen.
+      try {
+        const request = this.domElement.requestPointerLock();
+        request?.catch?.(() => {});
+      } catch {
+        // Mouse-look simply remains inactive until pointer lock is available.
+      }
     }
   }
 
