@@ -370,6 +370,55 @@ export const AI = {
   specialDecisionCooldownSec: 4,
 };
 
+// Light per-archetype behavior traits layered on top of the selected
+// difficulty preset (see EnemyAI._recomputeEffectiveDifficulty). The
+// appearance types were previously cosmetic-only; these multipliers give
+// each one a distinct "feel" without touching the difficulty tuning itself.
+// spreadRangeMult/precisionRangeMult scale AI.spreadWeaponRange/
+// precisionWeaponRange, shifting how readily the type swaps into its
+// preferred weapon; fleeHpThresholdMult scales AI.fleeHpThreshold.
+export const AI_APPEARANCE_TRAITS = Object.freeze({
+  speed: Object.freeze({
+    // Hit-and-run: fast, erratic aim, bomb-happy, retreats early, lingers on
+    // STREAM/SPREAD rather than committing to PRECISION engagements.
+    moveSpeedMult: 1.14,
+    aimJitterMult: 1.15,
+    bombPressureMult: 1.4,
+    spreadRangeMult: 1.25,
+    precisionRangeMult: 1.2,
+    fleeHpThresholdMult: 1.2,
+  }),
+  street: Object.freeze({
+    // Baseline archetype — no trait deviates from the selected difficulty.
+    moveSpeedMult: 1,
+    aimJitterMult: 1,
+    bombPressureMult: 1,
+    spreadRangeMult: 1,
+    precisionRangeMult: 1,
+    fleeHpThresholdMult: 1,
+  }),
+  heavy: Object.freeze({
+    // Tank: slower, leans on brute-force SPREAD over utility bombs, and
+    // fights on well past the point other types would disengage.
+    moveSpeedMult: 0.86,
+    aimJitterMult: 1.1,
+    bombPressureMult: 0.65,
+    spreadRangeMult: 1.3,
+    precisionRangeMult: 1.15,
+    fleeHpThresholdMult: 0.55,
+  }),
+  technical: Object.freeze({
+    // Marksman: sharp aim, switches into PRECISION sooner and leans on it,
+    // standard flee/retreat behavior otherwise.
+    moveSpeedMult: 0.97,
+    aimJitterMult: 0.6,
+    bombPressureMult: 1.1,
+    spreadRangeMult: 0.75,
+    precisionRangeMult: 0.8,
+    fleeHpThresholdMult: 1,
+  }),
+});
+
 export const AI_DIFFICULTY = Object.freeze({
   rookie: Object.freeze({
     id: 'rookie',

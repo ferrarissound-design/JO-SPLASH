@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Character } from './Character.js';
-import { MOVEMENT, WEAPON, SUB_WEAPON, SPECIAL, AI, TEAM } from '../config.js';
+import { MOVEMENT, WEAPON, SUB_WEAPON, SPECIAL, AI, AI_APPEARANCE_TRAITS, TEAM } from '../config.js';
 import { InkBomb } from '../systems/SubWeapon.js';
 import { InkBurstSpecial } from '../systems/SpecialWeapon.js';
 import {
@@ -70,17 +70,7 @@ export class EnemyAI extends Character {
     this._introTimer = 0;
     this._introBannerPending = false;
 
-    this.difficulty = {
-      id: 'standard',
-      label: 'STANDARD',
-      reactionDelay: AI.reactionDelaySec,
-      aimJitterMult: 1,
-      decisionIntervalMult: 1,
-      moveSpeedMult: 1,
-      bombPressureMult: 1,
-      specialChargeMult: 1,
-      ...difficulty,
-    };
+    this.setDifficulty(difficulty);
 
     this.state = STATE.EXPLORE;
     this._decisionTimer = 0;
@@ -135,6 +125,9 @@ export class EnemyAI extends Character {
     this.appearance = cfg;
     this.appearanceId = cfg.id;
     this.appearanceName = cfg.name;
+    // Archetype traits ride on top of whatever difficulty is selected, so
+    // re-derive the effective difficulty every time the look (re)rolls.
+    this._recomputeEffectiveDifficulty();
   }
 
   /** Rebuild the rig in place with a new appearance type (randomized colours/details). */
@@ -163,7 +156,7 @@ export class EnemyAI extends Character {
   }
 
   setDifficulty(difficulty = {}) {
-    this.difficulty = {
+    this._baseDifficulty = {
       id: 'standard',
       label: 'STANDARD',
       reactionDelay: AI.reactionDelaySec,
@@ -175,7 +168,30 @@ export class EnemyAI extends Character {
       ...difficulty,
     };
     this._decisionTimer = 0;
+    this._recomputeEffectiveDifficulty();
     return this.difficulty;
+  }
+
+  /** Combines the selected difficulty preset with the current appearance's behavior traits into `this.difficulty`. */
+  _recomputeEffectiveDifficulty() {
+    const base = this._baseDifficulty ?? {
+      reactionDelay: AI.reactionDelaySec,
+      aimJitterMult: 1,
+      decisionIntervalMult: 1,
+      moveSpeedMult: 1,
+      bombPressureMult: 1,
+      specialChargeMult: 1,
+    };
+    const traits = AI_APPEARANCE_TRAITS[this.appearanceId] ?? AI_APPEARANCE_TRAITS.street;
+    this.difficulty = {
+      ...base,
+      aimJitterMult: base.aimJitterMult * traits.aimJitterMult,
+      moveSpeedMult: base.moveSpeedMult * traits.moveSpeedMult,
+      bombPressureMult: base.bombPressureMult * traits.bombPressureMult,
+      spreadRangeMult: traits.spreadRangeMult,
+      precisionRangeMult: traits.precisionRangeMult,
+      fleeHpThresholdMult: traits.fleeHpThresholdMult,
+    };
   }
 
   /** Kick off the rise-and-pop entrance and flag the name banner for the UI. */
@@ -274,7 +290,7 @@ export class EnemyAI extends Character {
       return;
     }
 
-    if (this.hp < AI.fleeHpThreshold) {
+    if (this.hp < AI.fleeHpThreshold * this.difficulty.fleeHpThresholdMult) {
       this.state = STATE.FLEE;
       this.targetPoint = this._findFleeTarget(arena, paintSystem, player);
       return;
@@ -485,15 +501,20 @@ export class EnemyAI extends Character {
 
   _selectCombatWeapon(dist) {
     if (this._debugWeaponLockTimer > 0) return false;
+    // Archetype traits shift these thresholds (see AI_APPEARANCE_TRAITS): a
+    // wider spread/precision range delays committing to PRECISION, a
+    // narrower one favors it.
+    const spreadRange = AI.spreadWeaponRange * this.difficulty.spreadRangeMult;
+    const precisionRange = AI.precisionWeaponRange * this.difficulty.precisionRangeMult;
     const current = this.weapon.type;
     let desired = 'stream';
-    if (current === 'spread' && dist <= AI.spreadWeaponRange + AI.weaponRangeHysteresis) {
+    if (current === 'spread' && dist <= spreadRange + AI.weaponRangeHysteresis) {
       desired = 'spread';
-    } else if (current === 'precision' && dist >= AI.precisionWeaponRange - AI.weaponRangeHysteresis) {
+    } else if (current === 'precision' && dist >= precisionRange - AI.weaponRangeHysteresis) {
       desired = 'precision';
-    } else if (dist <= AI.spreadWeaponRange) {
+    } else if (dist <= spreadRange) {
       desired = 'spread';
-    } else if (dist >= AI.precisionWeaponRange) {
+    } else if (dist >= precisionRange) {
       desired = 'precision';
     }
     return this._switchWeapon(desired);
