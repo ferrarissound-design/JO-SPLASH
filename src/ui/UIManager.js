@@ -18,6 +18,9 @@ export class UIManager {
       title: document.getElementById('screen-title'),
       howtoDesktop: document.getElementById('howto-desktop'),
       howtoTouch: document.getElementById('howto-touch'),
+      pause: document.getElementById('screen-pause'),
+      btnResume: document.getElementById('btn-resume'),
+      btnQuit: document.getElementById('btn-quit'),
       countdown: document.getElementById('screen-countdown'),
       countdownNumber: document.getElementById('countdown-number'),
       hud: document.getElementById('hud'),
@@ -97,6 +100,8 @@ export class UIManager {
 
   bindStart(cb) { this.el.btnStart.addEventListener('click', cb); }
   bindRestart(cb) { this.el.btnRestart.addEventListener('click', cb); }
+  bindResume(cb) { this.el.btnResume?.addEventListener('click', cb); }
+  bindQuit(cb) { this.el.btnQuit?.addEventListener('click', cb); }
   bindCycleAppearance(cb) { this.el.btnCycleAppearance?.addEventListener('click', cb); }
   bindDifficultySelection(cb) {
     for (const button of this.el.difficultyButtons) {
@@ -134,6 +139,9 @@ export class UIManager {
 
   showTitle() { this.el.title.classList.remove('hidden'); }
   hideTitle() { this.el.title.classList.add('hidden'); }
+
+  showPause() { this.el.pause?.classList.remove('hidden'); }
+  hidePause() { this.el.pause?.classList.add('hidden'); }
 
   showCountdown() { this.el.countdown.classList.remove('hidden'); }
   hideCountdown() { this.el.countdown.classList.add('hidden'); }

@@ -137,6 +137,26 @@ export class AudioManager {
     this.bgm.volume = 0.35;
   }
 
+  /** Suspends BGM playback in place (pause/tab-hidden) without resetting position. */
+  pauseBattleBGM() {
+    if (!this.bgm.paused) this.bgm.pause();
+  }
+
+  /** Resumes BGM from wherever pauseBattleBGM() left it. */
+  resumeBattleBGM() {
+    if (this.bgm.paused) this.bgm.play().catch(() => {});
+  }
+
+  /** Freezes all Web Audio playback (pause menu / tab hidden) without tearing anything down. */
+  suspendContext() {
+    if (this.ctx?.state === 'running') this.ctx.suspend().catch(() => {});
+  }
+
+  /** Resumes Web Audio playback after suspendContext(). */
+  resumeContext() {
+    if (this.ctx?.state === 'suspended') this.ctx.resume().catch(() => {});
+  }
+
   playInkSurfExit() {
     this._tone(260, 0.12, { type: 'triangle', peak: 0.13, freqEnd: 520 });
     this._noise(0.16, { peak: 0.11, filterFreq: 1500 });

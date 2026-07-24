@@ -22,6 +22,7 @@ const STATE = {
   TITLE: 'title',
   COUNTDOWN: 'countdown',
   PLAYING: 'playing',
+  PAUSED: 'paused',
   JUDGING: 'judging',
   RESULT: 'result',
 };
@@ -103,6 +104,7 @@ export class Game {
     this._bindUI();
     this._selectDifficulty(this.selectedDifficulty);
     this._bindWindow();
+    this.input.onLockLost = () => this._pauseFromLockLoss();
 
     this.clock = new THREE.Clock();
     this._animate = this._animate.bind(this);
@@ -161,6 +163,8 @@ export class Game {
     this.ui.bindRestart(() => this._startMatch());
     this.ui.bindCycleAppearance(() => this._cycleEnemyAppearance());
     this.ui.bindDifficultySelection((difficultyId) => this._selectDifficulty(difficultyId));
+    this.ui.bindResume(() => this._resumeFromPause());
+    this.ui.bindQuit(() => this._quitToTitle());
   }
 
   _selectDifficulty(difficultyId) {
@@ -182,6 +186,20 @@ export class Game {
     window.addEventListener('resize', resize);
     window.addEventListener('orientationchange', resize);
     window.visualViewport?.addEventListener('resize', resize);
+    document.addEventListener('visibilitychange', () => this._onVisibilityChange());
+  }
+
+  /** Backgrounding a tab freezes the main loop (see the document.hidden check in _animate),
+   *  but HTMLAudioElement/AudioContext playback keeps going unless told otherwise. */
+  _onVisibilityChange() {
+    if (document.hidden) {
+      this.audioManager.pauseBattleBGM();
+      this.audioManager.suspendContext();
+    } else if (this.state === STATE.PLAYING) {
+      this.audioManager.resumeContext();
+      this.audioManager.resumeBattleBGM();
+    }
+    // If paused/title/etc., leave audio as-is; the pause/resume flow owns it from here.
   }
 
   _resizeViewport() {
@@ -255,6 +273,7 @@ export class Game {
 
     this.ui.hideTitle();
     this.ui.hideResultScreen();
+    this.ui.hidePause();
     this.ui.showCountdown();
     this.ui.showHUD();
     this.ui.hideRespawnBanner();
@@ -276,6 +295,40 @@ export class Game {
 
     this.audioManager.resume();
     this.input.requestPointerLock();
+  }
+
+  /** Escape (or losing focus) drops pointer lock mid-match; freeze the game instead of leaving the player blind. */
+  _pauseFromLockLoss() {
+    if (this.state !== STATE.PLAYING) return;
+    this.state = STATE.PAUSED;
+    this.audioManager.pauseBattleBGM();
+    this.audioManager.suspendContext();
+    this.ui.showPause();
+  }
+
+  _resumeFromPause() {
+    if (this.state !== STATE.PAUSED) return;
+    this.state = STATE.PLAYING;
+    this.ui.hidePause();
+    this.audioManager.resumeContext();
+    this.audioManager.resumeBattleBGM();
+    this.input.requestPointerLock();
+  }
+
+  /** Bails out of an in-progress match back to the title screen without counting a result. */
+  _quitToTitle() {
+    if (this.state !== STATE.PAUSED) return;
+    this.state = STATE.TITLE;
+    this.ui.hidePause();
+    this.ui.hideHUD();
+    this.ui.hideRespawnBanner();
+    this.ui.updateEnemyMarker({ visible: false });
+    this.ui.updateEnemySpecialWarning({ visible: false });
+    this.audioManager.resumeContext();
+    this.audioManager.stopBattleBGM();
+    this.audioManager.stopInkSurfLoop();
+    this.touchControls?.hide();
+    this.ui.showTitle();
   }
 
   _beginJudging() {
@@ -320,6 +373,11 @@ export class Game {
   _onCharacterHit(targetTeam, damage, hitPoint) {
     const target = targetTeam === TEAM.PLAYER ? this.player : this.cpu;
     const shooter = targetTeam === TEAM.PLAYER ? this.cpu : this.player;
+
+    // Same guard Character.takeDamage uses internally: a shot that lands on a
+    // dead or invincible target does no damage, so it shouldn't play a damage
+    // sound or flash the hit UI either.
+    if (!target.alive || target.invincibleTimer > 0) return;
 
     const died = target.takeDamage(damage);
     this.audioManager.playDamage();
@@ -477,6 +535,9 @@ export class Game {
         break;
       case STATE.PLAYING:
         this._updatePlaying(dt);
+        break;
+      case STATE.PAUSED:
+        // Frozen: no timers/physics/AI advance until resumed or quit.
         break;
       case STATE.JUDGING:
         this._updateJudging(dt);
