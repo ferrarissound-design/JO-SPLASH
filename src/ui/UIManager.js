@@ -16,6 +16,11 @@ export class UIManager {
   constructor() {
     this.el = {
       title: document.getElementById('screen-title'),
+      matchRecord: document.getElementById('match-record'),
+      mrWins: document.getElementById('mr-wins'),
+      mrLosses: document.getElementById('mr-losses'),
+      mrDraws: document.getElementById('mr-draws'),
+      mrAvgPct: document.getElementById('mr-avg-pct'),
       howtoDesktop: document.getElementById('howto-desktop'),
       howtoTouch: document.getElementById('howto-touch'),
       pause: document.getElementById('screen-pause'),
@@ -94,6 +99,10 @@ export class UIManager {
       resultPctNeutral: document.getElementById('result-pct-neutral'),
       resultKoPlayer: document.getElementById('result-ko-player'),
       resultKoCpu: document.getElementById('result-ko-cpu'),
+      resultStatSpecials: document.getElementById('result-stat-specials'),
+      resultStatBombs: document.getElementById('result-stat-bombs'),
+      resultStatClimbs: document.getElementById('result-stat-climbs'),
+      resultStatRolls: document.getElementById('result-stat-rolls'),
 
       debugOverlay: document.getElementById('debug-overlay'),
       debugFps: document.getElementById('debug-fps'),
@@ -212,6 +221,21 @@ export class UIManager {
 
   showTitle() { this.el.title.classList.remove('hidden'); }
   hideTitle() { this.el.title.classList.add('hidden'); }
+
+  /** Shows the lifetime win/loss/draw record on the title screen, hidden until a first match completes. */
+  updateMatchRecord(matchRecord) {
+    const el = this.el.matchRecord;
+    if (!el) return;
+    if (matchRecord.totalMatches <= 0) {
+      el.classList.add('hidden');
+      return;
+    }
+    this.el.mrWins.textContent = String(matchRecord.values.wins);
+    this.el.mrLosses.textContent = String(matchRecord.values.losses);
+    this.el.mrDraws.textContent = String(matchRecord.values.draws);
+    this.el.mrAvgPct.textContent = `${matchRecord.averagePlayerPct.toFixed(1)}%`;
+    el.classList.remove('hidden');
+  }
 
   showPause() { this.el.pause?.classList.remove('hidden'); }
   hidePause() { this.el.pause?.classList.add('hidden'); }
@@ -535,7 +559,7 @@ export class UIManager {
   hideRespawnBanner() { this.el.respawnBanner.classList.add('hidden'); }
 
   /** Animates the result percentages counting up from 0 to their final values. */
-  showResult({ playerPct, cpuPct, koPlayer, koCpu, outcome }) {
+  showResult({ playerPct, cpuPct, koPlayer, koCpu, outcome, stats = null }) {
     this.el.resultTitle.textContent = outcome === 'win' ? 'VICTORY' : outcome === 'lose' ? 'DEFEAT' : 'DRAW';
     this.el.resultTitle.classList.remove('win', 'lose', 'draw');
     this.el.resultTitle.classList.add(outcome === 'win' ? 'win' : outcome === 'lose' ? 'lose' : 'draw');
@@ -557,6 +581,14 @@ export class UIManager {
 
     this.el.resultKoPlayer.textContent = String(koPlayer);
     this.el.resultKoCpu.textContent = String(koCpu);
+
+    if (stats) {
+      if (this.el.resultStatSpecials) this.el.resultStatSpecials.textContent = `${stats.specials.player} / ${stats.specials.cpu}`;
+      if (this.el.resultStatBombs) this.el.resultStatBombs.textContent = `${stats.bombs.player} / ${stats.bombs.cpu}`;
+      if (this.el.resultStatClimbs) this.el.resultStatClimbs.textContent = `${stats.climbs.player} / ${stats.climbs.cpu}`;
+      // CPU never ink-rolls (player-only mechanic), so this line is YOU-only.
+      if (this.el.resultStatRolls) this.el.resultStatRolls.textContent = String(stats.inkRolls.player);
+    }
 
     if (this._countUpAnim) cancelAnimationFrame(this._countUpAnim);
     const duration = 1100;

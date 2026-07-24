@@ -6,6 +6,7 @@ import { InputManager } from './InputManager.js';
 import { CameraController } from './CameraController.js';
 import { TouchControls } from './TouchControls.js';
 import { Settings } from './Settings.js';
+import { MatchRecord } from './MatchRecord.js';
 import { Arena } from '../systems/Arena.js';
 import { StageDecor } from '../systems/StageDecor.js';
 import { PaintSystem } from '../systems/PaintSystem.js';
@@ -41,6 +42,7 @@ export class Game {
 
     this.settings = new Settings();
     this.settings.apply();
+    this.matchRecord = new MatchRecord();
 
     this._setupRenderer();
     this._setupScene();
@@ -111,6 +113,7 @@ export class Game {
     this._bindUI();
     this._selectDifficulty(this.selectedDifficulty);
     this._bindWindow();
+    this.ui.updateMatchRecord(this.matchRecord);
     this.input.onLockLost = () => this._pauseFromLockLoss();
 
     this.clock = new THREE.Clock();
@@ -274,6 +277,9 @@ export class Game {
     this.player._healthRegenTimer = 0;
     this.player.koScored = 0;
     this.player.deaths = 0;
+    this.player.specialsUsed = 0;
+    this.player.bombsThrown = 0;
+    this.player.climbsCompleted = 0;
     this.player.special.reset();
     this.player.weapon.cooldown = 0;
     this.player.weapon.resetCharge();
@@ -398,12 +404,27 @@ export class Game {
     if (outcome === 'win') this.audioManager.playWin();
     else if (outcome === 'lose') this.audioManager.playLose();
 
+    this.matchRecord.recordMatch({
+      outcome,
+      difficultyId: this.selectedDifficulty,
+      playerPct: cov.playerPct,
+      koPlayer: this.player.koScored,
+      koCpu: this.cpu.koScored,
+    });
+    this.ui.updateMatchRecord(this.matchRecord);
+
     this.ui.showResult({
       playerPct: cov.playerPct,
       cpuPct: cov.cpuPct,
       koPlayer: this.player.koScored,
       koCpu: this.cpu.koScored,
       outcome,
+      stats: {
+        inkRolls: { player: this.player.inkRollsUsed, cpu: 0 }, // CPU never ink-rolls
+        climbs: { player: this.player.climbsCompleted, cpu: this.cpu.climbsCompleted },
+        bombs: { player: this.player.bombsThrown, cpu: this.cpu.bombsThrown },
+        specials: { player: this.player.specialsUsed, cpu: this.cpu.specialsUsed },
+      },
     });
   }
 

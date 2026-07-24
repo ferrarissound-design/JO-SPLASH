@@ -17,6 +17,10 @@
         <h1 class="game-logo">CHROMA <span class="logo-accent">DUEL</span></h1>
         <p class="game-tagline">1 対 1 インクバトル &mdash; 床を塗って陣地を制圧せよ</p>
 
+        <div id="match-record" class="match-record hidden">
+          <span class="mr-line">通算 <b id="mr-wins">0</b>勝 <b id="mr-losses">0</b>敗 <b id="mr-draws">0</b>分 ・ 平均塗装率 <b id="mr-avg-pct">0%</b></span>
+        </div>
+
         <div class="panel how-to-play" id="howto-desktop">
           <h2>操作方法</h2>
           <ul class="key-list">
@@ -237,6 +241,12 @@
         <div class="result-ko">
           <span>撃破数 — YOU: <b id="result-ko-player">0</b> / CPU: <b id="result-ko-cpu">0</b></span>
         </div>
+        <ul id="result-stats" class="result-stats">
+          <li><span>スペシャル発動</span><b id="result-stat-specials">0 / 0</b></li>
+          <li><span>インクボム</span><b id="result-stat-bombs">0 / 0</b></li>
+          <li><span>壁登り成功</span><b id="result-stat-climbs">0 / 0</b></li>
+          <li><span>インクロール</span><b id="result-stat-rolls">0</b></li>
+        </ul>
         <button id="btn-restart" class="btn-primary" type="button">もう一度戦う (R)</button>
       </div>
     </section>
