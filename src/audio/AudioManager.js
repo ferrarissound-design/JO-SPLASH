@@ -152,6 +152,28 @@ export class AudioManager {
     this._tone(620, 0.07, { type: 'triangle', peak: 0.18, freqEnd: 340 });
   }
 
+  playChargeStart() {
+    this._tone(240, 0.12, { type: 'triangle', peak: 0.08, freqEnd: 420 });
+  }
+
+  playChargeReady() {
+    this._tone(680, 0.16, { type: 'sine', peak: 0.15, freqEnd: 1120 });
+    this._tone(1020, 0.12, { type: 'triangle', peak: 0.1, freqEnd: 1380, delay: 0.04 });
+  }
+
+  playChargeShot(chargeRatio = 0) {
+    const ratio = Math.max(0, Math.min(1, chargeRatio));
+    this._tone(520 + ratio * 280, 0.11 + ratio * 0.08, {
+      type: 'sawtooth',
+      peak: 0.16 + ratio * 0.1,
+      freqEnd: 180 + ratio * 90,
+    });
+    this._noise(0.08 + ratio * 0.12, {
+      peak: 0.1 + ratio * 0.12,
+      filterFreq: 1200 + ratio * 1400,
+    });
+  }
+
   playImpact() {
     this._noise(0.12, { peak: 0.16, filterFreq: 900 });
   }

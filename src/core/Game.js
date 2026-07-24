@@ -226,6 +226,8 @@ export class Game {
     this.player.deaths = 0;
     this.player.special.reset();
     this.player.weapon.cooldown = 0;
+    this.player.weapon.resetCharge();
+    this.player._fireWasHeld = false;
     this.player.subWeapon.cooldown = 0;
 
     this.cpu.position.copy(this.arena.spawnPoints.cpu);
@@ -398,6 +400,14 @@ export class Game {
     if (this.debugMode && this.state === STATE.PLAYING && this.input.wasJustPressed('KeyG')) {
       this.player.debugStartInkRoll(this.particleManager, this.audioManager, this.ui);
     }
+    if (this.debugMode && this.state === STATE.PLAYING && this.input.wasJustPressed('KeyC')) {
+      this.player.debugFireChargedShot(
+        this.projectileManager,
+        this.particleManager,
+        this.audioManager,
+        this.ui,
+      );
+    }
 
     switch (this.state) {
       case STATE.TITLE:
@@ -537,6 +547,10 @@ export class Game {
       specialReady: this.player.special.ready,
       specialActive: this.player.special.active,
       weaponName: this.player.weapon.displayName,
+      weaponUsesCharge: this.player.weapon.usesCharge,
+      weaponCharge: this.player.weapon.charge,
+      weaponCharging: this.player.weapon.charging,
+      weaponChargeReady: this.player.weapon.chargeReady,
       koPlayer: this.player.koScored,
       koCpu: this.cpu.koScored,
       firing: this.input.mouseDown && this.player.alive && !this.player.inkSurfActive,
@@ -675,8 +689,8 @@ export class Game {
       `coverage P:${cov.playerPct.toFixed(1)}% C:${cov.cpuPct.toFixed(1)}% N:${(100 - cov.playerPct - cov.cpuPct).toFixed(1)}%`,
       `special: ${this.player.special.charge.toFixed(1)}%  active:${this.player.special.active}`,
       `ink roll: ${this.player.isInkRolling}  armor:${this.player.inkRollArmorTimer.toFixed(2)}  cd:${this.player.inkRollCooldown.toFixed(2)}  used:${this.player.inkRollsUsed}`,
-      `weapon: ${this.player.weapon.displayName}  bomb cd:${this.player.subWeapon.cooldown.toFixed(2)}`,
-      'debug keys: G=ink roll  T=final 12s  P=player special  O=CPU special  L=CPU climb  B=CPU bomb  K=CPU weapon  V=enemy',
+      `weapon: ${this.player.weapon.displayName}  charge:${(this.player.weapon.charge * 100).toFixed(0)}%  charging:${this.player.weapon.charging}  bomb cd:${this.player.subWeapon.cooldown.toFixed(2)}`,
+      'debug keys: C=full charge  G=ink roll  T=final 12s  P=player special  O=CPU special  L=CPU climb  B=CPU bomb  K=CPU weapon  V=enemy',
       `projectiles active: ${this.projectileManager.pool.filter((p) => p.active).length}/${this.projectileManager.pool.length}`,
       `particles active: ${this.particleManager.pool.filter((p) => p.active).length}/${this.particleManager.pool.length}`,
     ].join('\n');

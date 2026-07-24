@@ -47,6 +47,9 @@ export class UIManager {
       specialFill: document.getElementById('special-fill'),
       specialValue: document.getElementById('special-value'),
       weaponName: document.getElementById('weapon-name'),
+      chargeMeter: document.getElementById('charge-meter'),
+      chargeFill: document.getElementById('charge-fill'),
+      chargeValue: document.getElementById('charge-value'),
 
       koPlayer: document.getElementById('ko-player'),
       koCpu: document.getElementById('ko-cpu'),
@@ -145,6 +148,8 @@ export class UIManager {
   updateHUD({
     timeRemaining, playerPct, cpuPct, hp, ink, specialCharge = 0,
     specialReady = false, specialActive = false, weaponName = 'STREAM',
+    weaponUsesCharge = false, weaponCharge = 0,
+    weaponCharging = false, weaponChargeReady = false,
     koPlayer, koCpu, firing,
     submerged = false, rolling = false, enemyFloor = false,
   }) {
@@ -174,6 +179,14 @@ export class UIManager {
     this.el.specialRow.classList.toggle('special-active', specialActive);
     this.el.specialValue.textContent = specialActive ? 'NOW' : specialReady ? 'Q!' : `${Math.floor(specialPct)}%`;
     this.el.weaponName.textContent = weaponName;
+    const chargePct = Math.max(0, Math.min(1, weaponCharge));
+    this.el.chargeMeter?.classList.toggle('hidden', !weaponUsesCharge);
+    this.el.chargeMeter?.classList.toggle('charging', weaponCharging && !weaponChargeReady);
+    this.el.chargeMeter?.classList.toggle('ready', weaponChargeReady);
+    if (this.el.chargeFill) this.el.chargeFill.style.width = `${chargePct * 100}%`;
+    if (this.el.chargeValue) {
+      this.el.chargeValue.textContent = weaponChargeReady ? 'FULL' : `${Math.floor(chargePct * 100)}%`;
+    }
 
     if (koPlayer !== this._lastKoPlayer) {
       this.el.koPlayer.classList.remove('ko-pop');
@@ -192,6 +205,8 @@ export class UIManager {
 
     this.el.hud.classList.toggle('ink-submerged', submerged);
     this.el.hud.classList.toggle('ink-rolling', rolling);
+    this.el.hud.classList.toggle('precision-charging', weaponCharging);
+    this.el.hud.classList.toggle('precision-ready', weaponChargeReady);
     this.el.inkRollFlash?.classList.toggle('hidden', !rolling);
     this.el.inkRollFlash?.classList.toggle('active', rolling);
     this.el.hud.classList.toggle('enemy-ink-danger', enemyFloor);

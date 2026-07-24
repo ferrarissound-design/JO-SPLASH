@@ -31,6 +31,7 @@ export class Player extends Character {
     this.inkRollCooldown = 0;
     this.inkRollArmorTimer = 0;
     this.inkRollsUsed = 0;
+    this._fireWasHeld = false;
   }
 
   takeDamage(amount) {
@@ -44,11 +45,15 @@ export class Player extends Character {
     this.special.timer = 0;
     this.special.charge *= 0.5;
     this.resetInkRoll();
+    this.weapon.resetCharge();
+    this._fireWasHeld = false;
   }
 
   respawn() {
     super.respawn();
     this.resetInkRoll();
+    this.weapon.resetCharge();
+    this._fireWasHeld = false;
   }
 
   update(dt, ctx) {
@@ -206,6 +211,28 @@ export class Player extends Character {
     return this._startInkRoll(_fwd, particleManager, audioManager, ui);
   }
 
+  debugFireChargedShot(projectileManager, particleManager, audioManager, ui) {
+    if (!this.alive) return false;
+    this.weapon.setType('precision');
+    this.weapon.cooldown = 0;
+    this.weapon.resetCharge();
+    if (!this.weapon.beginCharge(this, audioManager)) return false;
+    this.weapon.updateCharge(this.weapon.profile.charge.durationSec, this, audioManager);
+
+    this.camera.getAimDirection(_aimDir);
+    _fireOrigin.copy(this.camera.camera.position).addScaledVector(_aimDir, 0.35);
+    const fired = this.weapon.releaseCharge(
+      this,
+      _fireOrigin,
+      _aimDir,
+      projectileManager,
+      audioManager,
+      particleManager,
+    );
+    if (fired) ui?.showStatusMessage('FULL CHARGE SHOT!', 0.8);
+    return fired;
+  }
+
   _updateInkRollTimers(dt) {
     this.inkRollTimer = Math.max(0, this.inkRollTimer - dt);
     this.inkRollCooldown = Math.max(0, this.inkRollCooldown - dt);
@@ -303,8 +330,36 @@ export class Player extends Character {
 
   _handleFiring(dt, projectileManager, particleManager, audioManager) {
     this.weapon.update(dt);
-    if (this.inkSurfActive || this.isClimbing || this.isInkRolling || this.special.active) return;
-    if (!this.input.mouseDown) return;
+    const fireHeld = this.input.mouseDown;
+    if (this.inkSurfActive || this.isClimbing || this.isInkRolling || this.special.active) {
+      this.weapon.resetCharge();
+      this._fireWasHeld = fireHeld;
+      return;
+    }
+
+    if (this.weapon.usesCharge) {
+      if (fireHeld) {
+        if (!this.weapon.charging) this.weapon.beginCharge(this, audioManager);
+        this.weapon.updateCharge(dt, this, audioManager);
+      } else if (this._fireWasHeld && this.weapon.charging) {
+        this.camera.getAimDirection(_aimDir);
+        _fireOrigin.copy(this.camera.camera.position).addScaledVector(_aimDir, 0.35);
+        this.weapon.releaseCharge(
+          this,
+          _fireOrigin,
+          _aimDir,
+          projectileManager,
+          audioManager,
+          particleManager,
+        );
+      }
+      this._fireWasHeld = fireHeld;
+      return;
+    }
+
+    this.weapon.resetCharge();
+    this._fireWasHeld = fireHeld;
+    if (!fireHeld) return;
 
     this.camera.getAimDirection(_aimDir);
     _fireOrigin.copy(this.camera.camera.position).addScaledVector(_aimDir, 0.35);
