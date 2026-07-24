@@ -7,7 +7,7 @@ const _up = new THREE.Vector3(0, 1, 0);
 
 // ============================================================================
 // Arena — builds the single starter stage: a rectangular floor, a raised
-// central platform reached by an off-center ramp and two paintable climb
+// central platform reached by an off-center ramp and three paintable climb
 // panels, scattered obstacles, and perimeter walls that double as the
 // fall-off boundary.
 //
@@ -20,7 +20,7 @@ const _up = new THREE.Vector3(0, 1, 0);
 // all share PaintSystem's single world-space grid/texture (mapped straight
 // from world XZ, same as the floor), so painting any of them is a plain
 // paintSystem.paintSplat(x, z, ...) call — no special-casing needed outside
-// of recognizing which mesh a projectile hit. The two climb panels are a
+// of recognizing which mesh a projectile hit. The three climb panels are a
 // different, much smaller surface (vertical, independent of XZ) and carry
 // their own WallPanel paint grid instead.
 // ============================================================================
@@ -184,8 +184,8 @@ export class Arena {
 
     const platGeo = new THREE.BoxGeometry(size, h, size);
     // Face order for a BoxGeometry is [+x, -x, +y, -y, +z, -z]. +X is the
-    // only side clear of both the ramp and the two climb panels, so it gets
-    // the big landmark signage; the rest get the shared navy hull material
+    // +X carries the big landmark signage; the climb-panel overlay added
+    // later leaves enough of that face visible to keep it readable.
     // (top/bottom are always hidden, under the paint overlay or the floor).
     const hullSide = this._hullMaterial(this._texMetal, size / 2.4, h / 1.6, THEME.neonCyan);
     const hullHidden = this._flatMaterial(COLORS.platform);
@@ -219,7 +219,7 @@ export class Arena {
 
     // Ramp offset from center along X so the climb isn't perfectly symmetric.
     // Attached to the platform's +Z face; the other three faces get plain
-    // walls (see _buildPlatformSideWalls) with two paintable climb panels.
+    // walls (see _buildPlatformSideWalls) with three paintable climb panels.
     const rampWidth = ARENA.rampWidth;
     const rampLen = ARENA.rampLength;
     const rampOffsetX = ARENA.rampOffsetX;
@@ -264,7 +264,7 @@ export class Arena {
   }
 
   // Blocks direct horizontal walk-in on 3 of the platform's 4 sides (the 4th
-  // is the ramp opening), so the ramp and the two paint-gated climb panels
+  // is the ramp opening), so the ramp and the three paint-gated climb panels
   // become the only ways up. Zero-thickness AABBs act as flat wall planes —
   // resolveObstacleCollisions() only needs a nonzero radius overlap check,
   // not real box volume — and (like every other collider here) they stop
@@ -279,7 +279,7 @@ export class Arena {
     add([rampMaxX, hp], [hp, hp]); // north face, right of the ramp opening
   }
 
-  // Two "paintable panel" faces (a subset of the platform's walls, per the
+  // Three "paintable panel" faces (a subset of the platform's walls, per the
   // "don't make every wall paintable" guidance): once a team has painted
   // enough of one, Player's wall-climb logic lets them scale straight up it
   // instead of detouring to the ramp.
@@ -288,6 +288,7 @@ export class Arena {
     const half = panelWidth / 2;
 
     this.climbPanels.push(this._buildClimbPanel({
+      label: 'WEST',
       origin: new THREE.Vector3(-hp, 0, -half),
       tangent: new THREE.Vector3(0, 0, 1),
       normal: new THREE.Vector3(1, 0, 0),
@@ -301,6 +302,7 @@ export class Arena {
     }));
 
     this.climbPanels.push(this._buildClimbPanel({
+      label: 'SOUTH',
       origin: new THREE.Vector3(-half, 0, -hp),
       tangent: new THREE.Vector3(1, 0, 0),
       normal: new THREE.Vector3(0, 0, 1),
@@ -312,9 +314,23 @@ export class Arena {
       width: panelWidth,
       visualOffset: new THREE.Vector3(0, 0, -0.03),
     }));
+
+    this.climbPanels.push(this._buildClimbPanel({
+      label: 'EAST',
+      origin: new THREE.Vector3(hp, 0, -half),
+      tangent: new THREE.Vector3(0, 0, 1),
+      normal: new THREE.Vector3(-1, 0, 0),
+      planeAxis: 'x',
+      planeValue: hp,
+      tangentMin: -half,
+      tangentMax: half,
+      height: h,
+      width: panelWidth,
+      visualOffset: new THREE.Vector3(0.03, 0, 0),
+    }));
   }
 
-  _buildClimbPanel({ origin, tangent, normal, planeAxis, planeValue, tangentMin, tangentMax, height, width, visualOffset }) {
+  _buildClimbPanel({ label, origin, tangent, normal, planeAxis, planeValue, tangentMin, tangentMax, height, width, visualOffset }) {
     const paint = new WallPanel(origin, tangent, width, height);
 
     const c0 = origin.clone().add(visualOffset);
@@ -342,7 +358,7 @@ export class Arena {
     const mesh = new THREE.Mesh(geo, mat);
     this.group.add(mesh);
 
-    const panel = { paint, mesh, normal: normal.clone(), planeAxis, planeValue, tangentMin, tangentMax, height };
+    const panel = { label, paint, mesh, normal: normal.clone(), planeAxis, planeValue, tangentMin, tangentMax, height };
     this.climbPanelByMesh.set(mesh, panel);
     return panel;
   }

@@ -185,6 +185,7 @@ export class Game {
   // -------------------------------------------------------------- flow
   _startMatch() {
     this.paintSystem.reset();
+    for (const panel of this.arena.climbPanels) panel.paint.reset();
     this.projectileManager.reset();
     this.particleManager.reset();
     this._paintSpawnSafeZone(this.arena.spawnPoints.player, TEAM.PLAYER);
@@ -218,8 +219,7 @@ export class Game {
     this.cpu._healthRegenTimer = 0;
     this.cpu.koScored = 0;
     this.cpu.deaths = 0;
-    this.cpu.state = 'explore';
-    this.cpu.targetPoint = this.cpu.position.clone();
+    this.cpu.resetTactics();
     // Fresh random look each match; the entrance animation plays once the
     // countdown ends (see _updateCountdown), not during the reset.
     this.cpu.randomizeAppearance({ playIntro: false });
@@ -334,6 +334,9 @@ export class Game {
     if (this.input.wasJustPressed('KeyV')) this._cycleEnemyAppearance();
     if (this.debugMode && this.input.wasJustPressed('KeyP')) {
       this.player.special.charge = 100;
+    }
+    if (this.debugMode && this.state === STATE.PLAYING && this.input.wasJustPressed('KeyL')) {
+      this.cpu.debugStartClimbPlan(this.arena);
     }
 
     switch (this.state) {
@@ -551,14 +554,15 @@ export class Game {
     const info = [
       `state: ${this.state}`,
       `player cell: (${pgx}, ${pgz})  grounded:${this.player.grounded}  climbing:${this.player.isClimbing}`,
-      `cpu    cell: (${cgx}, ${cgz})  grounded:${this.cpu.grounded}`,
-      `cpu ai state: ${this.cpu.state}`,
+      `cpu    cell: (${cgx}, ${cgz})  grounded:${this.cpu.grounded}  climbing:${this.cpu.isClimbing}`,
+      `cpu ai state: ${this.cpu.state}  wall:${this.cpu._climbPlanPanel?.label ?? '-'}`,
+      `cpu climbs: ${this.cpu.climbsCompleted}/${this.cpu.climbAttempts}`,
       `cpu target: ${this.cpu.debugTarget ? this.cpu.debugTarget.toArray().map((n) => n.toFixed(1)).join(',') : '-'}`,
       `player inv: ${this.player.invincibleTimer.toFixed(2)}  cpu inv: ${this.cpu.invincibleTimer.toFixed(2)}`,
       `coverage P:${cov.playerPct.toFixed(1)}% C:${cov.cpuPct.toFixed(1)}% N:${(100 - cov.playerPct - cov.cpuPct).toFixed(1)}%`,
       `special: ${this.player.special.charge.toFixed(1)}%  active:${this.player.special.active}`,
       `weapon: ${this.player.weapon.displayName}  bomb cd:${this.player.subWeapon.cooldown.toFixed(2)}`,
-      'debug keys: P=fill special  V=cycle enemy',
+      'debug keys: P=fill special  L=CPU climb  V=cycle enemy',
       `projectiles active: ${this.projectileManager.pool.filter((p) => p.active).length}/${this.projectileManager.pool.length}`,
       `particles active: ${this.particleManager.pool.filter((p) => p.active).length}/${this.particleManager.pool.length}`,
     ].join('\n');

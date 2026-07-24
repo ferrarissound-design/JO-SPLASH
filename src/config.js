@@ -292,6 +292,12 @@ export const AI = {
   routeProbeDist: 3.4,
   ownInkRouteBonus: 0.85,
   enemyInkRoutePenalty: 1.35,
+  climbPlanInitialDelaySec: 3.5,
+  climbPlanChance: 0.42,
+  climbPlanDurationSec: 9,
+  climbPlanCooldownSec: 8,
+  climbMinInk: 44,
+  climbApproachOffset: 0.72,
 };
 
 export const DEBUG_DEFAULTS = {

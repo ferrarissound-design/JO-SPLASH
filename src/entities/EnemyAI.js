@@ -24,6 +24,7 @@ const STATE = {
   RETAKE: 'retake',
   REFILL: 'refill',
   FLEE: 'flee',
+  CLIMB: 'climb',
   EXPLORE: 'explore',
   WAIT_RESPAWN: 'wait_respawn',
 };
@@ -85,6 +86,13 @@ export class EnemyAI extends Character {
 
     this._recentWaypoints = [];
     this.debugTarget = null; // exposed for debug overlay
+
+    this._climbPlanPanel = null;
+    this._climbPlanTimer = 0;
+    this._climbPlanCooldown = AI.climbPlanInitialDelaySec + Math.random() * 2;
+    this._climbPaintAimIndex = 0;
+    this.climbAttempts = 0;
+    this.climbsCompleted = 0;
   }
 
   // ---------------------------------------------------------- appearance
@@ -151,8 +159,11 @@ export class EnemyAI extends Character {
     const { arena, paintSystem, projectileManager, particleManager, audioManager, player, controlsEnabled } = ctx;
 
     this.updateTimers(dt);
+    this._climbPlanCooldown = Math.max(0, this._climbPlanCooldown - dt);
     if (this._introTimer > 0) this._introTimer = Math.max(0, this._introTimer - dt);
     if (!this.alive) {
+      this._climbPlanPanel = null;
+      this._climbPlanTimer = 0;
       this.state = STATE.WAIT_RESPAWN;
       this.syncMesh(ctx.elapsedTime);
       return;
@@ -174,6 +185,8 @@ export class EnemyAI extends Character {
     // Travel through own ink in swim form, but surface before attacking so
     // Weapon's shared "cannot fire while submerged" rule stays consistent.
     const wantsInkSurf = this.state !== STATE.ATTACK
+      && this.state !== STATE.CLIMB
+      && !this.isClimbing
       && paintSystem.getOwnerAt(this.position.x, this.position.z) === TEAM.CPU;
     const speedMult = this.updateFloorEffects(dt, paintSystem, wantsInkSurf);
     this._lastSpeedMult = speedMult;
@@ -187,6 +200,12 @@ export class EnemyAI extends Character {
 
   // ---------------------------------------------------------------- decide
   _reevaluate(arena, paintSystem, player) {
+    // Once the CPU commits to a wall route it keeps painting/climbing long
+    // enough to complete it instead of discarding the plan every 0.25s.
+    if (this.isClimbing) return;
+    if (this.state === STATE.CLIMB && this._climbPlanPanel && this._climbPlanTimer > 0) return;
+    if (this.state === STATE.CLIMB) this._finishClimbPlan(false);
+
     const dist = this.position.distanceTo(player.position);
     const hasLOS = this._hasLineOfSight(arena, player);
 
@@ -206,6 +225,11 @@ export class EnemyAI extends Character {
       this.targetPoint = this._findOwnTarget(arena, paintSystem);
       return;
     }
+
+    const canPlanClimb = this._climbPlanCooldown <= 0
+      && this.position.y < arena.platform.height - 0.35
+      && this.ink >= AI.climbMinInk;
+    if (canPlanClimb && Math.random() < AI.climbPlanChance && this._beginClimbPlan(arena)) return;
 
     const survey = this._surveySurroundings(arena, paintSystem);
     if (survey.enemyCount >= survey.sampleCount * 0.4 && survey.enemyPoint) {
@@ -335,7 +359,9 @@ export class EnemyAI extends Character {
   _act(dt, arena, paintSystem, projectileManager, particleManager, audioManager, player) {
     this.debugTarget = this.targetPoint;
 
-    if (this.state === STATE.ATTACK) {
+    if (this.state === STATE.CLIMB) {
+      this._actClimbPlan(dt, arena, paintSystem, projectileManager, particleManager, audioManager);
+    } else if (this.state === STATE.ATTACK) {
       this._actAttack(dt, arena, paintSystem, projectileManager, particleManager, audioManager, player);
     } else {
       this._actMoveTo(dt, arena, paintSystem, this.targetPoint);
@@ -343,6 +369,186 @@ export class EnemyAI extends Character {
         this._actPaintGround(projectileManager, particleManager, audioManager);
       }
     }
+  }
+
+  /** Chooses the closest paintable wall and commits to its outside approach point. */
+  _beginClimbPlan(arena) {
+    let bestPanel = null;
+    let bestTarget = null;
+    let bestDistSq = Infinity;
+
+    for (const panel of arena.climbPanels) {
+      const target = panel.paint.origin.clone()
+        .addScaledVector(panel.paint.tangent, panel.paint.width * 0.5)
+        .addScaledVector(panel.normal, -AI.climbApproachOffset);
+      target.y = 0;
+      const distSq = this.position.distanceToSquared(target);
+      if (distSq < bestDistSq) {
+        bestDistSq = distSq;
+        bestPanel = panel;
+        bestTarget = target;
+      }
+    }
+
+    if (!bestPanel) return false;
+    this.state = STATE.CLIMB;
+    this._climbPlanPanel = bestPanel;
+    this._climbPlanTimer = AI.climbPlanDurationSec;
+    this._climbPaintAimIndex = 0;
+    this.targetPoint.copy(bestTarget);
+    this.climbAttempts++;
+    return true;
+  }
+
+  /**
+   * Full CPU traversal loop: walk to the wall, paint a bottom-to-top stripe,
+   * then use the same vertical-path gate and ink drain as the player.
+   */
+  _actClimbPlan(dt, arena, paintSystem, projectileManager, particleManager, audioManager) {
+    const panel = this._climbPlanPanel;
+    if (!panel) {
+      this._finishClimbPlan(false);
+      return;
+    }
+
+    this._climbPlanTimer -= dt;
+    if (this._climbPlanTimer <= 0) {
+      this._finishClimbPlan(false);
+      return;
+    }
+
+    if (this.isClimbing) {
+      this._updateCpuClimbing(dt);
+      return;
+    }
+
+    const planeDist = panel.planeAxis === 'x'
+      ? Math.abs(this.position.x - panel.planeValue)
+      : Math.abs(this.position.z - panel.planeValue);
+    const tangentPos = panel.planeAxis === 'x' ? this.position.z : this.position.x;
+    const aligned = tangentPos >= panel.tangentMin - 0.15 && tangentPos <= panel.tangentMax + 0.15;
+    const inPaintRange = planeDist <= MOVEMENT.capsuleRadius + MOVEMENT.wallClimbApproachDist + 0.3;
+
+    if (!aligned || !inPaintRange) {
+      this._actMoveDirectTo(dt, arena, this.targetPoint);
+      return;
+    }
+
+    this.velocity.x *= 0.45;
+    this.velocity.z *= 0.45;
+    this._integrateHorizontal(dt, arena);
+
+    if (panel.paint.hasVerticalPath(TEAM.CPU, this.position)) {
+      this._startCpuClimb(panel);
+      return;
+    }
+
+    if (this.ink < this.weapon.profile.costPerShot) {
+      this._finishClimbPlan(false);
+      return;
+    }
+
+    const aimHeights = [0.16, 0.5, 0.84];
+    _predictedPos.copy(panel.paint.origin)
+      .addScaledVector(panel.paint.tangent, panel.paint.width * 0.5);
+    _predictedPos.y = panel.height * aimHeights[this._climbPaintAimIndex % aimHeights.length];
+    _eyeA.set(this.position.x, this.position.y + this.eyeHeight, this.position.z);
+    _aimVec.subVectors(_predictedPos, _eyeA).normalize();
+    _fireOrigin.copy(_eyeA).addScaledVector(_aimVec, 0.4);
+    this.yaw = yawFromDirection(_aimVec.x, _aimVec.z);
+    if (this.weapon.fire(this, _fireOrigin, _aimVec, projectileManager, audioManager, particleManager)) {
+      this._climbPaintAimIndex++;
+    }
+  }
+
+  /** Direct final approach so the normal obstacle probe cannot steer around the chosen wall. */
+  _actMoveDirectTo(dt, arena, target) {
+    _toTarget.set(target.x - this.position.x, 0, target.z - this.position.z);
+    const dist = _toTarget.length();
+    if (dist < 0.25) {
+      this.velocity.x *= 0.5;
+      this.velocity.z *= 0.5;
+    } else {
+      _toTarget.normalize();
+      const speed = MOVEMENT.walkSpeed * (this._lastSpeedMult ?? 1) * AI.moveSpeedMult;
+      this.velocity.x = _toTarget.x * speed;
+      this.velocity.z = _toTarget.z * speed;
+      this.yaw = yawFromDirection(_toTarget.x, _toTarget.z);
+    }
+    this._integrateHorizontal(dt, arena);
+  }
+
+  _startCpuClimb(panel) {
+    const outside = MOVEMENT.capsuleRadius + 0.02;
+    if (panel.planeAxis === 'x') this.position.x = panel.planeValue - panel.normal.x * outside;
+    else this.position.z = panel.planeValue - panel.normal.z * outside;
+    this.isClimbing = true;
+    this._climbPanel = panel;
+    this._climbTimer = MOVEMENT.wallClimbMaxDurationSec;
+    this.velocity.set(0, MOVEMENT.wallClimbSpeed, 0);
+    this.grounded = false;
+  }
+
+  _updateCpuClimbing(dt) {
+    const panel = this._climbPanel;
+    this._climbTimer -= dt;
+    this.ink = Math.max(0, this.ink - MOVEMENT.wallClimbInkCostPerSec * dt);
+    if (!panel || this.ink <= 0 || this._climbTimer <= 0) {
+      this.isClimbing = false;
+      this._climbPanel = null;
+      this.velocity.y = Math.min(this.velocity.y, 0);
+      this._finishClimbPlan(false);
+      return;
+    }
+
+    this.velocity.set(0, MOVEMENT.wallClimbSpeed, 0);
+    this.position.y += MOVEMENT.wallClimbSpeed * dt;
+    this.grounded = false;
+
+    if (this.position.y >= panel.height) {
+      this.position.x += panel.normal.x * MOVEMENT.wallClimbMountInward;
+      this.position.z += panel.normal.z * MOVEMENT.wallClimbMountInward;
+      this.position.y = panel.height;
+      this.velocity.set(panel.normal.x * 2.2, 3, panel.normal.z * 2.2);
+      this.grounded = false;
+      this.isClimbing = false;
+      this._climbPanel = null;
+      this.climbsCompleted++;
+      this._finishClimbPlan(true);
+    }
+  }
+
+  _finishClimbPlan(success) {
+    this._climbPlanPanel = null;
+    this._climbPlanTimer = 0;
+    this._climbPaintAimIndex = 0;
+    this._climbPlanCooldown = success ? AI.climbPlanCooldownSec : AI.climbPlanCooldownSec * 0.55;
+    if (this.state === STATE.CLIMB) {
+      this.state = STATE.EXPLORE;
+      this.targetPoint.copy(this.position);
+      this.targetPoint.y = 0;
+    }
+  }
+
+  /** Deterministic QA hook, called by Game's debug L key. */
+  debugStartClimbPlan(arena) {
+    if (!this.alive || this.isClimbing) return false;
+    this._finishClimbPlan(false);
+    this._climbPlanCooldown = 0;
+    return this._beginClimbPlan(arena);
+  }
+
+  resetTactics() {
+    this.state = STATE.EXPLORE;
+    this.targetPoint.copy(this.position);
+    this._climbPlanPanel = null;
+    this._climbPlanTimer = 0;
+    this._climbPlanCooldown = AI.climbPlanInitialDelaySec + Math.random() * 2;
+    this._climbPaintAimIndex = 0;
+    this.isClimbing = false;
+    this._climbPanel = null;
+    this.climbAttempts = 0;
+    this.climbsCompleted = 0;
   }
 
   // Fires at the floor a couple meters ahead of its current heading so
@@ -543,6 +749,7 @@ export class EnemyAI extends Character {
   /** Replay the entrance animation whenever the enemy respawns. */
   respawn() {
     super.respawn();
+    this.resetTactics();
     this.playIntro();
   }
 
