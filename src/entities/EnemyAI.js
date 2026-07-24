@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { Character } from './Character.js';
-import { MOVEMENT, WEAPON, SUB_WEAPON, AI, TEAM } from '../config.js';
+import { MOVEMENT, WEAPON, SUB_WEAPON, SPECIAL, AI, TEAM } from '../config.js';
 import { InkBomb } from '../systems/SubWeapon.js';
+import { InkBurstSpecial } from '../systems/SpecialWeapon.js';
 import {
   createEnemyCharacter,
   populateEnemyRig,
@@ -26,6 +27,7 @@ const STATE = {
   REFILL: 'refill',
   FLEE: 'flee',
   BOMB: 'bomb',
+  SPECIAL: 'special',
   CLIMB: 'climb',
   EXPLORE: 'explore',
   WAIT_RESPAWN: 'wait_respawn',
@@ -80,6 +82,7 @@ export class EnemyAI extends Character {
     this._strafeSign = 1;
     this._strafeTimer = 0;
     this.subWeapon = new InkBomb();
+    this.special = new InkBurstSpecial(this.team);
     this._weaponSwitchTimer = 0;
     this._debugWeaponLockTimer = 0;
     this._bombDecisionCooldown = 0;
@@ -87,6 +90,9 @@ export class EnemyAI extends Character {
     this._bombTarget = spawnPoint.clone();
     this.weaponSwitches = 0;
     this.bombsThrown = 0;
+    this._specialWindupTimer = 0;
+    this._specialDecisionCooldown = 0;
+    this.specialsUsed = 0;
 
     this._aimDir = new THREE.Vector3(0, 0, -1);
     this._aimSmoothT = 0;
@@ -166,13 +172,17 @@ export class EnemyAI extends Character {
   }
 
   update(dt, ctx) {
-    const { arena, paintSystem, projectileManager, particleManager, audioManager, player, controlsEnabled } = ctx;
+    const {
+      arena, paintSystem, projectileManager, particleManager,
+      audioManager, player, ui, onCharacterHit, controlsEnabled,
+    } = ctx;
 
     this.updateTimers(dt);
     this._climbPlanCooldown = Math.max(0, this._climbPlanCooldown - dt);
     this._weaponSwitchTimer = Math.max(0, this._weaponSwitchTimer - dt);
     this._debugWeaponLockTimer = Math.max(0, this._debugWeaponLockTimer - dt);
     this._bombDecisionCooldown = Math.max(0, this._bombDecisionCooldown - dt);
+    this._specialDecisionCooldown = Math.max(0, this._specialDecisionCooldown - dt);
     if (this._introTimer > 0) this._introTimer = Math.max(0, this._introTimer - dt);
     if (!this.alive) {
       this._climbPlanPanel = null;
@@ -191,7 +201,7 @@ export class EnemyAI extends Character {
 
     this._decisionTimer -= dt;
     if (this._decisionTimer <= 0) {
-      this._reevaluate(arena, paintSystem, player);
+      this._reevaluate(arena, paintSystem, player, ui);
       this._decisionTimer = THREE.MathUtils.lerp(AI.decisionIntervalMin, AI.decisionIntervalMax, Math.random())
         * this.difficulty.decisionIntervalMult;
     }
@@ -200,30 +210,45 @@ export class EnemyAI extends Character {
     // Weapon's shared "cannot fire while submerged" rule stays consistent.
     const wantsInkSurf = this.state !== STATE.ATTACK
       && this.state !== STATE.BOMB
+      && this.state !== STATE.SPECIAL
       && this.state !== STATE.CLIMB
+      && !this.special.active
       && !this.isClimbing
       && paintSystem.getOwnerAt(this.position.x, this.position.z) === TEAM.CPU;
     const speedMult = this.updateFloorEffects(dt, paintSystem, wantsInkSurf);
     this._lastSpeedMult = speedMult;
     this.updateHealthRegen(dt);
 
-    this._act(dt, arena, paintSystem, projectileManager, particleManager, audioManager, player);
-    this.updateFloorParticles(dt, particleManager, paintSystem);
+    this._act(dt, arena, paintSystem, projectileManager, particleManager, audioManager, player, ui);
+    this.special.update(dt, this, {
+      paintSystem,
+      particleManager,
+      opponent: player,
+      onCharacterHit,
+    });
+    const trailPaintedCells = this.updateFloorParticles(dt, particleManager, paintSystem);
+    this.special.addCharge(trailPaintedCells * AI.specialChargeMultiplier);
 
     this.syncMesh(ctx.elapsedTime);
   }
 
   // ---------------------------------------------------------------- decide
-  _reevaluate(arena, paintSystem, player) {
+  _reevaluate(arena, paintSystem, player, ui) {
     // Once the CPU commits to a wall route it keeps painting/climbing long
     // enough to complete it instead of discarding the plan every 0.25s.
     if (this.isClimbing) return;
     if (this.state === STATE.CLIMB && this._climbPlanPanel && this._climbPlanTimer > 0) return;
     if (this.state === STATE.CLIMB) this._finishClimbPlan(false);
     if (this.state === STATE.BOMB && this._bombPlanTimer > 0) return;
+    if (this.state === STATE.SPECIAL && this._specialWindupTimer > 0) return;
 
     const dist = this.position.distanceTo(player.position);
     const hasLOS = this._hasLineOfSight(arena, player);
+
+    if (this._shouldUseSpecial(paintSystem, player, dist)) {
+      this._beginSpecialWindup(ui);
+      return;
+    }
 
     if (this.hp < AI.fleeHpThreshold) {
       this.state = STATE.FLEE;
@@ -383,10 +408,14 @@ export class EnemyAI extends Character {
   }
 
   // ------------------------------------------------------------------ act
-  _act(dt, arena, paintSystem, projectileManager, particleManager, audioManager, player) {
+  _act(dt, arena, paintSystem, projectileManager, particleManager, audioManager, player, ui) {
     this.debugTarget = this.targetPoint;
 
-    if (this.state === STATE.CLIMB) {
+    if (this.special.active) {
+      this._actSpecialPressure(dt, arena, paintSystem, player);
+    } else if (this.state === STATE.SPECIAL) {
+      this._actSpecialWindup(dt, arena, audioManager, player, ui);
+    } else if (this.state === STATE.CLIMB) {
       this._actClimbPlan(dt, arena, paintSystem, projectileManager, particleManager, audioManager);
     } else if (this.state === STATE.BOMB) {
       this._actBomb(dt, arena, paintSystem, projectileManager, particleManager, audioManager, player);
@@ -458,6 +487,73 @@ export class EnemyAI extends Character {
     this._weaponSwitchTimer = AI.weaponSwitchCooldownSec;
     this.weaponSwitches++;
     return true;
+  }
+
+  _shouldUseSpecial(paintSystem, player, dist) {
+    if (!this.special.ready || this.special.active || this.isClimbing) return false;
+    if (this._specialDecisionCooldown > 0 || !player.alive || dist > AI.specialEngageRange) return false;
+
+    const coverage = paintSystem.getCoverage();
+    const losingTurf = coverage.playerPct - coverage.cpuPct >= AI.specialCoverageDeficitPct;
+    const pressured = dist <= AI.specialCloseRange;
+    const lowHp = this.hp <= AI.specialLowHpThreshold;
+    return losingTurf || pressured || lowHp;
+  }
+
+  _beginSpecialWindup(ui) {
+    this.state = STATE.SPECIAL;
+    this._specialWindupTimer = AI.specialWindupSec;
+    this.inkSurfActive = false;
+    this.velocity.x *= 0.25;
+    this.velocity.z *= 0.25;
+    ui?.showStatusMessage('CPU SPECIAL INCOMING!', AI.specialWindupSec);
+  }
+
+  _actSpecialWindup(dt, arena, audioManager, player, ui) {
+    this._specialWindupTimer = Math.max(0, this._specialWindupTimer - dt);
+    this.velocity.x *= 0.72;
+    this.velocity.z *= 0.72;
+    this._integrateHorizontal(dt, arena);
+
+    _toPlayer.subVectors(player.position, this.position);
+    _toPlayer.y = 0;
+    if (_toPlayer.lengthSq() > 0.01) {
+      _toPlayer.normalize();
+      this.yaw = yawFromDirection(_toPlayer.x, _toPlayer.z);
+    }
+
+    if (this._specialWindupTimer > 0) return;
+    if (this.special.activate(this, audioManager, null)) {
+      this.specialsUsed++;
+      this._specialDecisionCooldown = AI.specialDecisionCooldownSec;
+      ui?.showStatusMessage('CPU INK BURST!', 1.2);
+    }
+    this.state = STATE.ATTACK;
+  }
+
+  _actSpecialPressure(dt, arena, paintSystem, player) {
+    _toPlayer.subVectors(player.position, this.position);
+    _toPlayer.y = 0;
+    const dist = _toPlayer.length();
+    if (dist < 0.01) {
+      this.velocity.x *= 0.7;
+      this.velocity.z *= 0.7;
+      this._integrateHorizontal(dt, arena);
+      return;
+    }
+
+    _toPlayer.normalize();
+    _steerDir.copy(_toPlayer);
+    if (dist < SPECIAL.maxRadius * 0.55) {
+      _steerDir.set(-_toPlayer.z, 0, _toPlayer.x).multiplyScalar(this._strafeSign);
+    }
+    const paintAware = this._choosePaintAwareDirection(arena, paintSystem, _steerDir, 0.25);
+    const avoided = this._avoidObstacles(arena, paintAware);
+    const speed = MOVEMENT.walkSpeed * (this._lastSpeedMult ?? 1) * AI.moveSpeedMult * 0.65;
+    this.velocity.x = avoided.x * speed;
+    this.velocity.z = avoided.z * speed;
+    this.yaw = yawFromDirection(_toPlayer.x, _toPlayer.z);
+    this._integrateHorizontal(dt, arena);
   }
 
   _shouldThrowBomb(player, dist, hasLOS) {
@@ -551,6 +647,17 @@ export class EnemyAI extends Character {
     const switched = this._switchWeapon(next, true);
     if (switched) this._debugWeaponLockTimer = 1.2;
     return switched;
+  }
+
+  debugStartSpecial(player, ui) {
+    if (!this.alive || this.isClimbing || !player.alive) return false;
+    this.inkSurfActive = false;
+    this.special.active = false;
+    this.special.timer = 0;
+    this.special.charge = SPECIAL.maxCharge;
+    this._specialDecisionCooldown = 0;
+    this._beginSpecialWindup(ui);
+    return true;
   }
 
   /**
@@ -692,7 +799,7 @@ export class EnemyAI extends Character {
     return this._beginClimbPlan(arena);
   }
 
-  resetTactics() {
+  resetTactics({ newMatch = false } = {}) {
     this._selectUtilityWeapon();
     this.state = STATE.EXPLORE;
     this.targetPoint.copy(this.position);
@@ -707,12 +814,24 @@ export class EnemyAI extends Character {
     this._debugWeaponLockTimer = 0;
     this._bombDecisionCooldown = 1.5;
     this._bombPlanTimer = 0;
+    this._specialWindupTimer = 0;
+    this._specialDecisionCooldown = 1.5;
+    this.special.active = false;
+    this.special.timer = 0;
     this.isClimbing = false;
     this._climbPanel = null;
-    this.climbAttempts = 0;
-    this.climbsCompleted = 0;
-    this.weaponSwitches = 0;
-    this.bombsThrown = 0;
+    if (newMatch) {
+      this.special.reset();
+      this.climbAttempts = 0;
+      this.climbsCompleted = 0;
+      this.weaponSwitches = 0;
+      this.bombsThrown = 0;
+      this.specialsUsed = 0;
+    }
+  }
+
+  get specialWindingUp() {
+    return this.state === STATE.SPECIAL && this._specialWindupTimer > 0;
   }
 
   // Fires at the floor a couple meters ahead of its current heading so
@@ -909,6 +1028,14 @@ export class EnemyAI extends Character {
       this.targetPoint = this._findExploreTarget(arena);
       this.state = STATE.EXPLORE;
     }
+  }
+
+  die() {
+    super.die();
+    this.special.active = false;
+    this.special.timer = 0;
+    this.special.charge *= 0.5;
+    this._specialWindupTimer = 0;
   }
 
   /** Replay the entrance animation whenever the enemy respawns. */

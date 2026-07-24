@@ -43,6 +43,8 @@ export class UIManager {
       enemyIntroName: document.getElementById('enemy-intro-name'),
       enemyMarker: document.getElementById('enemy-marker'),
       enemyHpFill: document.getElementById('enemy-hp-fill'),
+      enemySpecialWarning: document.getElementById('enemy-special-warning'),
+      enemySpecialWarningLabel: document.getElementById('enemy-special-warning-label'),
       hitFlash: document.getElementById('hit-flash'),
       respawnBanner: document.getElementById('respawn-banner'),
 
@@ -203,6 +205,16 @@ export class UIManager {
     this.el.enemyMarker.style.top = `${y}px`;
     this.el.enemyMarker.style.transform = `translate(-50%, -100%) scale(${scale})`;
     this.el.enemyHpFill.style.width = `${Math.max(0, hp)}%`;
+  }
+
+  updateEnemySpecialWarning({ visible, active = false }) {
+    const el = this.el.enemySpecialWarning;
+    if (!el) return;
+    el.classList.toggle('hidden', !visible);
+    el.classList.toggle('active', visible && active);
+    if (this.el.enemySpecialWarningLabel) {
+      this.el.enemySpecialWarningLabel.textContent = active ? 'CPU INK BURST' : 'CPU BURST CHARGING';
+    }
   }
 
   showRespawnBanner() { this.el.respawnBanner.classList.remove('hidden'); }

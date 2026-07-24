@@ -310,6 +310,13 @@ export const AI = {
   bombHighGroundDelta: 0.9,
   bombHorizontalSpeed: 15.5,
   bombMinFlightSec: 0.85,
+  specialChargeMultiplier: 3,
+  specialWindupSec: 0.75,
+  specialEngageRange: 10,
+  specialCloseRange: 6,
+  specialLowHpThreshold: 55,
+  specialCoverageDeficitPct: 5,
+  specialDecisionCooldownSec: 4,
 };
 
 export const DEBUG_DEFAULTS = {

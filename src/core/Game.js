@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MATCH, TEAM, COLORS, THEME, PERF, MOVEMENT, ARENA, PAINT } from '../config.js';
+import { MATCH, TEAM, COLORS, THEME, PERF, MOVEMENT, ARENA, PAINT, AI } from '../config.js';
 import { InputManager } from './InputManager.js';
 import { CameraController } from './CameraController.js';
 import { TouchControls } from './TouchControls.js';
@@ -70,6 +70,7 @@ export class Game {
     this.cpu = new EnemyAI(this.arena.spawnPoints.cpu);
     this.projectileManager.onPaint = (team, paintedCells) => {
       if (team === TEAM.PLAYER) this.player.special.addCharge(paintedCells);
+      else if (team === TEAM.CPU) this.cpu.special.addCharge(paintedCells * AI.specialChargeMultiplier);
     };
     this.scene.add(this.player.mesh, this.cpu.mesh);
     this._setupCpuVisibilityAid();
@@ -219,7 +220,7 @@ export class Game {
     this.cpu._healthRegenTimer = 0;
     this.cpu.koScored = 0;
     this.cpu.deaths = 0;
-    this.cpu.resetTactics();
+    this.cpu.resetTactics({ newMatch: true });
     // Fresh random look each match; the entrance animation plays once the
     // countdown ends (see _updateCountdown), not during the reset.
     this.cpu.randomizeAppearance({ playIntro: false });
@@ -235,6 +236,7 @@ export class Game {
     this.ui.showHUD();
     this.ui.hideRespawnBanner();
     this.ui.updateEnemyMarker({ visible: false });
+    this.ui.updateEnemySpecialWarning({ visible: false });
     this._cpuHitFlashTimer = 0;
     this._wasPlayerInkSurfing = false;
     this._currentCameraSink = 0;
@@ -255,6 +257,7 @@ export class Game {
     this.input.exitPointerLock();
     this.touchControls?.hide();
     this.audioManager.stopBattleBGM();
+    this.ui.updateEnemySpecialWarning({ visible: false });
 
     const cov = this.paintSystem.getCoverage();
     const outcome = cov.playerCells === cov.cpuCells ? 'draw' : (cov.playerCells > cov.cpuCells ? 'win' : 'lose');
@@ -298,7 +301,8 @@ export class Game {
         shooter.team,
         { splatterScale: 1.3, glossScale: 1.2 }
       );
-      shooter.special?.addCharge(paintedCells);
+      const chargeMult = shooter.team === TEAM.CPU ? AI.specialChargeMultiplier : 1;
+      shooter.special?.addCharge(paintedCells * chargeMult);
       this.particleManager.spawnKOExplosion(hitPoint, color);
       this.audioManager.playKO();
       this.ui.showStatusMessage(targetTeam === TEAM.PLAYER ? 'YOU WERE SPLATTED!' : 'CPU DEFEATED!', 1.8);
@@ -343,6 +347,9 @@ export class Game {
     }
     if (this.debugMode && this.state === STATE.PLAYING && this.input.wasJustPressed('KeyK')) {
       this.cpu.debugCycleWeapon();
+    }
+    if (this.debugMode && this.state === STATE.PLAYING && this.input.wasJustPressed('KeyO')) {
+      this.cpu.debugStartSpecial(this.player, this.ui);
     }
 
     switch (this.state) {
@@ -427,6 +434,10 @@ export class Game {
     const cpuWasAlive = this.cpu.alive;
     this.player.update(dt, ctx);
     this.cpu.update(dt, ctx);
+    this.ui.updateEnemySpecialWarning({
+      visible: this.cpu.alive && (this.cpu.specialWindingUp || this.cpu.special.active),
+      active: this.cpu.special.active,
+    });
     if (!playerWasAlive && this.player.alive) this._paintSpawnSafeZone(this.arena.spawnPoints.player, TEAM.PLAYER);
     if (!cpuWasAlive && this.cpu.alive) this._paintSpawnSafeZone(this.arena.spawnPoints.cpu, TEAM.CPU);
 
@@ -565,13 +576,14 @@ export class Game {
       `cpu climbs: ${this.cpu.climbsCompleted}/${this.cpu.climbAttempts}`,
       `cpu weapon: ${this.cpu.weapon.displayName}  switches:${this.cpu.weaponSwitches}`,
       `cpu bombs: ${this.cpu.bombsThrown}  cd:${this.cpu.subWeapon.cooldown.toFixed(2)}  think:${this.cpu._bombDecisionCooldown.toFixed(2)}`,
+      `cpu special: ${this.cpu.special.charge.toFixed(1)}%  windup:${this.cpu.specialWindingUp}  active:${this.cpu.special.active}  used:${this.cpu.specialsUsed}`,
       `cpu hp/ink: ${this.cpu.hp.toFixed(0)}/${this.cpu.ink.toFixed(0)}`,
       `cpu target: ${this.cpu.debugTarget ? this.cpu.debugTarget.toArray().map((n) => n.toFixed(1)).join(',') : '-'}`,
       `player inv: ${this.player.invincibleTimer.toFixed(2)}  cpu inv: ${this.cpu.invincibleTimer.toFixed(2)}`,
       `coverage P:${cov.playerPct.toFixed(1)}% C:${cov.cpuPct.toFixed(1)}% N:${(100 - cov.playerPct - cov.cpuPct).toFixed(1)}%`,
       `special: ${this.player.special.charge.toFixed(1)}%  active:${this.player.special.active}`,
       `weapon: ${this.player.weapon.displayName}  bomb cd:${this.player.subWeapon.cooldown.toFixed(2)}`,
-      'debug keys: P=fill special  L=CPU climb  B=CPU bomb  K=CPU weapon  V=cycle enemy',
+      'debug keys: P=player special  O=CPU special  L=CPU climb  B=CPU bomb  K=CPU weapon  V=enemy',
       `projectiles active: ${this.projectileManager.pool.filter((p) => p.active).length}/${this.projectileManager.pool.length}`,
       `particles active: ${this.particleManager.pool.filter((p) => p.active).length}/${this.particleManager.pool.length}`,
     ].join('\n');
