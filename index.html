@@ -41,6 +41,7 @@
             <li><kbd>左スティック</kbd><span>移動</span></li>
             <li><kbd>右側ドラッグ</kbd><span>カメラ / 照準</span></li>
             <li><kbd>◎ボタン</kbd><span>インク発射</span></li>
+            <li><kbd>MAIN</kbd><span>STREAM / SPREAD / PRECISION 切替</span></li>
             <li><kbd>BOMB</kbd><span>広範囲インク弾</span></li>
             <li><kbd>JUMP</kbd><span>ジャンプ</span></li>
             <li><kbd>前進+JUMP</kbd><span>自分色の壁パネルをよじ登る</span></li>
@@ -108,7 +109,7 @@
               <span id="special-value" class="gauge-value">0%</span>
             </div>
           </div>
-          <div class="weapon-strip"><span>MAIN</span><strong id="weapon-name">STREAM</strong><small>1 / 2 / 3</small></div>
+          <div class="weapon-strip"><span>MAIN</span><strong id="weapon-name">STREAM</strong><small id="weapon-switch-hint">1 / 2 / 3</small></div>
           <div id="charge-meter" class="charge-meter hidden" aria-label="PRECISION charge">
             <span>CHARGE</span>
             <div class="charge-track"><div id="charge-fill" class="charge-fill"></div></div>
@@ -182,6 +183,11 @@
         <div class="touch-joystick-nub"></div>
       </div>
       <div class="touch-look-zone"></div>
+      <div class="touch-weapon-switcher" role="group" aria-label="メイン武器切替">
+        <button type="button" class="touch-weapon-btn selected" data-weapon-key="Digit1" data-weapon-type="stream" aria-label="STREAMに切替" aria-pressed="true"><span>1</span><small>STREAM</small></button>
+        <button type="button" class="touch-weapon-btn" data-weapon-key="Digit2" data-weapon-type="spread" aria-label="SPREADに切替" aria-pressed="false"><span>2</span><small>SPREAD</small></button>
+        <button type="button" class="touch-weapon-btn" data-weapon-key="Digit3" data-weapon-type="precision" aria-label="PRECISIONに切替" aria-pressed="false"><span>3</span><small>PRECISION</small></button>
+      </div>
       <div class="touch-buttons">
         <button type="button" class="touch-btn touch-btn-surf" aria-label="DIVE 自分のインクに潜って移動"><span>DIVE</span><small>潜って加速</small></button>
         <button type="button" class="touch-btn touch-btn-jump">JUMP</button>

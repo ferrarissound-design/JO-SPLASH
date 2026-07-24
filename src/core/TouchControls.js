@@ -6,7 +6,8 @@ import { TOUCH } from '../config.js';
 // lands, mapped onto the same WASD virtual keys the keyboard uses. Right
 // half: drag-anywhere-to-look, feeding InputManager's look-delta accumulator
 // (the same one mouse movement uses). Fire/jump/ink-surf are dedicated
-// buttons. Every effect goes through InputManager's public setters, so
+// buttons, including a three-button main-weapon selector. Every effect goes
+// through InputManager's public setters, so
 // Player/CameraController/Game need no touch-specific branches.
 //
 // Each gesture is tracked by its Touch.identifier so the joystick and the
@@ -27,6 +28,7 @@ export class TouchControls {
       surfBtn: container.querySelector('.touch-btn-surf'),
       specialBtn: container.querySelector('.touch-btn-special'),
       bombBtn: container.querySelector('.touch-btn-bomb'),
+      weaponBtns: Array.from(container.querySelectorAll('[data-weapon-key]')),
     };
 
     this._joystickTouchId = null;
@@ -42,6 +44,8 @@ export class TouchControls {
     this._onLookEnd = this._onLookEnd.bind(this);
 
     this._bind();
+    this._weaponType = null;
+    this.setWeaponType('stream');
   }
 
   _bind() {
@@ -62,6 +66,12 @@ export class TouchControls {
     this._bindButton(this.el.surfBtn, (held) => this.input.setVirtualKey('ShiftLeft', held));
     this._bindButton(this.el.specialBtn, (held) => this.input.setVirtualKey('KeyQ', held));
     this._bindButton(this.el.bombBtn, (held) => this.input.setVirtualKey('KeyE', held));
+    for (const button of this.el.weaponBtns) {
+      this._bindButton(button, (held) => {
+        this.input.setVirtualKey(button.dataset.weaponKey, held);
+        if (held) this.setWeaponType(button.dataset.weaponType);
+      });
+    }
   }
 
   _bindButton(el, cb) {
@@ -193,6 +203,17 @@ export class TouchControls {
   }
 
   // ------------------------------------------------------------- lifecycle
+  /** Keeps the selected segment in sync with the player's actual weapon. */
+  setWeaponType(type) {
+    if (!type || type === this._weaponType) return;
+    this._weaponType = type;
+    for (const button of this.el.weaponBtns) {
+      const selected = button.dataset.weaponType === type;
+      button.classList.toggle('selected', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    }
+  }
+
   show() {
     this.container.classList.remove('hidden');
   }
@@ -209,6 +230,10 @@ export class TouchControls {
     this.input.setVirtualKey('ShiftLeft', false);
     this.input.setVirtualKey('KeyQ', false);
     this.input.setVirtualKey('KeyE', false);
+    for (const button of this.el.weaponBtns) {
+      this.input.setVirtualKey(button.dataset.weaponKey, false);
+      button.classList.remove('pressed');
+    }
     this.input.setFireHeld(false);
     this.el.fireBtn.classList.remove('pressed');
     this.el.jumpBtn.classList.remove('pressed');
