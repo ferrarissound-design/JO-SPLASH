@@ -335,6 +335,10 @@ export class Game {
     this.state = STATE.PAUSED;
     this.audioManager.pauseBattleBGM();
     this.audioManager.suspendContext();
+    // Releases any touch buttons still held (e.g. fire/joystick) and hides
+    // the on-screen controls, which would otherwise sit interactable but
+    // invisible underneath the pause overlay.
+    this.touchControls?.hide();
     this.ui.showPause();
   }
 
@@ -349,6 +353,7 @@ export class Game {
     this.ui.hidePause();
     this.audioManager.resumeContext();
     this.audioManager.resumeBattleBGM();
+    this.touchControls?.show();
     this.input.requestPointerLock();
   }
 

@@ -138,7 +138,6 @@ export class EnemyAI extends Character {
     const cfg = randomizeEnemyAppearance(typeIndex);
     this.materials = populateEnemyRig(this.rig, cfg);
     this._setAppearanceMeta(typeIndex, cfg);
-    console.log('[Enemy Appearance]', this.appearanceId);
 
     if (playIntro) this.playIntro();
   }
