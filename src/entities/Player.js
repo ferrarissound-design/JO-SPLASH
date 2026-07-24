@@ -348,19 +348,32 @@ export class Player extends Character {
     if (!parts) return;
     const horizontalSpeed = Math.hypot(this.velocity.x, this.velocity.z);
     const moveAmount = THREE.MathUtils.clamp(horizontalSpeed / MOVEMENT.walkSpeed, 0, 1.5);
-    const stride = elapsedTime * (7.5 + moveAmount * 3.5);
+    const stride = elapsedTime * (6.8 + moveAmount * 4.8);
     const surfScale = this.inkSurfActive ? 0.82 : 1;
-    const runBlend = THREE.MathUtils.clamp((moveAmount - 0.45) / 0.85, 0, 1);
-    const strideSwing = Math.sin(stride) * THREE.MathUtils.lerp(0.34, 0.78, runBlend)
-      * Math.min(1, moveAmount * 1.4);
+    const gaitAmount = Math.min(1, moveAmount * 1.7);
+    const runBlend = THREE.MathUtils.clamp((moveAmount - 0.35) / 0.75, 0, 1);
+    const gaitPhase = Math.sin(stride);
+    const gaitRise = Math.abs(Math.sin(stride * 2));
+    const strideSwing = gaitPhase * THREE.MathUtils.lerp(0.42, 1.02, runBlend) * gaitAmount;
 
-    parts.motionRoot.position.y = Math.sin(stride * 2) * 0.025 * moveAmount;
-    parts.motionRoot.rotation.z = Math.sin(stride) * 0.035 * moveAmount;
+    parts.motionRoot.position.y = gaitRise * THREE.MathUtils.lerp(0.025, 0.07, runBlend) * gaitAmount;
+    parts.motionRoot.rotation.z = gaitPhase * THREE.MathUtils.lerp(0.035, 0.075, runBlend) * gaitAmount;
     parts.motionRoot.scale.set(1, surfScale, 1);
     parts.hairGroup.rotation.z = Math.sin(stride - 0.8) * 0.055 * moveAmount;
     parts.hairGroup.rotation.x = -0.05 - Math.min(0.16, moveAmount * 0.09);
     parts.shooter.rotation.x = Math.sin(stride * 2 + 0.7) * 0.025 * moveAmount;
     parts.tank.rotation.z = -Math.sin(stride) * 0.02 * moveAmount;
+
+    // Reset joint-local offsets first so every special pose cleanly returns to
+    // the same neutral stance without accumulating animation transforms.
+    parts.legLPivot.position.set(-0.16, 0.7, 0);
+    parts.legRPivot.position.set(0.16, 0.7, 0);
+    parts.legLPivot.rotation.z = 0;
+    parts.legRPivot.rotation.z = 0;
+    parts.armLPivot.rotation.z = 0;
+    parts.armRPivot.rotation.z = 0;
+    parts.shoeL.rotation.x = 0;
+    parts.shoeR.rotation.x = 0;
 
     if (this.isClimbing) {
       const climbSwing = Math.sin(elapsedTime * 9) * 0.48;
@@ -379,10 +392,27 @@ export class Player extends Character {
       parts.armLPivot.rotation.x = 0.24;
       parts.armRPivot.rotation.x = -0.12;
     } else {
+      const liftHeight = THREE.MathUtils.lerp(0.055, 0.17, runBlend) * gaitAmount;
+      const leftLift = Math.max(0, gaitPhase) * liftHeight;
+      const rightLift = Math.max(0, -gaitPhase) * liftHeight;
+      const outward = Math.abs(gaitPhase) * THREE.MathUtils.lerp(0.018, 0.055, runBlend) * gaitAmount;
+      const legSplay = THREE.MathUtils.lerp(0.035, 0.105, runBlend) * gaitAmount;
+      const toeKick = THREE.MathUtils.lerp(0.12, 0.38, runBlend) * gaitAmount;
+
+      parts.legLPivot.position.x -= outward;
+      parts.legRPivot.position.x += outward;
+      parts.legLPivot.position.y += leftLift;
+      parts.legRPivot.position.y += rightLift;
       parts.legLPivot.rotation.x = strideSwing;
       parts.legRPivot.rotation.x = -strideSwing;
+      parts.legLPivot.rotation.z = -legSplay * Math.abs(gaitPhase);
+      parts.legRPivot.rotation.z = legSplay * Math.abs(gaitPhase);
+      parts.shoeL.rotation.x = -Math.max(0, gaitPhase) * toeKick;
+      parts.shoeR.rotation.x = -Math.max(0, -gaitPhase) * toeKick;
       parts.armLPivot.rotation.x = -strideSwing * 0.62;
       parts.armRPivot.rotation.x = strideSwing * 0.38;
+      parts.armLPivot.rotation.z = -0.055 * gaitAmount;
+      parts.armRPivot.rotation.z = 0.035 * gaitAmount;
     }
   }
 

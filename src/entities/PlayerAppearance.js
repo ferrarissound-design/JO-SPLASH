@@ -318,6 +318,8 @@ export function createPlayerCharacter() {
     legRPivot,
     armLPivot,
     armRPivot,
+    shoeL,
+    shoeR,
   };
   group.userData.ownedGeometries = ownedGeometries;
 
