@@ -3,6 +3,7 @@ import { Character } from './Character.js';
 import { MOVEMENT, TEAM, COLORS, CAMERA } from '../config.js';
 import { InkBurstSpecial } from '../systems/SpecialWeapon.js';
 import { InkBomb } from '../systems/SubWeapon.js';
+import { createPlayerCharacter } from './PlayerAppearance.js';
 
 const _wish = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
@@ -20,10 +21,15 @@ const _inkRollFxPos = new THREE.Vector3();
 // base Character class.
 // ============================================================================
 export class Player extends Character {
+  _createMesh() {
+    return createPlayerCharacter();
+  }
+
   constructor(spawnPoint, cameraController, inputManager) {
     super(TEAM.PLAYER, spawnPoint);
     this.camera = cameraController;
     this.input = inputManager;
+    this.appearanceParts = this.mesh.userData.appearanceParts;
     this.special = new InkBurstSpecial(this.team);
     this.subWeapon = new InkBomb();
     this.isInkRolling = false;
@@ -337,6 +343,27 @@ export class Player extends Character {
   syncMesh(elapsedTime) {
     super.syncMesh(elapsedTime);
     if (this.camera.currentDistance < CAMERA.bodyHideDistance) this.mesh.visible = false;
+
+    const parts = this.appearanceParts;
+    if (!parts) return;
+    const horizontalSpeed = Math.hypot(this.velocity.x, this.velocity.z);
+    const moveAmount = THREE.MathUtils.clamp(horizontalSpeed / MOVEMENT.walkSpeed, 0, 1.5);
+    const stride = elapsedTime * (7.5 + moveAmount * 3.5);
+    const surfScale = this.inkSurfActive ? 0.82 : 1;
+
+    parts.motionRoot.position.y = Math.sin(stride * 2) * 0.025 * moveAmount;
+    parts.motionRoot.rotation.z = Math.sin(stride) * 0.035 * moveAmount;
+    parts.motionRoot.scale.set(1, surfScale, 1);
+    parts.hairGroup.rotation.z = Math.sin(stride - 0.8) * 0.055 * moveAmount;
+    parts.hairGroup.rotation.x = -0.05 - Math.min(0.16, moveAmount * 0.09);
+    parts.shooter.rotation.x = Math.sin(stride * 2 + 0.7) * 0.025 * moveAmount;
+    parts.tank.rotation.z = -Math.sin(stride) * 0.02 * moveAmount;
+  }
+
+  /** Player uses shared cached body geometry plus a small owned detail set. */
+  dispose() {
+    for (const geometry of this.mesh.userData.ownedGeometries ?? []) geometry.dispose();
+    for (const material of this.materials) material.dispose();
   }
 
   _prepareShot() {
