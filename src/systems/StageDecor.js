@@ -436,23 +436,44 @@ export class StageDecor {
 
   _buildBlinkingSigns() {
     const tex = createSignTexture(['NEO', 'ARENA'], THEME.neonYellow);
+    // A single DoubleSide plane renders its texture mirrored when seen from
+    // the back, so the sign reads backwards from one side of the arena.
+    // A second, horizontally-flipped copy of the texture — shown only on the
+    // geometry's back faces — keeps the text legible from both directions.
+    const texBack = tex.clone();
+    texBack.needsUpdate = true;
+    texBack.wrapS = THREE.RepeatWrapping;
+    texBack.repeat.x = -1;
+    texBack.offset.x = 1;
+
     const spots = [
       { pos: [-this.arena.halfWidth * 0.6, 3.2, this.arena.halfDepth * 0.68], color: THEME.neonCyan },
       { pos: [this.arena.halfWidth * 0.6, 3.2, -this.arena.halfDepth * 0.68], color: THEME.neonOrange },
     ];
     this._signs = [];
     for (const s of spots) {
-      const mat = new THREE.MeshStandardMaterial({
-        map: tex, emissiveMap: tex, emissive: new THREE.Color(s.color), emissiveIntensity: 1.3, roughness: 0.5, side: THREE.DoubleSide,
+      const group = new THREE.Group();
+      group.position.set(s.pos[0], s.pos[1], s.pos[2]);
+      group.lookAt(0, s.pos[1], 0);
+
+      const geo = new THREE.PlaneGeometry(2.6, 1.3);
+      const matFront = new THREE.MeshStandardMaterial({
+        map: tex, emissiveMap: tex, emissive: new THREE.Color(s.color), emissiveIntensity: 1.3, roughness: 0.5, side: THREE.FrontSide,
       });
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.3), mat);
-      mesh.position.set(s.pos[0], s.pos[1], s.pos[2]);
-      mesh.lookAt(0, s.pos[1], 0);
-      this.group.add(mesh);
-      this._signs.push({ mat, phase: Math.random() * Math.PI * 2 });
+      const matBack = new THREE.MeshStandardMaterial({
+        map: texBack, emissiveMap: texBack, emissive: new THREE.Color(s.color), emissiveIntensity: 1.3, roughness: 0.5, side: THREE.BackSide,
+      });
+      group.add(new THREE.Mesh(geo, matFront));
+      group.add(new THREE.Mesh(geo, matBack));
+      this.group.add(group);
+      this._signs.push({ mats: [matFront, matBack], phase: Math.random() * Math.PI * 2 });
     }
     this._animated.push((dt, t) => {
-      for (const s of this._signs) s.mat.emissiveIntensity = 1.0 + Math.sin(t * DECOR.signBlinkSpeed + s.phase) * 0.55;
+      for (const s of this._signs) {
+        const intensity = 1.0 + Math.sin(t * DECOR.signBlinkSpeed + s.phase) * 0.55;
+        s.mats[0].emissiveIntensity = intensity;
+        s.mats[1].emissiveIntensity = intensity;
+      }
     });
   }
 
