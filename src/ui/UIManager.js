@@ -18,6 +18,21 @@ export class UIManager {
       title: document.getElementById('screen-title'),
       howtoDesktop: document.getElementById('howto-desktop'),
       howtoTouch: document.getElementById('howto-touch'),
+      pause: document.getElementById('screen-pause'),
+      btnResume: document.getElementById('btn-resume'),
+      btnQuit: document.getElementById('btn-quit'),
+      btnPause: document.getElementById('btn-pause'),
+      howtoDesktopPause: document.getElementById('howto-desktop-pause'),
+      howtoTouchPause: document.getElementById('howto-touch-pause'),
+      settings: document.getElementById('screen-settings'),
+      btnOpenSettings: document.getElementById('btn-open-settings'),
+      btnCloseSettings: document.getElementById('btn-close-settings'),
+      settingSensitivity: document.getElementById('setting-sensitivity'),
+      settingSensitivityValue: document.getElementById('setting-sensitivity-value'),
+      settingMasterVolume: document.getElementById('setting-master-volume'),
+      settingMasterVolumeValue: document.getElementById('setting-master-volume-value'),
+      settingMusicVolume: document.getElementById('setting-music-volume'),
+      settingMusicVolumeValue: document.getElementById('setting-music-volume-value'),
       countdown: document.getElementById('screen-countdown'),
       countdownNumber: document.getElementById('countdown-number'),
       hud: document.getElementById('hud'),
@@ -71,10 +86,12 @@ export class UIManager {
       respawnBanner: document.getElementById('respawn-banner'),
 
       resultTitle: document.getElementById('result-title'),
+      resultMargin: document.getElementById('result-margin'),
       resultBarPlayer: document.getElementById('result-bar-player'),
       resultBarCpu: document.getElementById('result-bar-cpu'),
       resultPctPlayer: document.getElementById('result-pct-player'),
       resultPctCpu: document.getElementById('result-pct-cpu'),
+      resultPctNeutral: document.getElementById('result-pct-neutral'),
       resultKoPlayer: document.getElementById('result-ko-player'),
       resultKoCpu: document.getElementById('result-ko-cpu'),
 
@@ -98,6 +115,63 @@ export class UIManager {
 
   bindStart(cb) { this.el.btnStart.addEventListener('click', cb); }
   bindRestart(cb) { this.el.btnRestart.addEventListener('click', cb); }
+  bindResume(cb) { this.el.btnResume?.addEventListener('click', cb); }
+  bindQuit(cb) { this.el.btnQuit?.addEventListener('click', cb); }
+  bindPause(cb) { this.el.btnPause?.addEventListener('click', cb); }
+
+  bindOpenSettings(cb) { this.el.btnOpenSettings?.addEventListener('click', cb); }
+  bindCloseSettings(cb) { this.el.btnCloseSettings?.addEventListener('click', cb); }
+
+  bindSensitivityChange(cb) {
+    const el = this.el.settingSensitivity;
+    if (!el) return;
+    el.addEventListener('input', () => {
+      const v = parseFloat(el.value);
+      if (this.el.settingSensitivityValue) this.el.settingSensitivityValue.textContent = `x${v.toFixed(1)}`;
+      cb(v);
+    });
+  }
+
+  bindMasterVolumeChange(cb) {
+    const el = this.el.settingMasterVolume;
+    if (!el) return;
+    el.addEventListener('input', () => {
+      const pct = parseInt(el.value, 10);
+      if (this.el.settingMasterVolumeValue) this.el.settingMasterVolumeValue.textContent = `${pct}%`;
+      cb(pct / 100);
+    });
+  }
+
+  bindMusicVolumeChange(cb) {
+    const el = this.el.settingMusicVolume;
+    if (!el) return;
+    el.addEventListener('input', () => {
+      const pct = parseInt(el.value, 10);
+      if (this.el.settingMusicVolumeValue) this.el.settingMusicVolumeValue.textContent = `${pct}%`;
+      cb(pct / 100);
+    });
+  }
+
+  /** Syncs slider positions/labels to persisted values whenever the settings screen opens. */
+  setSettingsValues({ sensitivityMult, masterVolume, musicVolume }) {
+    if (this.el.settingSensitivity) {
+      this.el.settingSensitivity.value = String(sensitivityMult);
+      if (this.el.settingSensitivityValue) this.el.settingSensitivityValue.textContent = `x${sensitivityMult.toFixed(1)}`;
+    }
+    if (this.el.settingMasterVolume) {
+      const pct = Math.round(masterVolume * 100);
+      this.el.settingMasterVolume.value = String(pct);
+      if (this.el.settingMasterVolumeValue) this.el.settingMasterVolumeValue.textContent = `${pct}%`;
+    }
+    if (this.el.settingMusicVolume) {
+      const pct = Math.round(musicVolume * 100);
+      this.el.settingMusicVolume.value = String(pct);
+      if (this.el.settingMusicVolumeValue) this.el.settingMusicVolumeValue.textContent = `${pct}%`;
+    }
+  }
+
+  showSettings() { this.el.settings?.classList.remove('hidden'); }
+  hideSettings() { this.el.settings?.classList.add('hidden'); }
   bindCycleAppearance(cb) { this.el.btnCycleAppearance?.addEventListener('click', cb); }
   bindDifficultySelection(cb) {
     for (const button of this.el.difficultyButtons) {
@@ -130,12 +204,17 @@ export class UIManager {
   applyTouchMode(isTouch) {
     this.el.howtoDesktop.classList.toggle('hidden', isTouch);
     this.el.howtoTouch.classList.toggle('hidden', !isTouch);
+    this.el.howtoDesktopPause?.classList.toggle('hidden', isTouch);
+    this.el.howtoTouchPause?.classList.toggle('hidden', !isTouch);
     this.el.hud.classList.toggle('touch-mode', isTouch);
     this.el.weaponSwitchHint.textContent = isTouch ? 'SELECT' : '1 / 2 / 3';
   }
 
   showTitle() { this.el.title.classList.remove('hidden'); }
   hideTitle() { this.el.title.classList.add('hidden'); }
+
+  showPause() { this.el.pause?.classList.remove('hidden'); }
+  hidePause() { this.el.pause?.classList.add('hidden'); }
 
   showCountdown() { this.el.countdown.classList.remove('hidden'); }
   hideCountdown() { this.el.countdown.classList.add('hidden'); }
@@ -460,6 +539,21 @@ export class UIManager {
     this.el.resultTitle.textContent = outcome === 'win' ? 'VICTORY' : outcome === 'lose' ? 'DEFEAT' : 'DRAW';
     this.el.resultTitle.classList.remove('win', 'lose', 'draw');
     this.el.resultTitle.classList.add(outcome === 'win' ? 'win' : outcome === 'lose' ? 'lose' : 'draw');
+
+    const margin = Math.abs(playerPct - cpuPct);
+    const CLOSE_MATCH_THRESHOLD_PCT = 4;
+    if (this.el.resultMargin) {
+      if (outcome !== 'draw' && margin <= CLOSE_MATCH_THRESHOLD_PCT) {
+        this.el.resultMargin.textContent = `接戦でした！差はわずか ${margin.toFixed(1)}%`;
+        this.el.resultMargin.classList.remove('hidden');
+      } else {
+        this.el.resultMargin.classList.add('hidden');
+      }
+    }
+    if (this.el.resultPctNeutral) {
+      const neutralPct = Math.max(0, 100 - playerPct - cpuPct);
+      this.el.resultPctNeutral.textContent = `${neutralPct.toFixed(1)}%`;
+    }
 
     this.el.resultKoPlayer.textContent = String(koPlayer);
     this.el.resultKoCpu.textContent = String(koCpu);

@@ -42,6 +42,7 @@ export class Character {
     this._floorFxTimer = 0;
     this._paintTrailTimer = 0;
     this._healthRegenTimer = 0;
+    this._normalOpacityApplied = false; // see syncMesh: skips redundant per-frame material writes
 
     const isPlayer = team === TEAM.PLAYER;
     const color = isPlayer ? COLORS.player : COLORS.cpu;
@@ -362,17 +363,23 @@ export class Character {
         m.transparent = true;
         m.opacity = flicker;
       }
+      this._normalOpacityApplied = false;
     } else if (this.inkSurfActive) {
       const opacity = this.isConcealed ? MOVEMENT.inkSurfStillOpacity : MOVEMENT.inkSurfMovingOpacity;
       for (const m of this.materials) {
         m.transparent = true;
         m.opacity = opacity;
       }
-    } else {
+      this._normalOpacityApplied = false;
+    } else if (!this._normalOpacityApplied) {
+      // Steady-state (not invincible, not ink-surfing) rarely changes frame
+      // to frame; only write once per transition into it instead of on
+      // every single frame.
       for (const m of this.materials) {
         m.transparent = false;
         m.opacity = 1;
       }
+      this._normalOpacityApplied = true;
     }
   }
 

@@ -15,6 +15,12 @@ const _surfExitSplatPos = new THREE.Vector3();
 const _inkRollFxPos = new THREE.Vector3();
 const _wallRel = new THREE.Vector3();
 
+const WEAPON_SELECT_KEYS = [
+  ['Digit1', 'stream'],
+  ['Digit2', 'spread'],
+  ['Digit3', 'precision'],
+];
+
 // ============================================================================
 // Player — human-controlled Character. Reads InputManager state and the
 // CameraController's orientation to drive movement, jumping, ink-surf
@@ -498,12 +504,7 @@ export class Player extends Character {
   }
 
   _handleWeaponSelection(ui) {
-    const choices = [
-      ['Digit1', 'stream'],
-      ['Digit2', 'spread'],
-      ['Digit3', 'precision'],
-    ];
-    for (const [key, type] of choices) {
+    for (const [key, type] of WEAPON_SELECT_KEYS) {
       if (this.input.wasJustPressed(key) && this.weapon.setType(type)) {
         ui?.showStatusMessage(`MAIN: ${this.weapon.displayName}`, 1);
       }

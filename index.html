@@ -30,7 +30,8 @@
             <li><kbd>Shift</kbd><span>自分のインクに潜って高速移動</span></li>
             <li><kbd>方向</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd><span>潜伏中にインクロール</span></li>
             <li><kbd>Q</kbd><span>満タン時にインクバースト</span></li>
-            <li><kbd>Esc</kbd><span>マウスロック解除</span></li>
+            <li><kbd>PRECISION長押し+Shift</kbd><span>フルチャージを潜伏中キープ</span></li>
+            <li><kbd>Esc</kbd><span>ポーズ / マウスロック解除</span></li>
           </ul>
           <p class="mouse-hint">※ クリックでマウスがロックされます。開始後は画面内でマウスを動かして狙いましょう。</p>
         </div>
@@ -48,6 +49,7 @@
             <li><kbd>DIVE</kbd><span>自分のインクに潜って移動</span></li>
             <li><kbd>方向</kbd>+<kbd>DIVE</kbd>+<kbd>JUMP</kbd><span>潜伏中にインクロール</span></li>
             <li><kbd>BURST</kbd><span>満タン時に広範囲を塗装</span></li>
+            <li><kbd>II ボタン</kbd><span>ポーズ</span></li>
           </ul>
           <p class="mouse-hint">※ 画面左側をドラッグで移動、右側をドラッグでカメラ操作。ボタンは押している間だけ効果があります。</p>
         </div>
@@ -66,7 +68,72 @@
         </div>
 
         <button id="btn-start" class="btn-primary" type="button">START</button>
+        <button id="btn-open-settings" class="btn-link" type="button">⚙ 設定</button>
         <p class="rule-hint">制限時間 90秒 &mdash; 塗装面積が多い方が勝利</p>
+      </div>
+    </section>
+
+    <!-- ============ SETTINGS SCREEN ============ -->
+    <section id="screen-settings" class="screen hidden">
+      <div class="title-card">
+        <h2 class="settings-title">設定</h2>
+        <div class="settings-row">
+          <label for="setting-sensitivity">マウス感度</label>
+          <input type="range" id="setting-sensitivity" min="0.4" max="2.2" step="0.1" value="1" />
+          <span id="setting-sensitivity-value" class="settings-value">x1.0</span>
+        </div>
+        <div class="settings-row">
+          <label for="setting-master-volume">効果音音量</label>
+          <input type="range" id="setting-master-volume" min="0" max="100" step="5" value="100" />
+          <span id="setting-master-volume-value" class="settings-value">100%</span>
+        </div>
+        <div class="settings-row">
+          <label for="setting-music-volume">BGM音量</label>
+          <input type="range" id="setting-music-volume" min="0" max="100" step="5" value="100" />
+          <span id="setting-music-volume-value" class="settings-value">100%</span>
+        </div>
+        <button id="btn-close-settings" class="btn-primary" type="button">戻る</button>
+      </div>
+    </section>
+
+    <!-- ============ PAUSE OVERLAY (shown when pointer lock is lost mid-match, or via the HUD pause button) ============ -->
+    <section id="screen-pause" class="screen hidden">
+      <div class="title-card">
+        <h2 class="pause-title">PAUSED</h2>
+        <button id="btn-resume" class="btn-primary" type="button">再開する</button>
+        <button id="btn-quit" class="btn-secondary" type="button">タイトルに戻る</button>
+
+        <div class="panel how-to-play" id="howto-desktop-pause">
+          <h2>操作方法</h2>
+          <ul class="key-list">
+            <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>移動</span></li>
+            <li><kbd>マウス</kbd><span>カメラ / 照準</span></li>
+            <li><kbd>左クリック</kbd><span>インク発射</span></li>
+            <li><kbd>E</kbd><span>インクボム</span></li>
+            <li><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><span>メイン武器切替</span></li>
+            <li><kbd>Space</kbd><span>ジャンプ</span></li>
+            <li><kbd>W</kbd>+<kbd>Space</kbd><span>自分色の壁パネルをよじ登る</span></li>
+            <li><kbd>Shift</kbd><span>自分のインクに潜って高速移動</span></li>
+            <li><kbd>方向</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd><span>潜伏中にインクロール</span></li>
+            <li><kbd>Q</kbd><span>満タン時にインクバースト</span></li>
+            <li><kbd>PRECISION長押し+Shift</kbd><span>フルチャージを潜伏中キープ</span></li>
+          </ul>
+        </div>
+
+        <div class="panel how-to-play hidden" id="howto-touch-pause">
+          <h2>操作方法</h2>
+          <ul class="key-list">
+            <li><kbd>左スティック</kbd><span>移動</span></li>
+            <li><kbd>右側ドラッグ</kbd><span>カメラ / 照準</span></li>
+            <li><kbd>◎ボタン</kbd><span>インク発射</span></li>
+            <li><kbd>BOMB</kbd><span>広範囲インク弾</span></li>
+            <li><kbd>JUMP</kbd><span>ジャンプ</span></li>
+            <li><kbd>前進+JUMP</kbd><span>自分色の壁パネルをよじ登る</span></li>
+            <li><kbd>DIVE</kbd><span>自分のインクに潜って移動</span></li>
+            <li><kbd>方向</kbd>+<kbd>DIVE</kbd>+<kbd>JUMP</kbd><span>潜伏中にインクロール</span></li>
+            <li><kbd>BURST</kbd><span>満タン時に広範囲を塗装</span></li>
+          </ul>
+        </div>
       </div>
     </section>
 
@@ -77,6 +144,7 @@
 
     <!-- ============ HUD ============ -->
     <section id="hud" class="hidden">
+      <button id="btn-pause" class="hud-pause-btn" type="button" aria-label="ポーズ">II</button>
       <div class="hud-top">
         <div class="match-strip" aria-label="試合状況">
           <div class="match-side match-player"><span class="side-tag side-player">YOU</span><span id="coverage-player-pct">0%</span></div>
@@ -150,6 +218,7 @@
     <section id="screen-result" class="screen hidden">
       <div class="result-card">
         <h2 id="result-title">DRAW</h2>
+        <div id="result-margin" class="result-margin hidden"></div>
         <div class="result-bars">
           <div class="result-row">
             <span class="side-tag side-player">YOU</span>
@@ -161,6 +230,9 @@
             <div class="result-track"><div id="result-bar-cpu" class="result-fill fill-cpu"></div></div>
             <span id="result-pct-cpu">0%</span>
           </div>
+        </div>
+        <div class="result-detail">
+          <span>未占有エリア: <b id="result-pct-neutral">0%</b></span>
         </div>
         <div class="result-ko">
           <span>撃破数 — YOU: <b id="result-ko-player">0</b> / CPU: <b id="result-ko-cpu">0</b></span>

@@ -119,7 +119,8 @@ export const PAINT = {
   textureSize: 512, // canvas texture pixel resolution
   splatRadius: 2.1, // world-units radius painted per projectile hit
   koSplatRadius: 3.4, // large burst painted by the attacker when an opponent is splatted
-  updateIntervalMs: 45, // throttle canvas texture upload
+  updateIntervalMs: 45, // throttle canvas texture upload when there's new paint
+  glossUpdateIntervalMs: 110, // slower throttle when only gloss fade-out is animating (no new paint since last upload)
   splatterMin: 7, // tiny random flecks around each impact
   splatterMax: 13,
   glossLifeSec: 2.2, // temporary wet sheen duration for fresh ink
@@ -250,7 +251,12 @@ export const WEAPON = {
         minRange: 23,
         fullRange: 68,
         minDamage: 12,
-        fullDamage: 105,
+        // A hair under HEALTH.max (100) so a full-charge headshot chips to
+        // low HP instead of being an unconditional one-shot kill regardless
+        // of the target's current health — still devastating, just not a
+        // guaranteed instant kill outside of a finishing follow-up or floor
+        // chip damage.
+        fullDamage: 95,
         minSpreadRad: 0.035,
         fullSpreadRad: 0.001,
         minPaintRadius: 1.05,
@@ -369,6 +375,55 @@ export const AI = {
   specialCoverageDeficitPct: 5,
   specialDecisionCooldownSec: 4,
 };
+
+// Light per-archetype behavior traits layered on top of the selected
+// difficulty preset (see EnemyAI._recomputeEffectiveDifficulty). The
+// appearance types were previously cosmetic-only; these multipliers give
+// each one a distinct "feel" without touching the difficulty tuning itself.
+// spreadRangeMult/precisionRangeMult scale AI.spreadWeaponRange/
+// precisionWeaponRange, shifting how readily the type swaps into its
+// preferred weapon; fleeHpThresholdMult scales AI.fleeHpThreshold.
+export const AI_APPEARANCE_TRAITS = Object.freeze({
+  speed: Object.freeze({
+    // Hit-and-run: fast, erratic aim, bomb-happy, retreats early, lingers on
+    // STREAM/SPREAD rather than committing to PRECISION engagements.
+    moveSpeedMult: 1.14,
+    aimJitterMult: 1.15,
+    bombPressureMult: 1.4,
+    spreadRangeMult: 1.25,
+    precisionRangeMult: 1.2,
+    fleeHpThresholdMult: 1.2,
+  }),
+  street: Object.freeze({
+    // Baseline archetype — no trait deviates from the selected difficulty.
+    moveSpeedMult: 1,
+    aimJitterMult: 1,
+    bombPressureMult: 1,
+    spreadRangeMult: 1,
+    precisionRangeMult: 1,
+    fleeHpThresholdMult: 1,
+  }),
+  heavy: Object.freeze({
+    // Tank: slower, leans on brute-force SPREAD over utility bombs, and
+    // fights on well past the point other types would disengage.
+    moveSpeedMult: 0.86,
+    aimJitterMult: 1.1,
+    bombPressureMult: 0.65,
+    spreadRangeMult: 1.3,
+    precisionRangeMult: 1.15,
+    fleeHpThresholdMult: 0.55,
+  }),
+  technical: Object.freeze({
+    // Marksman: sharp aim, switches into PRECISION sooner and leans on it,
+    // standard flee/retreat behavior otherwise.
+    moveSpeedMult: 0.97,
+    aimJitterMult: 0.6,
+    bombPressureMult: 1.1,
+    spreadRangeMult: 0.75,
+    precisionRangeMult: 0.8,
+    fleeHpThresholdMult: 1,
+  }),
+});
 
 export const AI_DIFFICULTY = Object.freeze({
   rookie: Object.freeze({

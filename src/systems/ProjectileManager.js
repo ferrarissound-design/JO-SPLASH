@@ -289,8 +289,9 @@ export class ProjectileManager {
         this.particleManager?.spawnSplat(hit.point, color, true);
       }
     } else if (climbPanel) {
+      let wallPaintedCells = 0;
       if (slot.wallPaintLength > 0) {
-        climbPanel.paint.paintStroke(
+        wallPaintedCells = climbPanel.paint.paintStroke(
           hit.point,
           slot.velocity,
           slot.wallPaintLength,
@@ -300,9 +301,13 @@ export class ProjectileManager {
         this.chargeWallStrokes++;
         this.particleManager?.spawnChargedImpact(hit.point, color, slot.chargeRatio);
       } else {
-        climbPanel.paint.paintSplat(hit.point, slot.paintRadius, slot.team);
+        wallPaintedCells = climbPanel.paint.paintSplat(hit.point, slot.paintRadius, slot.team);
         this.particleManager?.spawnSplat(hit.point, color, true);
       }
+      // Wall panels aren't part of match coverage scoring, but painting one is
+      // real productive work (it's how climb routes get opened) — feed it into
+      // the special gauge the same way floor painting does.
+      this.onPaint?.(slot.team, wallPaintedCells);
     } else {
       this.particleManager?.spawnSplat(hit.point, color, false);
     }

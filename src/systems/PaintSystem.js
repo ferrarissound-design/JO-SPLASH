@@ -272,10 +272,14 @@ export class PaintSystem {
     const owner = OWNER_BY_TEAM[team];
     if (!owner) return 0;
 
-    const paintedCells = this._paintGrid(x, z, radius * 0.65, owner);
+    // Grid and canvas must agree on the same effective radius: drawing the
+    // visual smear wider than the grid stamp would show "painted" ground the
+    // gameplay grid doesn't actually own yet (breaks ink-surf/climb reads).
+    const effectiveRadius = radius * 0.65;
+    const paintedCells = this._paintGrid(x, z, effectiveRadius, owner);
     const opts = { dirX, dirZ, stretch: 2.8, minorScale: 0.42, splatterScale: 0.2, glossScale: 0.45 };
-    this._paintCanvas(x, z, radius, team, opts);
-    this._addGloss(x, z, radius, team, opts);
+    this._paintCanvas(x, z, effectiveRadius, team, opts);
+    this._addGloss(x, z, effectiveRadius, team, opts);
     this._dirty = true;
     return paintedCells;
   }
@@ -376,7 +380,17 @@ export class PaintSystem {
     }
   }
 
-  /** Call once per frame; throttles the (relatively costly) GPU texture upload. */
+  /**
+   * Call once per frame; throttles the (relatively costly) full-canvas
+   * recomposite + GPU texture upload. During active combat there's almost
+   * always at least one fading gloss sheen alive (glossLifeSec is 2.2s and
+   * splats land far more often than that), which would otherwise force this
+   * to run at the fast `updateIntervalMs` cadence continuously. Real new
+   * paint still gets that fast, responsive cadence; when the only reason to
+   * redraw is a gloss still fading out, fall back to the slower
+   * `glossUpdateIntervalMs` cadence instead — imperceptible on a 2.2s fade,
+   * but meaningfully cheaper over a sustained fight.
+   */
   update(dt) {
     let glossDirty = false;
     if (this._glosses.length > 0) {
@@ -388,7 +402,8 @@ export class PaintSystem {
 
     if (!this._dirty && !glossDirty) return;
     this._timeSinceUpload += dt * 1000;
-    if (this._timeSinceUpload >= PAINT.updateIntervalMs) {
+    const interval = this._dirty ? PAINT.updateIntervalMs : PAINT.glossUpdateIntervalMs;
+    if (this._timeSinceUpload >= interval) {
       this._compositeTexture();
       this.texture.needsUpdate = true;
       this._timeSinceUpload = 0;

@@ -21,6 +21,9 @@ export class InputManager {
     this._mouseDeltaY = 0;
 
     this.pointerLocked = false;
+    this._suppressLockLostCallback = false;
+    /** Set by Game to react when pointer lock is lost by the user (e.g. Esc), not by our own exitPointerLock() calls. */
+    this.onLockLost = null;
 
     this._justPressed = Object.create(null);
 
@@ -42,8 +45,16 @@ export class InputManager {
       this._mouseDeltaY += e.movementY || 0;
     };
     this._onPointerLockChange = () => {
+      const wasLocked = this.pointerLocked;
       this.pointerLocked = document.pointerLockElement === this.domElement;
-      if (!this.pointerLocked) this.mouseDown = false;
+      if (!this.pointerLocked) {
+        this.mouseDown = false;
+        // Only user-initiated loss (Esc, alt-tab) should trigger a pause;
+        // our own exitPointerLock() calls (judging/result transitions) set
+        // the suppress flag first so those don't re-open a pause screen.
+        if (wasLocked && !this._suppressLockLostCallback) this.onLockLost?.();
+      }
+      this._suppressLockLostCallback = false;
     };
     this._onContextMenu = (e) => e.preventDefault();
     this._onBlur = () => {
@@ -79,6 +90,7 @@ export class InputManager {
 
   exitPointerLock() {
     if (document.pointerLockElement === this.domElement) {
+      this._suppressLockLostCallback = true;
       document.exitPointerLock();
     }
   }

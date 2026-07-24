@@ -5,6 +5,7 @@ import {
 import { InputManager } from './InputManager.js';
 import { CameraController } from './CameraController.js';
 import { TouchControls } from './TouchControls.js';
+import { Settings } from './Settings.js';
 import { Arena } from '../systems/Arena.js';
 import { StageDecor } from '../systems/StageDecor.js';
 import { PaintSystem } from '../systems/PaintSystem.js';
@@ -22,6 +23,7 @@ const STATE = {
   TITLE: 'title',
   COUNTDOWN: 'countdown',
   PLAYING: 'playing',
+  PAUSED: 'paused',
   JUDGING: 'judging',
   RESULT: 'result',
 };
@@ -36,6 +38,9 @@ export class Game {
   constructor() {
     this.canvas = document.getElementById('game-canvas');
     this.ui = new UIManager();
+
+    this.settings = new Settings();
+    this.settings.apply();
 
     this._setupRenderer();
     this._setupScene();
@@ -64,6 +69,8 @@ export class Game {
 
     this.particleManager = new ParticleManager(this.scene);
     this.audioManager = new AudioManager();
+    this.audioManager.setMasterVolume(this.settings.values.masterVolume);
+    this.audioManager.setMusicVolume(this.settings.values.musicVolume);
     this.projectileManager = new ProjectileManager(
       this.scene, this.arena, this.paintSystem, this.particleManager, this.audioManager
     );
@@ -71,7 +78,7 @@ export class Game {
 
     this.player = new Player(this.arena.spawnPoints.player, this.cameraController, this.input);
     this.touchControls?.setWeaponType(this.player.weapon.type);
-    this.selectedDifficulty = 'standard';
+    this.selectedDifficulty = AI_DIFFICULTY[this.settings.values.difficultyId] ? this.settings.values.difficultyId : 'standard';
     this.cpu = new EnemyAI(this.arena.spawnPoints.cpu, AI_DIFFICULTY[this.selectedDifficulty]);
     this.projectileManager.onPaint = (team, paintedCells) => {
       if (team === TEAM.PLAYER) this.player.special.addCharge(paintedCells);
@@ -104,6 +111,7 @@ export class Game {
     this._bindUI();
     this._selectDifficulty(this.selectedDifficulty);
     this._bindWindow();
+    this.input.onLockLost = () => this._pauseFromLockLoss();
 
     this.clock = new THREE.Clock();
     this._animate = this._animate.bind(this);
@@ -162,6 +170,21 @@ export class Game {
     this.ui.bindRestart(() => this._startMatch());
     this.ui.bindCycleAppearance(() => this._cycleEnemyAppearance());
     this.ui.bindDifficultySelection((difficultyId) => this._selectDifficulty(difficultyId));
+    this.ui.bindResume(() => this._resumeFromPause());
+    this.ui.bindQuit(() => this._quitToTitle());
+    this.ui.bindPause(() => this._pauseMatch());
+
+    this.ui.bindOpenSettings(() => this._openSettings());
+    this.ui.bindCloseSettings(() => this._closeSettings());
+    this.ui.bindSensitivityChange((mult) => this.settings.setSensitivityMult(mult));
+    this.ui.bindMasterVolumeChange((v) => {
+      this.settings.setMasterVolume(v);
+      this.audioManager.setMasterVolume(v);
+    });
+    this.ui.bindMusicVolumeChange((v) => {
+      this.settings.setMusicVolume(v);
+      this.audioManager.setMusicVolume(v);
+    });
   }
 
   _selectDifficulty(difficultyId) {
@@ -169,6 +192,18 @@ export class Game {
     this.selectedDifficulty = preset.id;
     this.cpu.setDifficulty(preset);
     this.ui.setDifficulty(preset.id, preset.label);
+    this.settings.setDifficultyId(preset.id);
+  }
+
+  _openSettings() {
+    this.ui.setSettingsValues(this.settings.values);
+    this.ui.hideTitle();
+    this.ui.showSettings();
+  }
+
+  _closeSettings() {
+    this.ui.hideSettings();
+    this.ui.showTitle();
   }
 
   /** Debug: advance the enemy's appearance type and re-show its intro banner. */
@@ -183,6 +218,20 @@ export class Game {
     window.addEventListener('resize', resize);
     window.addEventListener('orientationchange', resize);
     window.visualViewport?.addEventListener('resize', resize);
+    document.addEventListener('visibilitychange', () => this._onVisibilityChange());
+  }
+
+  /** Backgrounding a tab freezes the main loop (see the document.hidden check in _animate),
+   *  but HTMLAudioElement/AudioContext playback keeps going unless told otherwise. */
+  _onVisibilityChange() {
+    if (document.hidden) {
+      this.audioManager.pauseBattleBGM();
+      this.audioManager.suspendContext();
+    } else if (this.state === STATE.PLAYING) {
+      this.audioManager.resumeContext();
+      this.audioManager.resumeBattleBGM();
+    }
+    // If paused/title/etc., leave audio as-is; the pause/resume flow owns it from here.
   }
 
   _resizeViewport() {
@@ -256,6 +305,7 @@ export class Game {
 
     this.ui.hideTitle();
     this.ui.hideResultScreen();
+    this.ui.hidePause();
     this.ui.showCountdown();
     this.ui.showHUD();
     this.ui.hideRespawnBanner();
@@ -277,6 +327,45 @@ export class Game {
 
     this.audioManager.resume();
     this.input.requestPointerLock();
+  }
+
+  /** Freezes the match and shows the pause/controls overlay. Safe to call repeatedly. */
+  _pauseMatch() {
+    if (this.state !== STATE.PLAYING) return;
+    this.state = STATE.PAUSED;
+    this.audioManager.pauseBattleBGM();
+    this.audioManager.suspendContext();
+    this.ui.showPause();
+  }
+
+  /** Escape (or losing focus) drops pointer lock mid-match; freeze the game instead of leaving the player blind. */
+  _pauseFromLockLoss() {
+    this._pauseMatch();
+  }
+
+  _resumeFromPause() {
+    if (this.state !== STATE.PAUSED) return;
+    this.state = STATE.PLAYING;
+    this.ui.hidePause();
+    this.audioManager.resumeContext();
+    this.audioManager.resumeBattleBGM();
+    this.input.requestPointerLock();
+  }
+
+  /** Bails out of an in-progress match back to the title screen without counting a result. */
+  _quitToTitle() {
+    if (this.state !== STATE.PAUSED) return;
+    this.state = STATE.TITLE;
+    this.ui.hidePause();
+    this.ui.hideHUD();
+    this.ui.hideRespawnBanner();
+    this.ui.updateEnemyMarker({ visible: false });
+    this.ui.updateEnemySpecialWarning({ visible: false });
+    this.audioManager.resumeContext();
+    this.audioManager.stopBattleBGM();
+    this.audioManager.stopInkSurfLoop();
+    this.touchControls?.hide();
+    this.ui.showTitle();
   }
 
   _beginJudging() {
@@ -321,6 +410,11 @@ export class Game {
   _onCharacterHit(targetTeam, damage, hitPoint) {
     const target = targetTeam === TEAM.PLAYER ? this.player : this.cpu;
     const shooter = targetTeam === TEAM.PLAYER ? this.cpu : this.player;
+
+    // Same guard Character.takeDamage uses internally: a shot that lands on a
+    // dead or invincible target does no damage, so it shouldn't play a damage
+    // sound or flash the hit UI either.
+    if (!target.alive || target.invincibleTimer > 0) return;
 
     const died = target.takeDamage(damage);
     this.audioManager.playDamage();
@@ -479,6 +573,9 @@ export class Game {
       case STATE.PLAYING:
         this._updatePlaying(dt);
         break;
+      case STATE.PAUSED:
+        // Frozen: no timers/physics/AI advance until resumed or quit.
+        break;
       case STATE.JUDGING:
         this._updateJudging(dt);
         break;
@@ -529,6 +626,11 @@ export class Game {
   }
 
   _updatePlaying(dt) {
+    // Redundant safety net alongside the pointer-lock-loss handler: some
+    // embedded/automated environments never actually grant pointer lock, so
+    // Esc wouldn't otherwise trigger anything there.
+    if (this.input.wasJustPressed('Escape')) this._pauseMatch();
+
     this.matchTimeRemaining -= dt;
     const matchOver = this.matchTimeRemaining <= 0;
     this.matchTimeRemaining = Math.max(0, this.matchTimeRemaining);
