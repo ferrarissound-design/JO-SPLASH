@@ -217,6 +217,7 @@
     <section id="screen-result" class="screen hidden">
       <div class="result-card">
         <h2 id="result-title">DRAW</h2>
+        <div id="result-margin" class="result-margin hidden"></div>
         <div class="result-bars">
           <div class="result-row">
             <span class="side-tag side-player">YOU</span>
@@ -228,6 +229,9 @@
             <div class="result-track"><div id="result-bar-cpu" class="result-fill fill-cpu"></div></div>
             <span id="result-pct-cpu">0%</span>
           </div>
+        </div>
+        <div class="result-detail">
+          <span>未占有エリア: <b id="result-pct-neutral">0%</b></span>
         </div>
         <div class="result-ko">
           <span>撃破数 — YOU: <b id="result-ko-player">0</b> / CPU: <b id="result-ko-cpu">0</b></span>

@@ -85,10 +85,12 @@ export class UIManager {
       respawnBanner: document.getElementById('respawn-banner'),
 
       resultTitle: document.getElementById('result-title'),
+      resultMargin: document.getElementById('result-margin'),
       resultBarPlayer: document.getElementById('result-bar-player'),
       resultBarCpu: document.getElementById('result-bar-cpu'),
       resultPctPlayer: document.getElementById('result-pct-player'),
       resultPctCpu: document.getElementById('result-pct-cpu'),
+      resultPctNeutral: document.getElementById('result-pct-neutral'),
       resultKoPlayer: document.getElementById('result-ko-player'),
       resultKoCpu: document.getElementById('result-ko-cpu'),
 
@@ -535,6 +537,21 @@ export class UIManager {
     this.el.resultTitle.textContent = outcome === 'win' ? 'VICTORY' : outcome === 'lose' ? 'DEFEAT' : 'DRAW';
     this.el.resultTitle.classList.remove('win', 'lose', 'draw');
     this.el.resultTitle.classList.add(outcome === 'win' ? 'win' : outcome === 'lose' ? 'lose' : 'draw');
+
+    const margin = Math.abs(playerPct - cpuPct);
+    const CLOSE_MATCH_THRESHOLD_PCT = 4;
+    if (this.el.resultMargin) {
+      if (outcome !== 'draw' && margin <= CLOSE_MATCH_THRESHOLD_PCT) {
+        this.el.resultMargin.textContent = `接戦でした！差はわずか ${margin.toFixed(1)}%`;
+        this.el.resultMargin.classList.remove('hidden');
+      } else {
+        this.el.resultMargin.classList.add('hidden');
+      }
+    }
+    if (this.el.resultPctNeutral) {
+      const neutralPct = Math.max(0, 100 - playerPct - cpuPct);
+      this.el.resultPctNeutral.textContent = `${neutralPct.toFixed(1)}%`;
+    }
 
     this.el.resultKoPlayer.textContent = String(koPlayer);
     this.el.resultKoCpu.textContent = String(koCpu);

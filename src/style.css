@@ -634,7 +634,23 @@ html, body {
 .result-fill { height: 100%; width: 0%; transition: width 0.1s linear; }
 .result-row span:last-child { min-width: 3.4rem; text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
 
+.result-detail { color: var(--clr-text-dim); font-size: 0.82rem; margin-bottom: 0.6rem; }
+.result-detail b { color: var(--clr-text); font-weight: 700; }
 .result-ko { color: var(--clr-text-dim); font-size: 0.9rem; margin-bottom: 1.4rem; }
+
+.result-margin {
+  display: inline-block;
+  margin: 0 auto 1rem;
+  padding: 0.32rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #fff27a;
+  background: rgba(255,242,122,0.12);
+  border: 1px solid rgba(255,242,122,0.45);
+  box-shadow: 0 0 16px rgba(255,242,122,0.22);
+}
 
 /* ============ Debug overlay ============ */
 #debug-overlay {
