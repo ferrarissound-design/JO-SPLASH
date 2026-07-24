@@ -298,6 +298,18 @@ export const AI = {
   climbPlanCooldownSec: 8,
   climbMinInk: 44,
   climbApproachOffset: 0.72,
+  spreadWeaponRange: 7,
+  precisionWeaponRange: 14,
+  weaponRangeHysteresis: 1.5,
+  weaponSwitchCooldownSec: 1.2,
+  bombMinRange: 5,
+  bombMaxRange: 19,
+  bombInkReserve: 12,
+  bombDecisionCooldownSec: 6,
+  bombPressureChance: 0.08,
+  bombHighGroundDelta: 0.9,
+  bombHorizontalSpeed: 15.5,
+  bombMinFlightSec: 0.85,
 };
 
 export const DEBUG_DEFAULTS = {

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Character } from './Character.js';
-import { MOVEMENT, WEAPON, AI, TEAM } from '../config.js';
+import { MOVEMENT, WEAPON, SUB_WEAPON, AI, TEAM } from '../config.js';
+import { InkBomb } from '../systems/SubWeapon.js';
 import {
   createEnemyCharacter,
   populateEnemyRig,
@@ -24,6 +25,7 @@ const STATE = {
   RETAKE: 'retake',
   REFILL: 'refill',
   FLEE: 'flee',
+  BOMB: 'bomb',
   CLIMB: 'climb',
   EXPLORE: 'explore',
   WAIT_RESPAWN: 'wait_respawn',
@@ -77,6 +79,14 @@ export class EnemyAI extends Character {
     this.targetPoint = spawnPoint.clone();
     this._strafeSign = 1;
     this._strafeTimer = 0;
+    this.subWeapon = new InkBomb();
+    this._weaponSwitchTimer = 0;
+    this._debugWeaponLockTimer = 0;
+    this._bombDecisionCooldown = 0;
+    this._bombPlanTimer = 0;
+    this._bombTarget = spawnPoint.clone();
+    this.weaponSwitches = 0;
+    this.bombsThrown = 0;
 
     this._aimDir = new THREE.Vector3(0, 0, -1);
     this._aimSmoothT = 0;
@@ -160,6 +170,9 @@ export class EnemyAI extends Character {
 
     this.updateTimers(dt);
     this._climbPlanCooldown = Math.max(0, this._climbPlanCooldown - dt);
+    this._weaponSwitchTimer = Math.max(0, this._weaponSwitchTimer - dt);
+    this._debugWeaponLockTimer = Math.max(0, this._debugWeaponLockTimer - dt);
+    this._bombDecisionCooldown = Math.max(0, this._bombDecisionCooldown - dt);
     if (this._introTimer > 0) this._introTimer = Math.max(0, this._introTimer - dt);
     if (!this.alive) {
       this._climbPlanPanel = null;
@@ -174,6 +187,7 @@ export class EnemyAI extends Character {
     }
 
     this.weapon.update(dt);
+    this.subWeapon.update(dt);
 
     this._decisionTimer -= dt;
     if (this._decisionTimer <= 0) {
@@ -185,6 +199,7 @@ export class EnemyAI extends Character {
     // Travel through own ink in swim form, but surface before attacking so
     // Weapon's shared "cannot fire while submerged" rule stays consistent.
     const wantsInkSurf = this.state !== STATE.ATTACK
+      && this.state !== STATE.BOMB
       && this.state !== STATE.CLIMB
       && !this.isClimbing
       && paintSystem.getOwnerAt(this.position.x, this.position.z) === TEAM.CPU;
@@ -205,6 +220,7 @@ export class EnemyAI extends Character {
     if (this.isClimbing) return;
     if (this.state === STATE.CLIMB && this._climbPlanPanel && this._climbPlanTimer > 0) return;
     if (this.state === STATE.CLIMB) this._finishClimbPlan(false);
+    if (this.state === STATE.BOMB && this._bombPlanTimer > 0) return;
 
     const dist = this.position.distanceTo(player.position);
     const hasLOS = this._hasLineOfSight(arena, player);
@@ -215,12 +231,21 @@ export class EnemyAI extends Character {
       return;
     }
 
+    if (this._shouldThrowBomb(player, dist, hasLOS)) {
+      this.state = STATE.BOMB;
+      this._bombPlanTimer = 0.8;
+      this._bombTarget.copy(player.position);
+      return;
+    }
+
     if (dist <= AI.attackRange && hasLOS && this.ink >= WEAPON.costPerShot * 2) {
+      this._selectCombatWeapon(dist);
       this.state = STATE.ATTACK;
       return;
     }
 
     if (this.ink < AI.refillInkThreshold) {
+      this._selectUtilityWeapon();
       this.state = STATE.REFILL;
       this.targetPoint = this._findOwnTarget(arena, paintSystem);
       return;
@@ -233,12 +258,14 @@ export class EnemyAI extends Character {
 
     const survey = this._surveySurroundings(arena, paintSystem);
     if (survey.enemyCount >= survey.sampleCount * 0.4 && survey.enemyPoint) {
+      this._selectUtilityWeapon();
       this.state = STATE.RETAKE;
       this.targetPoint = survey.enemyPoint;
       return;
     }
 
     if (survey.neutralPoint) {
+      this._selectUtilityWeapon();
       this.state = STATE.PAINT;
       this.targetPoint = survey.neutralPoint;
       return;
@@ -361,6 +388,8 @@ export class EnemyAI extends Character {
 
     if (this.state === STATE.CLIMB) {
       this._actClimbPlan(dt, arena, paintSystem, projectileManager, particleManager, audioManager);
+    } else if (this.state === STATE.BOMB) {
+      this._actBomb(dt, arena, paintSystem, projectileManager, particleManager, audioManager, player);
     } else if (this.state === STATE.ATTACK) {
       this._actAttack(dt, arena, paintSystem, projectileManager, particleManager, audioManager, player);
     } else {
@@ -373,6 +402,7 @@ export class EnemyAI extends Character {
 
   /** Chooses the closest paintable wall and commits to its outside approach point. */
   _beginClimbPlan(arena) {
+    this._selectUtilityWeapon();
     let bestPanel = null;
     let bestTarget = null;
     let bestDistSq = Infinity;
@@ -398,6 +428,129 @@ export class EnemyAI extends Character {
     this.targetPoint.copy(bestTarget);
     this.climbAttempts++;
     return true;
+  }
+
+  _selectCombatWeapon(dist) {
+    if (this._debugWeaponLockTimer > 0) return false;
+    const current = this.weapon.type;
+    let desired = 'stream';
+    if (current === 'spread' && dist <= AI.spreadWeaponRange + AI.weaponRangeHysteresis) {
+      desired = 'spread';
+    } else if (current === 'precision' && dist >= AI.precisionWeaponRange - AI.weaponRangeHysteresis) {
+      desired = 'precision';
+    } else if (dist <= AI.spreadWeaponRange) {
+      desired = 'spread';
+    } else if (dist >= AI.precisionWeaponRange) {
+      desired = 'precision';
+    }
+    return this._switchWeapon(desired);
+  }
+
+  _selectUtilityWeapon() {
+    if (this._debugWeaponLockTimer > 0) return false;
+    return this._switchWeapon('stream', true);
+  }
+
+  _switchWeapon(type, force = false) {
+    if (this.weapon.type === type) return false;
+    if (!force && this._weaponSwitchTimer > 0) return false;
+    if (!this.weapon.setType(type)) return false;
+    this._weaponSwitchTimer = AI.weaponSwitchCooldownSec;
+    this.weaponSwitches++;
+    return true;
+  }
+
+  _shouldThrowBomb(player, dist, hasLOS) {
+    if (this._bombDecisionCooldown > 0 || this.subWeapon.cooldown > 0) return false;
+    if (dist < AI.bombMinRange || dist > AI.bombMaxRange) return false;
+    if (this.ink < SUB_WEAPON.cost + AI.bombInkReserve) return false;
+
+    const playerHasHighGround = player.position.y - this.position.y >= AI.bombHighGroundDelta;
+    return !hasLOS || playerHasHighGround || Math.random() < AI.bombPressureChance;
+  }
+
+  _actBomb(dt, arena, paintSystem, projectileManager, particleManager, audioManager, player) {
+    this._bombPlanTimer -= dt;
+    this._bombTarget.lerp(player.position, 0.18);
+
+    // Keep moving while winding up so the throw is readable but not a free hit.
+    _toPlayer.subVectors(player.position, this.position);
+    _toPlayer.y = 0;
+    const dist = _toPlayer.length();
+    if (dist > 0.01) {
+      _toPlayer.normalize();
+      _steerDir.set(-_toPlayer.z, 0, _toPlayer.x).multiplyScalar(this._strafeSign);
+      const paintAware = this._choosePaintAwareDirection(arena, paintSystem, _steerDir, 0.35);
+      const avoided = this._avoidObstacles(arena, paintAware);
+      const speed = MOVEMENT.walkSpeed * (this._lastSpeedMult ?? 1) * AI.moveSpeedMult * 0.55;
+      this.velocity.x = avoided.x * speed;
+      this.velocity.z = avoided.z * speed;
+      this._integrateHorizontal(dt, arena);
+    }
+
+    _fireOrigin.set(this.position.x, this.position.y + this.eyeHeight, this.position.z);
+    _predictedPos.copy(this._bombTarget).addScaledVector(player.velocity, 0.22);
+    _predictedPos.y += 0.55;
+    this._calculateBombDirection(_fireOrigin, _predictedPos, _aimVec);
+    this.yaw = yawFromDirection(_aimVec.x, _aimVec.z);
+    _fireOrigin.addScaledVector(_aimVec, 0.45);
+
+    if (this.subWeapon.fire(this, _fireOrigin, _aimVec, projectileManager, audioManager, particleManager)) {
+      this.bombsThrown++;
+      this._bombDecisionCooldown = AI.bombDecisionCooldownSec;
+      this.state = dist <= AI.attackRange ? STATE.ATTACK : STATE.EXPLORE;
+      return;
+    }
+
+    if (this._bombPlanTimer <= 0) {
+      this._bombDecisionCooldown = AI.bombDecisionCooldownSec * 0.45;
+      this.state = STATE.EXPLORE;
+    }
+  }
+
+  /**
+   * Computes a lob that reaches the target in a bounded time. Direction is
+   * intentionally not normalized: ProjectileManager multiplies it by the
+   * configured bomb speed, so the components encode the desired launch speed.
+   */
+  _calculateBombDirection(origin, target, out) {
+    const dx = target.x - origin.x;
+    const dz = target.z - origin.z;
+    const horizontalDist = Math.hypot(dx, dz);
+    const flightTime = THREE.MathUtils.clamp(
+      horizontalDist / AI.bombHorizontalSpeed,
+      AI.bombMinFlightSec,
+      SUB_WEAPON.maxLifeSec - 0.15
+    );
+    const gravity = Math.abs(SUB_WEAPON.gravity);
+    const vx = dx / flightTime;
+    const vz = dz / flightTime;
+    const vy = (target.y - origin.y + 0.5 * gravity * flightTime * flightTime) / flightTime;
+    return out.set(
+      vx / SUB_WEAPON.projectileSpeed,
+      vy / SUB_WEAPON.projectileSpeed,
+      vz / SUB_WEAPON.projectileSpeed
+    );
+  }
+
+  debugThrowBombAt(player) {
+    if (!this.alive || this.isClimbing) return false;
+    this.inkSurfActive = false;
+    this.ink = Math.max(this.ink, SUB_WEAPON.cost);
+    this.state = STATE.BOMB;
+    this._bombPlanTimer = 0.8;
+    this._bombDecisionCooldown = 0;
+    this.subWeapon.cooldown = 0;
+    this._bombTarget.copy(player.position);
+    return true;
+  }
+
+  debugCycleWeapon() {
+    const types = ['stream', 'spread', 'precision'];
+    const next = types[(types.indexOf(this.weapon.type) + 1) % types.length];
+    const switched = this._switchWeapon(next, true);
+    if (switched) this._debugWeaponLockTimer = 1.2;
+    return switched;
   }
 
   /**
@@ -534,21 +687,32 @@ export class EnemyAI extends Character {
   debugStartClimbPlan(arena) {
     if (!this.alive || this.isClimbing) return false;
     this._finishClimbPlan(false);
+    this.ink = Math.max(this.ink, AI.climbMinInk);
     this._climbPlanCooldown = 0;
     return this._beginClimbPlan(arena);
   }
 
   resetTactics() {
+    this._selectUtilityWeapon();
     this.state = STATE.EXPLORE;
     this.targetPoint.copy(this.position);
     this._climbPlanPanel = null;
     this._climbPlanTimer = 0;
     this._climbPlanCooldown = AI.climbPlanInitialDelaySec + Math.random() * 2;
     this._climbPaintAimIndex = 0;
+    this.weapon.cooldown = 0;
+    this.weapon.recoilTimer = 0;
+    this.subWeapon.cooldown = 0;
+    this._weaponSwitchTimer = 0;
+    this._debugWeaponLockTimer = 0;
+    this._bombDecisionCooldown = 1.5;
+    this._bombPlanTimer = 0;
     this.isClimbing = false;
     this._climbPanel = null;
     this.climbAttempts = 0;
     this.climbsCompleted = 0;
+    this.weaponSwitches = 0;
+    this.bombsThrown = 0;
   }
 
   // Fires at the floor a couple meters ahead of its current heading so
@@ -609,7 +773,8 @@ export class EnemyAI extends Character {
     const dist = _toPlayer.length();
     _toPlayer.normalize();
 
-    const desiredRange = 9;
+    this._selectCombatWeapon(dist);
+    const desiredRange = this.weapon.type === 'spread' ? 5.5 : this.weapon.type === 'precision' ? 15 : 9;
     const closing = dist > desiredRange + 1.5;
     const retreating = dist < desiredRange - 3;
 
@@ -628,7 +793,7 @@ export class EnemyAI extends Character {
     this._integrateHorizontal(dt, arena);
 
     // --- Aim: smoothed toward a (sometimes led, always jittered) point ---
-    const leadTime = AI.leadPredictionChance > Math.random() ? dist / WEAPON.projectileSpeed : 0;
+    const leadTime = AI.leadPredictionChance > Math.random() ? dist / this.weapon.profile.projectileSpeed : 0;
     _predictedPos.copy(player.position).addScaledVector(player.velocity, leadTime);
     _predictedPos.y += player.eyeHeight * 0.85;
 

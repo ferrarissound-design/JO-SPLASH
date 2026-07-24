@@ -131,7 +131,8 @@ export class ProjectileManager {
     slot.group.scale.setScalar(profile.projectileRadius / WEAPON.projectileRadius);
     slot.group.visible = true;
     if (direction.lengthSq() > 1e-6) {
-      const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
+      _raySegDir.copy(direction).normalize();
+      const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), _raySegDir);
       slot.group.quaternion.copy(quat);
     }
     return true;

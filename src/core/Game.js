@@ -338,6 +338,12 @@ export class Game {
     if (this.debugMode && this.state === STATE.PLAYING && this.input.wasJustPressed('KeyL')) {
       this.cpu.debugStartClimbPlan(this.arena);
     }
+    if (this.debugMode && this.state === STATE.PLAYING && this.input.wasJustPressed('KeyB')) {
+      this.cpu.debugThrowBombAt(this.player);
+    }
+    if (this.debugMode && this.state === STATE.PLAYING && this.input.wasJustPressed('KeyK')) {
+      this.cpu.debugCycleWeapon();
+    }
 
     switch (this.state) {
       case STATE.TITLE:
@@ -557,12 +563,15 @@ export class Game {
       `cpu    cell: (${cgx}, ${cgz})  grounded:${this.cpu.grounded}  climbing:${this.cpu.isClimbing}`,
       `cpu ai state: ${this.cpu.state}  wall:${this.cpu._climbPlanPanel?.label ?? '-'}`,
       `cpu climbs: ${this.cpu.climbsCompleted}/${this.cpu.climbAttempts}`,
+      `cpu weapon: ${this.cpu.weapon.displayName}  switches:${this.cpu.weaponSwitches}`,
+      `cpu bombs: ${this.cpu.bombsThrown}  cd:${this.cpu.subWeapon.cooldown.toFixed(2)}  think:${this.cpu._bombDecisionCooldown.toFixed(2)}`,
+      `cpu hp/ink: ${this.cpu.hp.toFixed(0)}/${this.cpu.ink.toFixed(0)}`,
       `cpu target: ${this.cpu.debugTarget ? this.cpu.debugTarget.toArray().map((n) => n.toFixed(1)).join(',') : '-'}`,
       `player inv: ${this.player.invincibleTimer.toFixed(2)}  cpu inv: ${this.cpu.invincibleTimer.toFixed(2)}`,
       `coverage P:${cov.playerPct.toFixed(1)}% C:${cov.cpuPct.toFixed(1)}% N:${(100 - cov.playerPct - cov.cpuPct).toFixed(1)}%`,
       `special: ${this.player.special.charge.toFixed(1)}%  active:${this.player.special.active}`,
       `weapon: ${this.player.weapon.displayName}  bomb cd:${this.player.subWeapon.cooldown.toFixed(2)}`,
-      'debug keys: P=fill special  L=CPU climb  V=cycle enemy',
+      'debug keys: P=fill special  L=CPU climb  B=CPU bomb  K=CPU weapon  V=cycle enemy',
       `projectiles active: ${this.projectileManager.pool.filter((p) => p.active).length}/${this.projectileManager.pool.length}`,
       `particles active: ${this.particleManager.pool.filter((p) => p.active).length}/${this.particleManager.pool.length}`,
     ].join('\n');
