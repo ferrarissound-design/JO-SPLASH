@@ -161,6 +161,20 @@ export class AudioManager {
     this._tone(1020, 0.12, { type: 'triangle', peak: 0.1, freqEnd: 1380, delay: 0.04 });
   }
 
+  playChargeStore() {
+    this._tone(920, 0.16, { type: 'sine', peak: 0.12, freqEnd: 520 });
+    this._tone(620, 0.2, { type: 'triangle', peak: 0.08, freqEnd: 360, delay: 0.05 });
+  }
+
+  playChargeRestore() {
+    this._tone(480, 0.12, { type: 'triangle', peak: 0.13, freqEnd: 980 });
+    this._tone(860, 0.14, { type: 'sine', peak: 0.1, freqEnd: 1320, delay: 0.035 });
+  }
+
+  playChargeLost() {
+    this._tone(420, 0.13, { type: 'square', peak: 0.08, freqEnd: 180 });
+  }
+
   playChargeShot(chargeRatio = 0) {
     const ratio = Math.max(0, Math.min(1, chargeRatio));
     this._tone(520 + ratio * 280, 0.11 + ratio * 0.08, {

@@ -21,6 +21,8 @@ export class Weapon {
     this.charge = 0;
     this.charging = false;
     this.chargeReady = false;
+    this.chargeStored = false;
+    this.chargeStoreTimer = 0;
   }
 
   get profile() {
@@ -33,6 +35,10 @@ export class Weapon {
 
   get usesCharge() {
     return Boolean(this.profile.charge);
+  }
+
+  get chargeStoreDuration() {
+    return this.profile.charge?.storeDurationSec ?? 0;
   }
 
   setType(type) {
@@ -58,7 +64,7 @@ export class Weapon {
 
   beginCharge(character, audioManager) {
     const charge = this.profile.charge;
-    if (!charge || this.charging) return false;
+    if (!charge || this.charging || this.chargeStored) return false;
     const minimumProfile = { ...this.profile, costPerShot: charge.minInkCost };
     if (!this.canFire(character, minimumProfile)) return false;
 
@@ -71,7 +77,7 @@ export class Weapon {
 
   updateCharge(dt, character, audioManager) {
     const charge = this.profile.charge;
-    if (!charge || !this.charging) return false;
+    if (!charge || !this.charging || this.chargeStored) return false;
     if (!character.alive || character.inkSurfActive || character.isClimbing || character.ink < charge.minInkCost) {
       this.resetCharge();
       return false;
@@ -86,6 +92,39 @@ export class Weapon {
     this.charge = Math.min(1, affordableRatio, this.charge + dt / charge.durationSec);
     this.chargeReady = this.charge >= 1;
     if (this.chargeReady && !wasReady) audioManager?.playChargeReady();
+    return true;
+  }
+
+  storeFullCharge(audioManager) {
+    const duration = this.chargeStoreDuration;
+    if (!this.usesCharge || !this.charging || !this.chargeReady || this.charge < 1 || duration <= 0) {
+      return false;
+    }
+
+    this.charging = false;
+    this.chargeStored = true;
+    this.chargeStoreTimer = duration;
+    audioManager?.playChargeStore();
+    return true;
+  }
+
+  updateStoredCharge(dt, audioManager) {
+    if (!this.chargeStored) return false;
+    this.chargeStoreTimer = Math.max(0, this.chargeStoreTimer - dt);
+    if (this.chargeStoreTimer > 0) return true;
+    this.resetCharge();
+    audioManager?.playChargeLost();
+    return false;
+  }
+
+  restoreStoredCharge(audioManager) {
+    if (!this.chargeStored || this.chargeStoreTimer <= 0) return false;
+    this.chargeStored = false;
+    this.chargeStoreTimer = 0;
+    this.charge = 1;
+    this.charging = true;
+    this.chargeReady = true;
+    audioManager?.playChargeRestore();
     return true;
   }
 
@@ -110,6 +149,8 @@ export class Weapon {
     this.charge = 0;
     this.charging = false;
     this.chargeReady = false;
+    this.chargeStored = false;
+    this.chargeStoreTimer = 0;
   }
 
   /** Attempts to fire; returns true if a shot was produced. */

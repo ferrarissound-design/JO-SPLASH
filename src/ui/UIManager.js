@@ -150,6 +150,8 @@ export class UIManager {
     specialReady = false, specialActive = false, weaponName = 'STREAM',
     weaponUsesCharge = false, weaponCharge = 0,
     weaponCharging = false, weaponChargeReady = false,
+    weaponChargeStored = false, weaponChargeStoreTimer = 0,
+    weaponChargeStoreDuration = 0,
     koPlayer, koCpu, firing,
     submerged = false, rolling = false, enemyFloor = false,
   }) {
@@ -182,10 +184,18 @@ export class UIManager {
     const chargePct = Math.max(0, Math.min(1, weaponCharge));
     this.el.chargeMeter?.classList.toggle('hidden', !weaponUsesCharge);
     this.el.chargeMeter?.classList.toggle('charging', weaponCharging && !weaponChargeReady);
-    this.el.chargeMeter?.classList.toggle('ready', weaponChargeReady);
-    if (this.el.chargeFill) this.el.chargeFill.style.width = `${chargePct * 100}%`;
+    this.el.chargeMeter?.classList.toggle('ready', weaponChargeReady && !weaponChargeStored);
+    this.el.chargeMeter?.classList.toggle('stored', weaponChargeStored);
+    const storeRatio = weaponChargeStoreDuration > 0
+      ? Math.max(0, Math.min(1, weaponChargeStoreTimer / weaponChargeStoreDuration))
+      : 0;
+    if (this.el.chargeFill) {
+      this.el.chargeFill.style.width = `${(weaponChargeStored ? storeRatio : chargePct) * 100}%`;
+    }
     if (this.el.chargeValue) {
-      this.el.chargeValue.textContent = weaponChargeReady ? 'FULL' : `${Math.floor(chargePct * 100)}%`;
+      this.el.chargeValue.textContent = weaponChargeStored
+        ? `HOLD ${weaponChargeStoreTimer.toFixed(1)}`
+        : weaponChargeReady ? 'FULL' : `${Math.floor(chargePct * 100)}%`;
     }
 
     if (koPlayer !== this._lastKoPlayer) {
@@ -206,7 +216,8 @@ export class UIManager {
     this.el.hud.classList.toggle('ink-submerged', submerged);
     this.el.hud.classList.toggle('ink-rolling', rolling);
     this.el.hud.classList.toggle('precision-charging', weaponCharging);
-    this.el.hud.classList.toggle('precision-ready', weaponChargeReady);
+    this.el.hud.classList.toggle('precision-ready', weaponChargeReady && !weaponChargeStored);
+    this.el.hud.classList.toggle('precision-stored', weaponChargeStored);
     this.el.inkRollFlash?.classList.toggle('hidden', !rolling);
     this.el.inkRollFlash?.classList.toggle('active', rolling);
     this.el.hud.classList.toggle('enemy-ink-danger', enemyFloor);

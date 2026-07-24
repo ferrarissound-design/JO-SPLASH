@@ -240,6 +240,7 @@ export const WEAPON = {
       paintRadius: 1.35,
       charge: {
         durationSec: 0.95,
+        storeDurationSec: 1.6,
         minInkCost: 7,
         fullInkCost: 24,
         minProjectileSpeed: 34,

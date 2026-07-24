@@ -87,7 +87,7 @@ export class Player extends Character {
     if (controlsEnabled) {
       this.subWeapon.update(dt);
       this._handleSubWeapon(projectileManager, particleManager, audioManager);
-      this._handleFiring(dt, projectileManager, particleManager, audioManager);
+      this._handleFiring(dt, projectileManager, particleManager, audioManager, ctx.ui);
     }
 
     if (controlsEnabled && wasInkSurfing && !this.inkSurfActive && !wantsInkSurf && this.grounded) {
@@ -233,6 +233,18 @@ export class Player extends Character {
     return fired;
   }
 
+  debugStorePrecisionCharge(audioManager, ui) {
+    if (!this.alive) return false;
+    this.weapon.setType('precision');
+    this.weapon.cooldown = 0;
+    this.weapon.resetCharge();
+    if (!this.weapon.beginCharge(this, audioManager)) return false;
+    this.weapon.updateCharge(this.weapon.profile.charge.durationSec, this, audioManager);
+    const stored = this.weapon.storeFullCharge(audioManager);
+    if (stored) ui?.showStatusMessage('CHARGE KEPT!', 0.8);
+    return stored;
+  }
+
   _updateInkRollTimers(dt) {
     this.inkRollTimer = Math.max(0, this.inkRollTimer - dt);
     this.inkRollCooldown = Math.max(0, this.inkRollCooldown - dt);
@@ -328,16 +340,45 @@ export class Player extends Character {
     this.mesh.visible = false;
   }
 
-  _handleFiring(dt, projectileManager, particleManager, audioManager) {
+  _handleFiring(dt, projectileManager, particleManager, audioManager, ui) {
     this.weapon.update(dt);
     const fireHeld = this.input.mouseDown;
-    if (this.inkSurfActive || this.isClimbing || this.isInkRolling || this.special.active) {
+
+    if (this.inkSurfActive) {
+      if (this.weapon.usesCharge && this.weapon.chargeReady && this.weapon.charging) {
+        if (this.weapon.storeFullCharge(audioManager)) ui?.showStatusMessage('CHARGE KEPT!', 0.65);
+      } else if (!this.weapon.chargeStored) {
+        this.weapon.resetCharge();
+      }
+      if (this.weapon.chargeStored) {
+        const wasStored = this.weapon.chargeStored;
+        this.weapon.updateStoredCharge(dt, audioManager);
+        if (wasStored && !this.weapon.chargeStored) ui?.showStatusMessage('CHARGE LOST', 0.65);
+      }
+      this._fireWasHeld = fireHeld;
+      return;
+    }
+
+    if (this.isClimbing || this.isInkRolling || this.special.active) {
       this.weapon.resetCharge();
       this._fireWasHeld = fireHeld;
       return;
     }
 
     if (this.weapon.usesCharge) {
+      if (this.weapon.chargeStored) {
+        const wasStored = this.weapon.chargeStored;
+        const stillStored = this.weapon.updateStoredCharge(dt, audioManager);
+        if (!stillStored) {
+          if (wasStored) ui?.showStatusMessage('CHARGE LOST', 0.65);
+        } else if (fireHeld && this.weapon.restoreStoredCharge(audioManager)) {
+          ui?.showStatusMessage('CHARGE READY!', 0.55);
+        } else {
+          this._fireWasHeld = fireHeld;
+          return;
+        }
+      }
+
       if (fireHeld) {
         if (!this.weapon.charging) this.weapon.beginCharge(this, audioManager);
         this.weapon.updateCharge(dt, this, audioManager);
