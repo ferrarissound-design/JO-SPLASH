@@ -27,9 +27,9 @@ npm install
 npm test
 ```
 
-DOM/Canvas に依存するモジュール（`PaintSystem` / `WallPanel` / `AudioManager` / `UIManager` 等）は対象外とし、
-`Weapon` のチャージ計算、`Character` の HP・復活ロジック、`config.js` の整合性など、ブラウザ環境なしで検証できる
-ロジックを中心にテストしています。`.github/workflows/test.yml` で push / PR ごとに自動実行されます。
+DOM/Canvas に依存する描画処理（`PaintSystem` の描画部分 / `WallPanel` / `AudioManager` / `UIManager` 等）は対象外とし、
+`PaintGrid` の塗装・陣地集計、`Weapon` のチャージ計算、`Character` の HP・復活ロジック、`config.js` の整合性など、
+ブラウザ環境なしで検証できるロジックを中心にテストしています。`.github/workflows/test.yml` で push / PR ごとに自動実行されます。
 
 ## 操作方法
 
@@ -70,6 +70,7 @@ src/
   systems/
     Arena.js              ステージ形状・衝突コリジョン
     PaintSystem.js        塗装グリッド + CanvasTexture 描画
+    PaintGrid.js          Canvasに依存しない床の所有権・塗装率計算
     WallPanel.js           壁パネル1枚分の小さな独立塗装グリッド（ウォールクライム判定用）
     Weapon.js             発射制御（クールダウン・インク消費）
     ProjectileManager.js  インク弾のオブジェクトプール・衝突判定

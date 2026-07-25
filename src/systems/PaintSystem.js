@@ -1,11 +1,7 @@
 import * as THREE from 'three';
 import { PAINT, TEAM, ARENA } from '../config.js';
+import { PaintGrid, isValidPaintSplat } from './PaintGrid.js';
 
-const OWNER_NONE = 0;
-const OWNER_PLAYER = 1;
-const OWNER_CPU = 2;
-
-const OWNER_BY_TEAM = { [TEAM.PLAYER]: OWNER_PLAYER, [TEAM.CPU]: OWNER_CPU };
 const GLOSS_RGB_BY_TEAM = { [TEAM.PLAYER]: '200, 245, 255', [TEAM.CPU]: '255, 210, 179' };
 
 // ============================================================================
@@ -23,12 +19,7 @@ export class PaintSystem {
     this.width = halfWidth * 2;
     this.depth = halfDepth * 2;
 
-    this.gridRes = PAINT.gridResolution;
-    this.ownerGrid = new Uint8Array(this.gridRes * this.gridRes);
-
-    this.playerCells = 0;
-    this.cpuCells = 0;
-    this.totalCells = this.gridRes * this.gridRes;
+    this.paintGrid = new PaintGrid(halfWidth, halfDepth, PAINT.gridResolution);
 
     this._dirty = false;
     this._timeSinceUpload = 0;
@@ -199,84 +190,33 @@ export class PaintSystem {
 
   /** Grid cell coordinates for a world XZ position (clamped to valid range). */
   worldToGrid(x, z) {
-    const [u, v] = this._worldToUV(x, z);
-    const gx = THREE.MathUtils.clamp(Math.floor(u * this.gridRes), 0, this.gridRes - 1);
-    const gz = THREE.MathUtils.clamp(Math.floor(v * this.gridRes), 0, this.gridRes - 1);
-    return [gx, gz];
+    return this.paintGrid.worldToGrid(x, z);
   }
 
   /** Returns TEAM.PLAYER, TEAM.CPU, or null (unpainted) for the cell at (x,z). */
   getOwnerAt(x, z) {
-    if (Math.abs(x) > this.halfWidth || Math.abs(z) > this.halfDepth) return null;
-    const [gx, gz] = this.worldToGrid(x, z);
-    const v = this.ownerGrid[gz * this.gridRes + gx];
-    if (v === OWNER_PLAYER) return TEAM.PLAYER;
-    if (v === OWNER_CPU) return TEAM.CPU;
-    return null;
+    return this.paintGrid.getOwnerAt(x, z);
   }
 
   /** Paint a circular splat centered at world (x,z) with the given radius, owned by `team`. */
   paintSplat(x, z, radius, team, opts = {}) {
-    const owner = OWNER_BY_TEAM[team];
-    if (!owner) return 0;
-
-    const paintedCells = this._paintGrid(x, z, radius, owner);
+    // Keep rendering and gameplay ownership in lockstep: invalid splats must
+    // not update either the CanvasTexture or the coverage grid.
+    if (!isValidPaintSplat(x, z, radius, team)) return 0;
+    const paintedCells = this.paintGrid.paintSplat(x, z, radius, team);
     this._paintCanvas(x, z, radius, team, opts);
     if (!opts.skipGloss) this._addGloss(x, z, radius, team, opts);
     this._dirty = true;
     return paintedCells;
   }
 
-  _paintGrid(x, z, radius, owner) {
-    const cellWorldSize = this.width / this.gridRes;
-    const cellRadius = Math.ceil(radius / cellWorldSize) + 1;
-    const [cx, cz] = this.worldToGrid(x, z);
-    const res = this.gridRes;
-    const grid = this.ownerGrid;
-
-    const minGx = Math.max(0, cx - cellRadius);
-    const maxGx = Math.min(res - 1, cx + cellRadius);
-    const minGz = Math.max(0, cz - cellRadius);
-    const maxGz = Math.min(res - 1, cz + cellRadius);
-
-    const radiusSq = radius * radius;
-    let paintedCells = 0;
-
-    for (let gz = minGz; gz <= maxGz; gz++) {
-      for (let gx = minGx; gx <= maxGx; gx++) {
-        // Cell center in world space
-        const cellX = -this.halfWidth + (gx + 0.5) * cellWorldSize;
-        const cellZ = -this.halfDepth + (gz + 0.5) * cellWorldSize;
-        const dx = cellX - x;
-        const dz = cellZ - z;
-        if (dx * dx + dz * dz > radiusSq) continue;
-
-        const idx = gz * res + gx;
-        const prev = grid[idx];
-        if (prev === owner) continue;
-
-        if (prev === OWNER_PLAYER) this.playerCells--;
-        else if (prev === OWNER_CPU) this.cpuCells--;
-
-        grid[idx] = owner;
-        paintedCells++;
-
-        if (owner === OWNER_PLAYER) this.playerCells++;
-        else if (owner === OWNER_CPU) this.cpuCells++;
-      }
-    }
-    return paintedCells;
-  }
-
   paintTrail(x, z, radius, team, dirX = 0, dirZ = 1) {
-    const owner = OWNER_BY_TEAM[team];
-    if (!owner) return 0;
-
     // Grid and canvas must agree on the same effective radius: drawing the
     // visual smear wider than the grid stamp would show "painted" ground the
     // gameplay grid doesn't actually own yet (breaks ink-surf/climb reads).
     const effectiveRadius = radius * 0.65;
-    const paintedCells = this._paintGrid(x, z, effectiveRadius, owner);
+    if (!isValidPaintSplat(x, z, effectiveRadius, team)) return 0;
+    const paintedCells = this.paintGrid.paintSplat(x, z, effectiveRadius, team);
     const opts = { dirX, dirZ, stretch: 2.8, minorScale: 0.42, splatterScale: 0.2, glossScale: 0.45 };
     this._paintCanvas(x, z, effectiveRadius, team, opts);
     this._addGloss(x, z, effectiveRadius, team, opts);
@@ -420,21 +360,11 @@ export class PaintSystem {
   }
 
   getCoverage() {
-    const total = this.totalCells;
-    return {
-      playerCells: this.playerCells,
-      cpuCells: this.cpuCells,
-      neutralCells: total - this.playerCells - this.cpuCells,
-      totalCells: total,
-      playerPct: (this.playerCells / total) * 100,
-      cpuPct: (this.cpuCells / total) * 100,
-    };
+    return this.paintGrid.getCoverage();
   }
 
   reset() {
-    this.ownerGrid.fill(OWNER_NONE);
-    this.playerCells = 0;
-    this.cpuCells = 0;
+    this.paintGrid.reset();
     this._drawFloorBase();
     this._glosses = [];
     this.flush();
@@ -443,4 +373,10 @@ export class PaintSystem {
   dispose() {
     this.texture.dispose();
   }
+
+  get gridRes() { return this.paintGrid.resolution; }
+  get ownerGrid() { return this.paintGrid.ownerGrid; }
+  get playerCells() { return this.paintGrid.playerCells; }
+  get cpuCells() { return this.paintGrid.cpuCells; }
+  get totalCells() { return this.paintGrid.totalCells; }
 }
