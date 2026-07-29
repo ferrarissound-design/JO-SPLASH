@@ -1077,6 +1077,7 @@ export class EnemyAI extends Character {
   }
 
   _integrateHorizontal(dt, arena) {
+    this.preserveJumpPadBoost();
     this.position.x += this.velocity.x * dt;
     this.position.z += this.velocity.z * dt;
     this.resolveObstacleCollisions(arena);

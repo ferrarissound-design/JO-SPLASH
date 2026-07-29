@@ -187,6 +187,7 @@ export class Player extends Character {
 
     this.velocity.x = _horizVel.x;
     this.velocity.z = _horizVel.y;
+    this.preserveJumpPadBoost();
 
     if (!this.isClimbing && input.wasJustPressed('Space')) {
       const panel = this._findClimbablePanel(arena);

@@ -38,6 +38,9 @@ export class Character {
     this.isClimbing = false;
     this._climbPanel = null;
     this._climbTimer = 0;
+    this.jumpPadBoostTimer = 0;
+    this.jumpPadDirection = new THREE.Vector3();
+    this.jumpPadHorizontalSpeed = 0;
     this._enemyFloorDamageAccum = 0;
     this._floorFxTimer = 0;
     this._paintTrailTimer = 0;
@@ -173,6 +176,7 @@ export class Character {
     this.inkSurfCooldown = 0;
     this.isClimbing = false;
     this._climbPanel = null;
+    this.resetJumpPadBoost();
     this._healthRegenTimer = 0;
     this.deaths++;
     this.respawnTimer = MATCH.respawnDelaySec;
@@ -191,7 +195,33 @@ export class Character {
     this.inkSurfCooldown = 0;
     this.isClimbing = false;
     this._climbPanel = null;
+    this.resetJumpPadBoost();
     this._healthRegenTimer = 0;
+  }
+
+  resetJumpPadBoost() {
+    this.jumpPadBoostTimer = 0;
+    this.jumpPadDirection.set(0, 0, 0);
+    this.jumpPadHorizontalSpeed = 0;
+  }
+
+  /** Shared launch state used by player and CPU movement without duplicating physics. */
+  launchFromJumpPad(direction, verticalSpeed, horizontalSpeed, directionLockSec) {
+    this.inkSurfActive = false;
+    this.inkSurfCooldown = Math.max(this.inkSurfCooldown, directionLockSec);
+    this.velocity.x = direction.x * horizontalSpeed;
+    this.velocity.y = verticalSpeed;
+    this.velocity.z = direction.z * horizontalSpeed;
+    this.grounded = false;
+    this.jumpPadDirection.copy(direction);
+    this.jumpPadHorizontalSpeed = horizontalSpeed;
+    this.jumpPadBoostTimer = directionLockSec;
+  }
+
+  preserveJumpPadBoost() {
+    if (this.jumpPadBoostTimer <= 0) return;
+    this.velocity.x = this.jumpPadDirection.x * this.jumpPadHorizontalSpeed;
+    this.velocity.z = this.jumpPadDirection.z * this.jumpPadHorizontalSpeed;
   }
 
   /** Resolve horizontal collisions against arena obstacles/walls (circle vs box/circle). */
@@ -344,6 +374,7 @@ export class Character {
 
   updateTimers(dt) {
     if (this.invincibleTimer > 0) this.invincibleTimer = Math.max(0, this.invincibleTimer - dt);
+    if (this.jumpPadBoostTimer > 0) this.jumpPadBoostTimer = Math.max(0, this.jumpPadBoostTimer - dt);
     if (!this.alive) {
       this.respawnTimer -= dt;
       if (this.respawnTimer <= 0) this.respawn();

@@ -198,6 +198,12 @@ export class AudioManager {
     this._noise(0.28, { peak: 0.16, filterFreq: 2100 });
   }
 
+  playJumpPad() {
+    this._tone(180, 0.3, { type: 'sawtooth', peak: 0.14, freqEnd: 760 });
+    this._tone(520, 0.26, { type: 'triangle', peak: 0.12, freqEnd: 1280, delay: 0.035 });
+    this._noise(0.16, { peak: 0.08, filterFreq: 1900 });
+  }
+
   playShoot() {
     this._tone(620, 0.07, { type: 'triangle', peak: 0.18, freqEnd: 340 });
   }

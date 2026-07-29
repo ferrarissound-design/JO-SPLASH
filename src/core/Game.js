@@ -9,6 +9,7 @@ import { Settings } from './Settings.js';
 import { MatchRecord } from './MatchRecord.js';
 import { calculateBattleRank } from './BattleRank.js';
 import { Arena } from '../systems/Arena.js';
+import { JumpPadSystem } from '../systems/JumpPadSystem.js';
 import { StageDecor } from '../systems/StageDecor.js';
 import { PaintSystem } from '../systems/PaintSystem.js';
 import { ProjectileManager } from '../systems/ProjectileManager.js';
@@ -95,6 +96,7 @@ export class Game {
     this.projectileManager = new ProjectileManager(
       this.scene, this.arena, this.paintSystem, this.particleManager, this.audioManager
     );
+    this.jumpPadSystem = new JumpPadSystem(this.scene);
     this.projectileManager.onCharacterHit = (targetTeam, damage, hitPoint) => this._onCharacterHit(targetTeam, damage, hitPoint);
 
     this.selectedCharacterId = 'default';
@@ -358,6 +360,7 @@ export class Game {
     for (const panel of this.arena.wallPanels) panel.paint.reset();
     this.projectileManager.reset();
     this.particleManager.reset();
+    this.jumpPadSystem.reset();
     this._paintSpawnSafeZone(this.arena.spawnPoints.player, TEAM.PLAYER);
     this._paintSpawnSafeZone(this.arena.spawnPoints.cpu, TEAM.CPU);
 
@@ -371,6 +374,7 @@ export class Game {
     this.player.isClimbing = false;
     this.player._climbPanel = null;
     this.player.resetInkRoll({ newMatch: true });
+    this.player.resetJumpPadBoost();
     this.player.invincibleTimer = 0;
     this.player._healthRegenTimer = 0;
     this.player.koScored = 0;
@@ -396,6 +400,7 @@ export class Game {
     this.cpu.koScored = 0;
     this.cpu.deaths = 0;
     this.cpu.practiceMode = this.practiceMode;
+    this.cpu.resetJumpPadBoost();
     this.cpu.resetTactics({ newMatch: true });
     // Fresh random look each match; the entrance animation plays once the
     // countdown ends (see _updateCountdown), not during the reset.
@@ -847,6 +852,11 @@ export class Game {
     this.player.update(dt, ctx);
     this.touchControls?.setWeaponType(this.player.weapon.type);
     this.cpu.update(dt, ctx);
+    this.jumpPadSystem.update(dt, [this.player, this.cpu], {
+      particleManager: this.particleManager,
+      audioManager: this.audioManager,
+      ui: this.ui,
+    });
     this.ui.updateEnemySpecialWarning({
       visible: this.cpu.alive && (this.cpu.specialWindingUp || this.cpu.special.active),
       active: this.cpu.special.active,

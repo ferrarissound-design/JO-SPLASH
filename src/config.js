@@ -114,6 +114,14 @@ export const ARENA = {
   spawnSafeRadius: 3.6, // pre-inked safe zone painted around each spawn point
 };
 
+export const JUMP_PAD = {
+  triggerRadius: 1.18,
+  verticalSpeed: 11.3,
+  horizontalSpeed: 8.2,
+  directionLockSec: 0.34,
+  retriggerCooldownSec: 0.85,
+};
+
 export const PAINT = {
   gridResolution: 128, // cells per axis for the coverage grid (independent of visual texture)
   textureSize: 512, // canvas texture pixel resolution
