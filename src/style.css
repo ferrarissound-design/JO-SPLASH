@@ -667,6 +667,7 @@ details[open] > .key-list-toggle::before { transform: rotate(90deg); }
 #coverage-bar-cpu { width:0%; margin-left:auto; }
 #timer { font-size:clamp(.92rem,4vw,1.18rem); font-weight:900; line-height:1; font-variant-numeric:tabular-nums; min-width:4.2rem; text-align:center; color:#fff; text-shadow:0 0 12px rgba(255,255,255,.24); }
 #timer.time-low { color:#ff6868; animation:timer-blink 1s infinite; }
+#timer.sudden-death { color:#ffd94a; text-shadow:0 0 14px rgba(255,217,74,.55); animation:timer-blink 1s infinite; }
 @keyframes timer-blink { 50% { opacity:.58; } }
 .status-msg { position:absolute; top:calc(max(.45rem, env(safe-area-inset-top)) + 44px); left:50%; transform:translateX(-50%); font-size:.82rem; font-weight:800; padding:.26rem .8rem; border-radius:999px; background:rgba(0,0,0,.52); opacity:0; transition:opacity .25s ease; white-space:nowrap; }
 .status-msg.show { opacity:1; }
