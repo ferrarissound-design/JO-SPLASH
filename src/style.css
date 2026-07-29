@@ -774,6 +774,43 @@ details[open] > .key-list-toggle::before { transform: rotate(90deg); }
 #crosshair.sky-hit { width:44px; height:44px; filter:drop-shadow(0 0 3px #0b2530) drop-shadow(0 0 10px rgba(111,255,235,.95)); transform:translate(-50%,-50%) rotate(45deg); }
 #crosshair.sky-hit .ch-line,#crosshair.sky-hit .ch-dot { background:#9ffff5; box-shadow:0 0 8px rgba(159,255,245,.9); }
 
+.hit-combo {
+  position:absolute;
+  top:58%;
+  left:50%;
+  z-index:14;
+  display:flex;
+  align-items:baseline;
+  gap:.45rem;
+  transform:translate(-50%,-50%) rotate(-3deg);
+  color:#fff27a;
+  pointer-events:none;
+  filter:drop-shadow(3px 4px 0 rgba(7,10,18,.82)) drop-shadow(0 0 12px rgba(255,242,122,.42));
+}
+.hit-combo strong {
+  font-size:clamp(1.8rem,6vw,3.2rem);
+  font-weight:1000;
+  font-style:italic;
+  line-height:.8;
+}
+.hit-combo span {
+  font-size:clamp(.62rem,2vw,.86rem);
+  font-weight:1000;
+  font-style:italic;
+  letter-spacing:.12em;
+  white-space:nowrap;
+}
+.hit-combo.pop { animation:hit-combo-pop .3s cubic-bezier(.16,.86,.26,1.15) both; }
+.hit-combo.combo-sky {
+  color:#9ffff5;
+  filter:drop-shadow(3px 4px 0 rgba(7,10,18,.82)) drop-shadow(0 0 15px rgba(111,255,235,.75));
+}
+@keyframes hit-combo-pop {
+  0% { opacity:0; transform:translate(-50%,-50%) rotate(-8deg) scale(.55); }
+  68% { opacity:1; transform:translate(-50%,-50%) rotate(1deg) scale(1.14); }
+  100% { opacity:1; transform:translate(-50%,-50%) rotate(-3deg) scale(1); }
+}
+
 #damage-direction {
   --damage-angle: 0rad;
   position: absolute;
@@ -1042,6 +1079,13 @@ details[open] > .key-list-toggle::before { transform: rotate(90deg); }
   letter-spacing: .06em;
 }
 .result-stats .result-stat-highlight b { color:#9ffff5; text-shadow:0 0 8px rgba(111,255,235,.5); }
+.result-stats .result-stat-combo {
+  grid-column: 1 / -1;
+  padding-top: .1rem;
+  color: #fff27a;
+  letter-spacing: .06em;
+}
+.result-stats .result-stat-combo b { color:#fff27a; text-shadow:0 0 8px rgba(255,242,122,.46); }
 
 .result-margin {
   display: inline-block;

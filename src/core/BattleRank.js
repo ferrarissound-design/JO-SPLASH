@@ -53,6 +53,7 @@ export function calculateBattleRank({
     + Math.min(playerCount(stats, 'climbs'), 4) * 1.5
     + Math.min(playerCount(stats, 'inkRolls'), 4) * 1.5
     + Math.min(playerCount(stats, 'skySplashes'), 4) * 2
+    + Math.min(playerCount(stats, 'bestCombos'), 10) * 0.5
   );
 
   const rawScore = (

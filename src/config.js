@@ -101,6 +101,10 @@ export const MATCH = {
   invincibleSec: 1.5,
 };
 
+export const HIT_COMBO = {
+  windowSec: 1.35,
+};
+
 export const ARENA = {
   width: 44,
   depth: 44,

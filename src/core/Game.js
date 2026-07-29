@@ -385,6 +385,7 @@ export class Game {
     this.player.bombsThrown = 0;
     this.player.climbsCompleted = 0;
     this.player.skySplashHits = 0;
+    this.player.resetHitCombo({ newMatch: true });
     this.player.special.reset();
     this.player.weapon.cooldown = 0;
     this.player.weapon.resetCharge();
@@ -403,6 +404,7 @@ export class Game {
     this.cpu.koScored = 0;
     this.cpu.deaths = 0;
     this.cpu.skySplashHits = 0;
+    this.cpu.resetHitCombo({ newMatch: true });
     this.cpu.practiceMode = this.practiceMode;
     this.cpu.resetJumpPadBoost();
     this.cpu.resetTactics({ newMatch: true });
@@ -534,6 +536,7 @@ export class Game {
       bombs: { player: this.player.bombsThrown, cpu: this.cpu.bombsThrown },
       specials: { player: this.player.specialsUsed, cpu: this.cpu.specialsUsed },
       skySplashes: { player: this.player.skySplashHits, cpu: this.cpu.skySplashHits },
+      bestCombos: { player: this.player.bestHitCombo, cpu: this.cpu.bestHitCombo },
     };
     const rank = calculateBattleRank({
       playerPct: cov.playerPct,
@@ -573,6 +576,8 @@ export class Game {
 
     const skySplash = Boolean(metadata?.skySplash && metadata.attackerTeam === shooter.team);
     const died = target.takeDamage(damage);
+    const hitCombo = shooter.registerHitCombo();
+    if (shooter.team === TEAM.PLAYER) this.ui.showHitCombo(hitCombo, { skySplash });
     if (skySplash) {
       shooter.skySplashHits++;
       if (shooter.team === TEAM.PLAYER) this.ui.showSkySplash(shooter.skySplashHits);
@@ -623,7 +628,10 @@ export class Game {
       this.particleManager.spawnKOExplosion(hitPoint, color);
       this.audioManager.playKO();
       this.ui.showStatusMessage(targetTeam === TEAM.PLAYER ? 'YOU WERE SPLATTED!' : 'CPU DEFEATED!', 1.8);
-      if (targetTeam === TEAM.PLAYER) this.ui.showRespawnBanner();
+      if (targetTeam === TEAM.PLAYER) {
+        this.ui.resetHitCombo();
+        this.ui.showRespawnBanner();
+      }
       else {
         void this.input.pulseGamepad({
           duration: 170,
@@ -895,6 +903,7 @@ export class Game {
     if (this.player.alive) this.ui.hideRespawnBanner();
 
     this.ui.tickStatusMessage(dt);
+    this.ui.tickHitCombo(dt);
     this.ui.tickHitFlash(dt);
     this.ui.tickDamageDirection(dt);
     this._updateCpuVisibility(dt);

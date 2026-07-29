@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import { Character } from '../src/entities/Character.js';
-import { TEAM, HEALTH, MATCH } from '../src/config.js';
+import { TEAM, HEALTH, MATCH, HIT_COMBO } from '../src/config.js';
 
 function makeCharacter() {
   return new Character(TEAM.PLAYER, new THREE.Vector3(0, 0, 0));
@@ -94,5 +94,40 @@ describe('Character.updateHealthRegen', () => {
     c.updateHealthRegen(HEALTH.regenDelaySec);
     c.updateHealthRegen(1000); // absurdly long tick
     expect(c.hp).toBe(HEALTH.max);
+  });
+});
+
+describe('Character hit combo tracking', () => {
+  it('extends a streak inside the combo window and records the best count', () => {
+    const c = makeCharacter();
+
+    expect(c.registerHitCombo()).toBe(1);
+    c.updateHitCombo(HIT_COMBO.windowSec - 0.1);
+    expect(c.registerHitCombo()).toBe(2);
+    expect(c.bestHitCombo).toBe(2);
+  });
+
+  it('starts a new streak after the combo window expires', () => {
+    const c = makeCharacter();
+    c.registerHitCombo();
+    c.registerHitCombo();
+
+    c.updateHitCombo(HIT_COMBO.windowSec);
+
+    expect(c.hitCombo).toBe(0);
+    expect(c.registerHitCombo()).toBe(1);
+    expect(c.bestHitCombo).toBe(2);
+  });
+
+  it('clears the current streak on defeat but preserves the match best', () => {
+    const c = makeCharacter();
+    c.registerHitCombo();
+    c.registerHitCombo();
+    c.invincibleTimer = 0;
+
+    c.takeDamage(HEALTH.max);
+
+    expect(c.hitCombo).toBe(0);
+    expect(c.bestHitCombo).toBe(2);
   });
 });

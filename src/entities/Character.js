@@ -1,5 +1,8 @@
 import * as THREE from 'three';
-import { HEALTH, INK, MOVEMENT, MATCH, TEAM, COLORS, ENEMY_FLOOR_EFFECT, CAMERA, PAINT } from '../config.js';
+import {
+  HEALTH, INK, MOVEMENT, MATCH, HIT_COMBO, TEAM, COLORS,
+  ENEMY_FLOOR_EFFECT, CAMERA, PAINT,
+} from '../config.js';
 import { Weapon } from '../systems/Weapon.js';
 
 const _closest = new THREE.Vector2();
@@ -31,6 +34,9 @@ export class Character {
 
     this.koScored = 0; // times this character has defeated the opponent
     this.deaths = 0;
+    this.hitCombo = 0;
+    this.bestHitCombo = 0;
+    this.hitComboTimer = 0;
 
     this.inkSurfActive = false;
     this.inkSurfCooldown = 0;
@@ -172,6 +178,27 @@ export class Character {
     return false;
   }
 
+  /** Records one valid damaging hit and returns the current streak count. */
+  registerHitCombo() {
+    if (this.hitComboTimer <= 0) this.hitCombo = 0;
+    this.hitCombo++;
+    this.bestHitCombo = Math.max(this.bestHitCombo, this.hitCombo);
+    this.hitComboTimer = HIT_COMBO.windowSec;
+    return this.hitCombo;
+  }
+
+  resetHitCombo({ newMatch = false } = {}) {
+    this.hitCombo = 0;
+    this.hitComboTimer = 0;
+    if (newMatch) this.bestHitCombo = 0;
+  }
+
+  updateHitCombo(dt) {
+    if (this.hitComboTimer <= 0) return;
+    this.hitComboTimer = Math.max(0, this.hitComboTimer - dt);
+    if (this.hitComboTimer === 0) this.hitCombo = 0;
+  }
+
   die() {
     this.alive = false;
     this.inkSurfActive = false;
@@ -179,6 +206,7 @@ export class Character {
     this.isClimbing = false;
     this._climbPanel = null;
     this.resetJumpPadBoost();
+    this.resetHitCombo();
     this._healthRegenTimer = 0;
     this.deaths++;
     this.respawnTimer = MATCH.respawnDelaySec;
@@ -380,6 +408,7 @@ export class Character {
   updateTimers(dt) {
     if (this.invincibleTimer > 0) this.invincibleTimer = Math.max(0, this.invincibleTimer - dt);
     if (this.jumpPadBoostTimer > 0) this.jumpPadBoostTimer = Math.max(0, this.jumpPadBoostTimer - dt);
+    this.updateHitCombo(dt);
     if (!this.alive) {
       this.respawnTimer -= dt;
       if (this.respawnTimer <= 0) this.respawn();

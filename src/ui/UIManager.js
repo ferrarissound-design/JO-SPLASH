@@ -116,6 +116,9 @@ export class UIManager {
       koCpu: document.getElementById('ko-cpu'),
 
       crosshair: document.getElementById('crosshair'),
+      hitCombo: document.getElementById('hit-combo'),
+      hitComboCount: document.getElementById('hit-combo-count'),
+      hitComboLabel: document.getElementById('hit-combo-label'),
       damageDirection: document.getElementById('damage-direction'),
       enemyIntro: document.getElementById('enemy-intro'),
       enemyIntroType: document.getElementById('enemy-intro-type'),
@@ -149,6 +152,7 @@ export class UIManager {
       resultStatClimbs: document.getElementById('result-stat-climbs'),
       resultStatRolls: document.getElementById('result-stat-rolls'),
       resultStatSkySplashes: document.getElementById('result-stat-sky-splashes'),
+      resultStatBestCombos: document.getElementById('result-stat-best-combos'),
 
       debugOverlay: document.getElementById('debug-overlay'),
       debugFps: document.getElementById('debug-fps'),
@@ -162,6 +166,7 @@ export class UIManager {
     this._lastKoPlayer = 0;
     this._lastKoCpu = 0;
     this._crosshairTimer = 0;
+    this._hitComboTimer = 0;
     this._damageDirectionTimer = 0;
     this._turfMapTimer = 0;
     this._turfMapCtx = this.el.turfMapCanvas?.getContext('2d') ?? null;
@@ -461,6 +466,37 @@ export class UIManager {
     this.el.statusMsg.textContent = `SKY SPLASH ×${count}`;
     this.el.statusMsg.classList.add('show', 'sky-splash');
     this._statusMsgTimer = 1;
+  }
+
+  showHitCombo(count, { skySplash = false } = {}) {
+    if (!this.el.hitCombo || count < 2) return;
+
+    const label = count >= 8
+      ? 'INK FRENZY'
+      : count >= 5
+        ? 'INK RUSH'
+        : count >= 3
+          ? 'TRIPLE SPLASH'
+          : 'HIT COMBO';
+    this.el.hitComboCount.textContent = `${count}×`;
+    this.el.hitComboLabel.textContent = label;
+    this.el.hitCombo.classList.remove('hidden', 'pop', 'combo-sky');
+    void this.el.hitCombo.offsetWidth;
+    this.el.hitCombo.classList.add('pop');
+    this.el.hitCombo.classList.toggle('combo-sky', skySplash);
+    this._hitComboTimer = 0.9;
+  }
+
+  tickHitCombo(dt) {
+    if (this._hitComboTimer <= 0) return;
+    this._hitComboTimer = Math.max(0, this._hitComboTimer - dt);
+    if (this._hitComboTimer === 0) this.resetHitCombo();
+  }
+
+  resetHitCombo() {
+    this._hitComboTimer = 0;
+    this.el.hitCombo?.classList.add('hidden');
+    this.el.hitCombo?.classList.remove('pop', 'combo-sky');
   }
 
   tickStatusMessage(dt) {
@@ -775,6 +811,9 @@ export class UIManager {
       if (this.el.resultStatRolls) this.el.resultStatRolls.textContent = String(stats.inkRolls.player);
       if (this.el.resultStatSkySplashes) {
         this.el.resultStatSkySplashes.textContent = `${stats.skySplashes?.player ?? 0} / ${stats.skySplashes?.cpu ?? 0}`;
+      }
+      if (this.el.resultStatBestCombos) {
+        this.el.resultStatBestCombos.textContent = `${stats.bestCombos?.player ?? 0} / ${stats.bestCombos?.cpu ?? 0}`;
       }
     }
 

@@ -65,6 +65,24 @@ describe('calculateBattleRank', () => {
     });
     expect(aerial.score - base.score).toBe(6);
   });
+
+  it('gives a capped presentation-only reward for the best hit combo', () => {
+    const base = calculateBattleRank({ playerPct: 40, cpuPct: 40, outcome: 'draw' });
+    const combo = calculateBattleRank({
+      playerPct: 40,
+      cpuPct: 40,
+      outcome: 'draw',
+      stats: { bestCombos: { player: 8 } },
+    });
+    const capped = calculateBattleRank({
+      playerPct: 40,
+      cpuPct: 40,
+      outcome: 'draw',
+      stats: { bestCombos: { player: 999 } },
+    });
+    expect(combo.score - base.score).toBe(4);
+    expect(capped.score - base.score).toBe(5);
+  });
 });
 
 describe('UIManager battle rank presentation', () => {
@@ -102,5 +120,38 @@ describe('UIManager battle rank presentation', () => {
     expect(ui.el.resultRank.classList.contains('rank-practice')).toBe(true);
     expect(ui.el.resultRankGrade.textContent).toBe('PRACTICE');
     expect(ui.el.resultRankScore.textContent).toContain('NO SCORE');
+  });
+});
+
+describe('UIManager hit combo presentation', () => {
+  const createComboUi = () => {
+    const ui = Object.create(UIManager.prototype);
+    ui.el = {
+      hitCombo: document.createElement('div'),
+      hitComboCount: document.createElement('strong'),
+      hitComboLabel: document.createElement('span'),
+    };
+    ui.el.hitCombo.classList.add('hidden');
+    ui._hitComboTimer = 0;
+    return ui;
+  };
+
+  it('reveals escalating copy from the second consecutive hit', () => {
+    const ui = createComboUi();
+    ui.showHitCombo(1);
+    expect(ui.el.hitCombo.classList.contains('hidden')).toBe(true);
+
+    ui.showHitCombo(3, { skySplash: true });
+    expect(ui.el.hitComboCount.textContent).toBe('3×');
+    expect(ui.el.hitComboLabel.textContent).toBe('TRIPLE SPLASH');
+    expect(ui.el.hitCombo.classList.contains('hidden')).toBe(false);
+    expect(ui.el.hitCombo.classList.contains('combo-sky')).toBe(true);
+  });
+
+  it('hides the combo callout after its UI timer expires', () => {
+    const ui = createComboUi();
+    ui.showHitCombo(5);
+    ui.tickHitCombo(0.9);
+    expect(ui.el.hitCombo.classList.contains('hidden')).toBe(true);
   });
 });
