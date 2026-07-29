@@ -8,6 +8,7 @@ import { TouchControls } from './TouchControls.js';
 import { Settings } from './Settings.js';
 import { MatchRecord } from './MatchRecord.js';
 import { calculateBattleRank } from './BattleRank.js';
+import { isSuddenDeathTie, getSuddenDeathLeader } from './SuddenDeath.js';
 import { Arena } from '../systems/Arena.js';
 import { JumpPadSystem } from '../systems/JumpPadSystem.js';
 import { StageDecor } from '../systems/StageDecor.js';
@@ -140,6 +141,8 @@ export class Game {
     this.countdownRemaining = 0;
     this.judgingRemaining = 0;
     this.matchTimeRemaining = MATCH.durationSec;
+    this.inSuddenDeath = false;
+    this._suddenDeathForcedWinnerTeam = null;
     this.elapsedTime = 0;
 
     this.debugMode = false;
@@ -418,6 +421,8 @@ export class Game {
     this.countdownRemaining = MATCH.countdownSec + MATCH.startFlashSec;
     this.judgingRemaining = 0;
     this._lastFinalSecond = null;
+    this.inSuddenDeath = false;
+    this._suddenDeathForcedWinnerTeam = null;
 
     this.ui.hideTitle();
     this.ui.hideResultScreen();
@@ -428,6 +433,7 @@ export class Game {
     this.ui.updateEnemyMarker({ visible: false });
     this.ui.updateEnemySpecialWarning({ visible: false });
     this.ui.resetFinale();
+    this.ui.setSuddenDeathActive(false);
     this.ui.resetInkRollFeedback();
     this.ui.hideDamageDirection();
     this.ui.resetTurfMap();
@@ -504,7 +510,30 @@ export class Game {
     this.ui.updateEnemySpecialWarning({ visible: false });
     this.ui.resetInkRollFeedback();
     this.ui.hideDamageDirection();
-    this.ui.showTimeUp();
+    this.ui.showTimeUp(this.inSuddenDeath ? 'DECIDED!' : 'TIME UP!');
+  }
+
+  /**
+   * Called whenever matchTimeRemaining reaches zero — either regulation time
+   * or, once already in overtime, the sudden-death clock itself. Regulation
+   * only extends into overtime once, so this can't loop forever.
+   */
+  _handleTimeExpired(cov) {
+    if (!this.inSuddenDeath && isSuddenDeathTie(cov.playerPct, cov.cpuPct, MATCH.suddenDeathMarginPct)) {
+      this._enterSuddenDeath();
+      return;
+    }
+    this._beginJudging();
+  }
+
+  _enterSuddenDeath() {
+    this.inSuddenDeath = true;
+    this.matchTimeRemaining = MATCH.suddenDeathDurationSec;
+    // Let the final-countdown beeps/UI fire again during overtime's own
+    // closing seconds instead of staying suppressed from regulation.
+    this._lastFinalSecond = null;
+    this.ui.setSuddenDeathActive(true);
+    this.ui.showStatusMessage('SUDDEN DEATH! 先に突き放した方が勝利', 2.8);
   }
 
   _endMatch() {
@@ -512,7 +541,13 @@ export class Game {
     this.ui.hideTimeUp();
 
     const cov = this.paintSystem.getCoverage();
-    const outcome = cov.playerCells === cov.cpuCells ? 'draw' : (cov.playerCells > cov.cpuCells ? 'win' : 'lose');
+    // A KO scored during sudden death ends the match outright in the
+    // scorer's favor (see _onCharacterHit), overriding the usual
+    // coverage-based outcome check — the instant of a KO doesn't necessarily
+    // line up with whoever currently has more floor painted.
+    const outcome = this._suddenDeathForcedWinnerTeam
+      ? (this._suddenDeathForcedWinnerTeam === TEAM.PLAYER ? 'win' : 'lose')
+      : (cov.playerCells === cov.cpuCells ? 'draw' : (cov.playerCells > cov.cpuCells ? 'win' : 'lose'));
 
     if (outcome === 'win') this.audioManager.playWin();
     else if (outcome === 'lose') this.audioManager.playLose();
@@ -557,6 +592,7 @@ export class Game {
       outcome,
       stats,
       rank,
+      suddenDeath: this.inSuddenDeath,
     });
   }
 
@@ -611,6 +647,11 @@ export class Game {
 
     if (died) {
       shooter.koScored++;
+      // In sudden death, a KO decides the match outright — aggression is
+      // rewarded over waiting out the overtime clock. Recorded now so
+      // _endMatch can use it instead of the coverage comparison below, which
+      // may not reflect who currently has the edge.
+      if (this.inSuddenDeath) this._suddenDeathForcedWinnerTeam = shooter.team;
       const color = targetTeam === TEAM.PLAYER ? COLORS.player : COLORS.cpu;
       // A splat swings nearby turf as well as the duel, binding combat back
       // into the mode's territory-control objective.
@@ -640,6 +681,7 @@ export class Game {
           force: true,
         });
       }
+      if (this.inSuddenDeath) this._beginJudging();
     }
   }
 
@@ -909,6 +951,11 @@ export class Game {
     this._updateCpuVisibility(dt);
 
     const cov = this.paintSystem.getCoverage();
+    // Once in overtime, breaking the tie by more than the margin ends the
+    // match immediately rather than waiting out the sudden-death clock.
+    if (this.inSuddenDeath && getSuddenDeathLeader(cov.playerPct, cov.cpuPct, MATCH.suddenDeathMarginPct)) {
+      this._beginJudging();
+    }
     this.ui.updateTurfMap(dt, {
       ownerGrid: this.paintSystem.ownerGrid,
       gridRes: this.paintSystem.gridRes,
@@ -950,7 +997,7 @@ export class Game {
       enemyFloor: this.player.onEnemyFloor,
     });
 
-    if (matchOver) this._beginJudging();
+    if (matchOver) this._handleTimeExpired(cov);
   }
 
   _updateFinalCountdown() {

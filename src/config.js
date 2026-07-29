@@ -99,6 +99,11 @@ export const MATCH = {
   judgingDelaySec: 1.4,
   respawnDelaySec: 3,
   invincibleSec: 1.5,
+  // If coverage is still within this many percentage points when regulation
+  // time expires, the match extends into a short sudden-death overtime
+  // instead of settling what's effectively a coin-flip result.
+  suddenDeathMarginPct: 3,
+  suddenDeathDurationSec: 20,
 };
 
 export const HIT_COMBO = {

@@ -130,6 +130,7 @@ export class UIManager {
       finalCountdown: document.getElementById('final-countdown'),
       finalCountdownValue: document.getElementById('final-countdown-value'),
       timeUpOverlay: document.getElementById('time-up-overlay'),
+      timeUpTitle: document.getElementById('time-up-title'),
       inkRollFlash: document.getElementById('ink-roll-flash'),
       hitFlash: document.getElementById('hit-flash'),
       respawnBanner: document.getElementById('respawn-banner'),
@@ -588,15 +589,21 @@ export class UIManager {
     this.el.finalCountdown?.classList.add('hidden');
   }
 
-  showTimeUp() {
+  showTimeUp(title = 'TIME UP!') {
     this.hideFinalCountdown();
     const el = this.el.timeUpOverlay;
     if (!el) return;
+    if (this.el.timeUpTitle) this.el.timeUpTitle.textContent = title;
     el.classList.remove('hidden');
   }
 
   hideTimeUp() {
     this.el.timeUpOverlay?.classList.add('hidden');
+  }
+
+  /** Toggles the HUD timer's overtime look — recolored and pulsing. */
+  setSuddenDeathActive(active) {
+    this.el.timer?.classList.toggle('sudden-death', active);
   }
 
   resetFinale() {
@@ -779,7 +786,7 @@ export class UIManager {
   }
 
   /** Animates the result percentages counting up from 0 to their final values. */
-  showResult({ playerPct, cpuPct, koPlayer, koCpu, outcome, stats = null, rank = null }) {
+  showResult({ playerPct, cpuPct, koPlayer, koCpu, outcome, stats = null, rank = null, suddenDeath = false }) {
     this.el.resultTitle.textContent = outcome === 'win' ? 'VICTORY' : outcome === 'lose' ? 'DEFEAT' : 'DRAW';
     this.el.resultTitle.classList.remove('win', 'lose', 'draw');
     this.el.resultTitle.classList.add(outcome === 'win' ? 'win' : outcome === 'lose' ? 'lose' : 'draw');
@@ -788,7 +795,12 @@ export class UIManager {
     const margin = Math.abs(playerPct - cpuPct);
     const CLOSE_MATCH_THRESHOLD_PCT = 4;
     if (this.el.resultMargin) {
-      if (outcome !== 'draw' && margin <= CLOSE_MATCH_THRESHOLD_PCT) {
+      if (suddenDeath) {
+        this.el.resultMargin.textContent = outcome === 'draw'
+          ? 'サドンデス、決着つかず引き分け'
+          : 'サドンデスの末に決着！';
+        this.el.resultMargin.classList.remove('hidden');
+      } else if (outcome !== 'draw' && margin <= CLOSE_MATCH_THRESHOLD_PCT) {
         this.el.resultMargin.textContent = `接戦でした！差はわずか ${margin.toFixed(1)}%`;
         this.el.resultMargin.classList.remove('hidden');
       } else {
