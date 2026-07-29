@@ -72,7 +72,7 @@ export class ProjectileManager {
       this.pool.push(this._createSlot());
     }
 
-    this.onCharacterHit = null; // (targetTeam, damage, hitPoint) => void, set by Game
+    this.onCharacterHit = null; // (targetTeam, damage, hitPoint, metadata) => void, set by Game
     this.onPaint = null; // (team, changedCells) => void, set by Game
     this.chargeLinesFired = 0;
     this.chargeLinePaintedCells = 0;
@@ -107,6 +107,7 @@ export class ProjectileManager {
       gravity: 0,
       speed: WEAPON.projectileSpeed,
       chargeRatio: 0,
+      skySplash: false,
       paintLineRadius: 0,
       paintLineSpacing: 0,
       paintLineDrop: 0,
@@ -117,7 +118,7 @@ export class ProjectileManager {
     };
   }
 
-  spawn(origin, direction, team, profile = WEAPON) {
+  spawn(origin, direction, team, profile = WEAPON, metadata = null) {
     const slot = this.pool.find((s) => !s.active);
     if (!slot) return false; // pool exhausted; drop the shot rather than allocate
 
@@ -135,6 +136,7 @@ export class ProjectileManager {
     slot.gravity = profile.gravity ?? 0;
     slot.speed = profile.projectileSpeed;
     slot.chargeRatio = profile.chargeRatio ?? 0;
+    slot.skySplash = Boolean(metadata?.skySplash);
     slot.paintLineRadius = profile.paintLineRadius ?? 0;
     slot.paintLineSpacing = profile.paintLineSpacing ?? 0;
     slot.paintLineDrop = profile.paintLineDrop ?? 0;
@@ -144,12 +146,13 @@ export class ProjectileManager {
     slot.active = true;
     if (slot.paintLineRadius > 0) this.chargeLinesFired++;
 
-    const color = team === TEAM.PLAYER ? 0x2fb8ff : 0xff7a2f;
+    const color = slot.skySplash ? 0x9ffff5 : (team === TEAM.PLAYER ? 0x2fb8ff : 0xff7a2f);
     slot.headMat.color.setHex(color);
     slot.tailMat.color.setHex(color);
+    slot.tailMat.opacity = slot.skySplash ? 0.88 : 0.55;
 
     slot.group.position.copy(origin);
-    slot.group.scale.setScalar(profile.projectileRadius / WEAPON.projectileRadius);
+    slot.group.scale.setScalar((profile.projectileRadius / WEAPON.projectileRadius) * (slot.skySplash ? 1.16 : 1));
     slot.group.visible = true;
     if (direction.lengthSq() > 1e-6) {
       _raySegDir.copy(direction).normalize();
@@ -245,7 +248,10 @@ export class ProjectileManager {
       if (distSq <= hitRadius * hitRadius) {
         const hitPoint = _closestOnSeg.clone();
         // Game's onCharacterHit callback plays the damage sound; nothing further needed here.
-        this.onCharacterHit?.(target.team, slot.damage, hitPoint);
+        this.onCharacterHit?.(target.team, slot.damage, hitPoint, {
+          attackerTeam: slot.team,
+          skySplash: slot.skySplash,
+        });
         const color = slot.team === TEAM.PLAYER ? 0x2fb8ff : 0xff7a2f;
         if (slot.chargeRatio > 0) {
           this.particleManager?.spawnChargedImpact(hitPoint, color, slot.chargeRatio);

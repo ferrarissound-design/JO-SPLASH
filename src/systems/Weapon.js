@@ -174,7 +174,9 @@ export class Weapon {
     let spawned = 0;
     for (let i = 0; i < profile.pelletCount; i++) {
       const spreadDir = this._applySpread(_dir, profile.spreadRad);
-      if (projectileManager.spawn(origin, spreadDir, character.team, profile)) spawned++;
+      if (projectileManager.spawn(origin, spreadDir, character.team, profile, {
+        skySplash: Boolean(character.jumpPadAirborne),
+      })) spawned++;
     }
     if (spawned === 0) return false;
 

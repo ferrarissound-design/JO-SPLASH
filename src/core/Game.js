@@ -97,7 +97,9 @@ export class Game {
       this.scene, this.arena, this.paintSystem, this.particleManager, this.audioManager
     );
     this.jumpPadSystem = new JumpPadSystem(this.scene);
-    this.projectileManager.onCharacterHit = (targetTeam, damage, hitPoint) => this._onCharacterHit(targetTeam, damage, hitPoint);
+    this.projectileManager.onCharacterHit = (targetTeam, damage, hitPoint, metadata) => (
+      this._onCharacterHit(targetTeam, damage, hitPoint, metadata)
+    );
 
     this.selectedCharacterId = 'default';
     this.player = new Player(
@@ -382,6 +384,7 @@ export class Game {
     this.player.specialsUsed = 0;
     this.player.bombsThrown = 0;
     this.player.climbsCompleted = 0;
+    this.player.skySplashHits = 0;
     this.player.special.reset();
     this.player.weapon.cooldown = 0;
     this.player.weapon.resetCharge();
@@ -399,6 +402,7 @@ export class Game {
     this.cpu._healthRegenTimer = 0;
     this.cpu.koScored = 0;
     this.cpu.deaths = 0;
+    this.cpu.skySplashHits = 0;
     this.cpu.practiceMode = this.practiceMode;
     this.cpu.resetJumpPadBoost();
     this.cpu.resetTactics({ newMatch: true });
@@ -529,6 +533,7 @@ export class Game {
       climbs: { player: this.player.climbsCompleted, cpu: this.cpu.climbsCompleted },
       bombs: { player: this.player.bombsThrown, cpu: this.cpu.bombsThrown },
       specials: { player: this.player.specialsUsed, cpu: this.cpu.specialsUsed },
+      skySplashes: { player: this.player.skySplashHits, cpu: this.cpu.skySplashHits },
     };
     const rank = calculateBattleRank({
       playerPct: cov.playerPct,
@@ -557,7 +562,7 @@ export class Game {
     this.paintSystem.paintSplat(point.x, point.z, ARENA.spawnSafeRadius, team);
   }
 
-  _onCharacterHit(targetTeam, damage, hitPoint) {
+  _onCharacterHit(targetTeam, damage, hitPoint, metadata = null) {
     const target = targetTeam === TEAM.PLAYER ? this.player : this.cpu;
     const shooter = targetTeam === TEAM.PLAYER ? this.cpu : this.player;
 
@@ -566,9 +571,17 @@ export class Game {
     // sound or flash the hit UI either.
     if (!target.alive || target.invincibleTimer > 0) return;
 
+    const skySplash = Boolean(metadata?.skySplash && metadata.attackerTeam === shooter.team);
     const died = target.takeDamage(damage);
+    if (skySplash) {
+      shooter.skySplashHits++;
+      if (shooter.team === TEAM.PLAYER) this.ui.showSkySplash(shooter.skySplashHits);
+    }
     this.audioManager.playDamage();
-    this.ui.flashCrosshair(targetTeam === TEAM.CPU);
+    this.ui.flashCrosshair(
+      targetTeam === TEAM.CPU,
+      skySplash && shooter.team === TEAM.PLAYER,
+    );
     if (targetTeam === TEAM.PLAYER) {
       this.ui.flashHit();
       this.cameraController.getFlatForward(_damageCameraForward);

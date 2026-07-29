@@ -148,6 +148,7 @@ export class UIManager {
       resultStatBombs: document.getElementById('result-stat-bombs'),
       resultStatClimbs: document.getElementById('result-stat-climbs'),
       resultStatRolls: document.getElementById('result-stat-rolls'),
+      resultStatSkySplashes: document.getElementById('result-stat-sky-splashes'),
 
       debugOverlay: document.getElementById('debug-overlay'),
       debugFps: document.getElementById('debug-fps'),
@@ -451,14 +452,21 @@ export class UIManager {
 
   showStatusMessage(text, durationSec = 1.6) {
     this.el.statusMsg.textContent = text;
+    this.el.statusMsg.classList.remove('sky-splash');
     this.el.statusMsg.classList.add('show');
     this._statusMsgTimer = durationSec;
+  }
+
+  showSkySplash(count) {
+    this.el.statusMsg.textContent = `SKY SPLASH ×${count}`;
+    this.el.statusMsg.classList.add('show', 'sky-splash');
+    this._statusMsgTimer = 1;
   }
 
   tickStatusMessage(dt) {
     if (this._statusMsgTimer <= 0) return;
     this._statusMsgTimer -= dt;
-    if (this._statusMsgTimer <= 0) this.el.statusMsg.classList.remove('show');
+    if (this._statusMsgTimer <= 0) this.el.statusMsg.classList.remove('show', 'sky-splash');
   }
 
   flashHit() {
@@ -477,15 +485,15 @@ export class UIManager {
     }
     if (this._crosshairTimer > 0) {
       this._crosshairTimer -= dt;
-      if (this._crosshairTimer <= 0) this.el.crosshair.classList.remove('hit-confirm', 'enemy-hit');
+      if (this._crosshairTimer <= 0) this.el.crosshair.classList.remove('hit-confirm', 'enemy-hit', 'sky-hit');
     }
   }
 
-  flashCrosshair(enemyHit = false) {
-    this.el.crosshair.classList.remove('hit-confirm', 'enemy-hit');
+  flashCrosshair(enemyHit = false, skySplash = false) {
+    this.el.crosshair.classList.remove('hit-confirm', 'enemy-hit', 'sky-hit');
     void this.el.crosshair.offsetWidth;
-    this.el.crosshair.classList.add(enemyHit ? 'enemy-hit' : 'hit-confirm');
-    this._crosshairTimer = 0.12;
+    this.el.crosshair.classList.add(skySplash ? 'sky-hit' : enemyHit ? 'enemy-hit' : 'hit-confirm');
+    this._crosshairTimer = skySplash ? 0.28 : 0.12;
   }
 
   showDamageDirection(angleRad, lethal = false) {
@@ -765,6 +773,9 @@ export class UIManager {
       if (this.el.resultStatClimbs) this.el.resultStatClimbs.textContent = `${stats.climbs.player} / ${stats.climbs.cpu}`;
       // CPU never ink-rolls (player-only mechanic), so this line is YOU-only.
       if (this.el.resultStatRolls) this.el.resultStatRolls.textContent = String(stats.inkRolls.player);
+      if (this.el.resultStatSkySplashes) {
+        this.el.resultStatSkySplashes.textContent = `${stats.skySplashes?.player ?? 0} / ${stats.skySplashes?.cpu ?? 0}`;
+      }
     }
 
     if (this._countUpAnim) cancelAnimationFrame(this._countUpAnim);

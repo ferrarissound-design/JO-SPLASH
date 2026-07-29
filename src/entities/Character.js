@@ -41,6 +41,8 @@ export class Character {
     this.jumpPadBoostTimer = 0;
     this.jumpPadDirection = new THREE.Vector3();
     this.jumpPadHorizontalSpeed = 0;
+    this.jumpPadAirborne = false;
+    this.skySplashHits = 0;
     this._enemyFloorDamageAccum = 0;
     this._floorFxTimer = 0;
     this._paintTrailTimer = 0;
@@ -203,6 +205,7 @@ export class Character {
     this.jumpPadBoostTimer = 0;
     this.jumpPadDirection.set(0, 0, 0);
     this.jumpPadHorizontalSpeed = 0;
+    this.jumpPadAirborne = false;
   }
 
   /** Shared launch state used by player and CPU movement without duplicating physics. */
@@ -216,6 +219,7 @@ export class Character {
     this.jumpPadDirection.copy(direction);
     this.jumpPadHorizontalSpeed = horizontalSpeed;
     this.jumpPadBoostTimer = directionLockSec;
+    this.jumpPadAirborne = true;
   }
 
   preserveJumpPadBoost() {
@@ -275,6 +279,7 @@ export class Character {
       this.position.y = groundY;
       this.velocity.y = 0;
       this.grounded = true;
+      this.jumpPadAirborne = false;
     } else {
       this.grounded = false;
     }

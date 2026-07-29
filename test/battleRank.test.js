@@ -54,6 +54,17 @@ describe('calculateBattleRank', () => {
       difficultyId: 'elite',
     }).score).toBe(100);
   });
+
+  it('rewards SKY SPLASH technique without changing match mechanics', () => {
+    const base = calculateBattleRank({ playerPct: 40, cpuPct: 40, outcome: 'draw' });
+    const aerial = calculateBattleRank({
+      playerPct: 40,
+      cpuPct: 40,
+      outcome: 'draw',
+      stats: { skySplashes: { player: 3 } },
+    });
+    expect(aerial.score - base.score).toBe(6);
+  });
 });
 
 describe('UIManager battle rank presentation', () => {

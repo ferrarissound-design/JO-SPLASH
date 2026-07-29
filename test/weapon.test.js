@@ -20,8 +20,8 @@ function makeSpawnRecorder() {
   const spawned = [];
   return {
     spawned,
-    spawn(origin, direction, team, profile) {
-      spawned.push({ origin: origin.clone(), direction: direction.clone(), team, profile });
+    spawn(origin, direction, team, profile, metadata) {
+      spawned.push({ origin: origin.clone(), direction: direction.clone(), team, profile, metadata });
       return true;
     },
   };
@@ -66,6 +66,13 @@ describe('Weapon.fire (non-charge profile)', () => {
     weapon.fire(character, ORIGIN, DIR, recorder, null, null);
 
     expect(recorder.spawned).toHaveLength(WEAPON.profiles.spread.pelletCount);
+  });
+
+  it('tags shots fired during a jump-pad flight as SKY SPLASH projectiles', () => {
+    const weapon = new Weapon('stream');
+    const recorder = makeSpawnRecorder();
+    weapon.fire(makeCharacter({ jumpPadAirborne: true }), ORIGIN, DIR, recorder, null, null);
+    expect(recorder.spawned[0].metadata).toEqual({ skySplash: true });
   });
 });
 
