@@ -108,3 +108,106 @@ describe('InputManager.listenForNextKey', () => {
     input.dispose();
   });
 });
+
+function createGamepad() {
+  return {
+    connected: true,
+    id: 'Test Standard Gamepad',
+    index: 0,
+    mapping: 'standard',
+    axes: [0, 0, 0, 0],
+    buttons: Array.from({ length: 16 }, () => ({ pressed: false, value: 0 })),
+  };
+}
+
+describe('InputManager gamepad support', () => {
+  it('maps sticks, jump, fire, and camera look into the shared input state', () => {
+    const pad = createGamepad();
+    Object.defineProperty(navigator, 'getGamepads', {
+      configurable: true,
+      value: () => [pad],
+    });
+    const input = makeInput();
+
+    pad.axes[0] = 0.8;
+    pad.axes[1] = -0.8;
+    pad.axes[2] = 0.5;
+    pad.axes[3] = -0.5;
+    pad.buttons[0] = { pressed: true, value: 1 };
+    pad.buttons[7] = { pressed: true, value: 1 };
+    input.updateGamepad(1 / 60);
+
+    expect(input.gamepadConnected).toBe(true);
+    expect(input.isDown('KeyD')).toBe(true);
+    expect(input.isDown('KeyW')).toBe(true);
+    expect(input.wasJustPressed('Space')).toBe(true);
+    expect(input.fireHeld).toBe(true);
+    const [dx, dy] = input.consumeMouseDelta();
+    expect(dx).toBeGreaterThan(0);
+    expect(dy).toBeLessThan(0);
+    input.dispose();
+  });
+
+  it('emits gamepad button edges once and rearms after release', () => {
+    const pad = createGamepad();
+    Object.defineProperty(navigator, 'getGamepads', {
+      configurable: true,
+      value: () => [pad],
+    });
+    const input = makeInput();
+
+    pad.buttons[2] = { pressed: true, value: 1 };
+    input.updateGamepad(1 / 60);
+    expect(input.wasJustPressed('GamepadNextWeapon')).toBe(true);
+    input.updateGamepad(1 / 60);
+    expect(input.wasJustPressed('GamepadNextWeapon')).toBe(false);
+
+    pad.buttons[2] = { pressed: false, value: 0 };
+    input.updateGamepad(1 / 60);
+    pad.buttons[2] = { pressed: true, value: 1 };
+    input.updateGamepad(1 / 60);
+    expect(input.wasJustPressed('GamepadNextWeapon')).toBe(true);
+    input.dispose();
+  });
+
+  it('does not release a keyboard action when the matching gamepad action is neutral', () => {
+    const pad = createGamepad();
+    Object.defineProperty(navigator, 'getGamepads', {
+      configurable: true,
+      value: () => [pad],
+    });
+    const input = makeInput();
+
+    press('KeyW');
+    input.updateGamepad(1 / 60);
+    expect(input.isDown('KeyW')).toBe(true);
+    release('KeyW');
+    expect(input.isDown('KeyW')).toBe(false);
+    input.dispose();
+  });
+
+  it('releases held gamepad actions and reports disconnection', () => {
+    const pad = createGamepad();
+    let pads = [pad];
+    Object.defineProperty(navigator, 'getGamepads', {
+      configurable: true,
+      value: () => pads,
+    });
+    const input = makeInput();
+    const connectionStates = [];
+    input.onGamepadConnectionChange = (connected) => connectionStates.push(connected);
+
+    pad.axes[0] = -1;
+    pad.buttons[7] = { pressed: true, value: 1 };
+    input.updateGamepad(1 / 60);
+    expect(input.isDown('KeyA')).toBe(true);
+    expect(input.fireHeld).toBe(true);
+
+    pads = [];
+    input.updateGamepad(1 / 60);
+    expect(input.isDown('KeyA')).toBe(false);
+    expect(input.fireHeld).toBe(false);
+    expect(connectionStates).toEqual([true, false]);
+    input.dispose();
+  });
+});

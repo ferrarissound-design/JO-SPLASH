@@ -62,6 +62,10 @@ export class Game {
       ? new TouchControls(this.input, document.getElementById('touch-controls'))
       : null;
     this.ui.applyTouchMode(this.input.isTouch);
+    this.input.onGamepadConnectionChange = (connected, name) => {
+      this.ui.setGamepadMode(connected, name);
+    };
+    this.input.updateGamepad(0);
 
     // Purely cosmetic background/landmark/prop layer. Lives in its own
     // scene-level group (see StageDecor's header comment) so it can never
@@ -576,6 +580,8 @@ export class Game {
   }
 
   _update(dt) {
+    this.input.updateGamepad(dt);
+
     if (this.input.wasJustPressed('Backquote')) {
       this.debugMode = !this.debugMode;
       this.ui.setDebugVisible(this.debugMode);
@@ -677,6 +683,10 @@ export class Game {
 
     switch (this.state) {
       case STATE.TITLE:
+        if (this.input.wasJustPressed('Space')) {
+          this._startMatch();
+          break;
+        }
         this._updateIdleCamera(dt);
         break;
       case STATE.COUNTDOWN:
@@ -687,6 +697,9 @@ export class Game {
         break;
       case STATE.PAUSED:
         // Frozen: no timers/physics/AI advance until resumed or quit.
+        if (this.input.wasJustPressed('Escape') || this.input.wasJustPressed('Space')) {
+          this._resumeFromPause();
+        }
         break;
       case STATE.JUDGING:
         this._updateJudging(dt);
@@ -701,7 +714,9 @@ export class Game {
 
   _updateIdleCamera(dt) {
     const [dx, dy] = this.input.consumeMouseDelta();
-    if (this.input.pointerLocked || this.input.isTouch) this.cameraController.applyLook(dx, dy);
+    if (this.input.pointerLocked || this.input.isTouch || this.input.gamepadConnected) {
+      this.cameraController.applyLook(dx, dy);
+    }
     this.cameraController.update(dt, this.player.position);
     this.player.syncMesh(this.elapsedTime);
     this.cpu.syncMesh(this.elapsedTime);
@@ -711,7 +726,9 @@ export class Game {
   _updateCountdown(dt) {
     this.countdownRemaining -= dt;
     const [dx, dy] = this.input.consumeMouseDelta();
-    if (this.input.pointerLocked || this.input.isTouch) this.cameraController.applyLook(dx, dy);
+    if (this.input.pointerLocked || this.input.isTouch || this.input.gamepadConnected) {
+      this.cameraController.applyLook(dx, dy);
+    }
     this.cameraController.update(dt, this.player.position);
     this.player.syncMesh(this.elapsedTime);
     this.cpu.syncMesh(this.elapsedTime);
@@ -751,7 +768,9 @@ export class Game {
     this._updateFinalCountdown();
 
     const [dx, dy] = this.input.consumeMouseDelta();
-    if (this.input.pointerLocked || this.input.isTouch) this.cameraController.applyLook(dx, dy);
+    if (this.input.pointerLocked || this.input.isTouch || this.input.gamepadConnected) {
+      this.cameraController.applyLook(dx, dy);
+    }
 
     const ctx = {
       arena: this.arena,
@@ -833,7 +852,7 @@ export class Game {
       weaponChargeStoreDuration: this.player.weapon.chargeStoreDuration,
       koPlayer: this.player.koScored,
       koCpu: this.cpu.koScored,
-      firing: this.input.mouseDown && this.player.alive && !this.player.inkSurfActive,
+      firing: this.input.fireHeld && this.player.alive && !this.player.inkSurfActive,
       submerged: this.player.inkSurfActive,
       rolling: this.player.isInkRolling,
       enemyFloor: this.player.onEnemyFloor,
@@ -870,7 +889,7 @@ export class Game {
     this.player.syncMesh(this.elapsedTime);
     this.cpu.syncMesh(this.elapsedTime);
 
-    if (this.input.wasJustPressed('KeyR')) this._startMatch();
+    if (this.input.wasJustPressed('KeyR') || this.input.wasJustPressed('Space')) this._startMatch();
   }
 
   _updateSurfFeedback(dt, active, rolling = false) {

@@ -462,7 +462,7 @@ export class Player extends Character {
 
   _handleFiring(dt, projectileManager, particleManager, audioManager, ui) {
     this.weapon.update(dt);
-    const fireHeld = this.input.mouseDown;
+    const fireHeld = this.input.fireHeld;
 
     if (this.inkSurfActive) {
       if (this.weapon.usesCharge && this.weapon.chargeReady && this.weapon.charging) {
@@ -527,6 +527,13 @@ export class Player extends Character {
   }
 
   _handleWeaponSelection(ui) {
+    if (this.input.wasJustPressed('GamepadNextWeapon')) {
+      const currentIndex = WEAPON_SELECT_KEYS.findIndex(([, type]) => type === this.weapon.type);
+      const nextType = WEAPON_SELECT_KEYS[(currentIndex + 1) % WEAPON_SELECT_KEYS.length][1];
+      if (this.weapon.setType(nextType)) {
+        ui?.showStatusMessage(`MAIN: ${this.weapon.displayName}`, 1);
+      }
+    }
     for (const [key, type] of WEAPON_SELECT_KEYS) {
       if (this.input.wasJustPressed(key) && this.weapon.setType(type)) {
         ui?.showStatusMessage(`MAIN: ${this.weapon.displayName}`, 1);

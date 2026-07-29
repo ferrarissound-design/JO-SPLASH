@@ -51,12 +51,15 @@ export class UIManager {
       mrAvgPct: document.getElementById('mr-avg-pct'),
       howtoDesktop: document.getElementById('howto-desktop'),
       howtoTouch: document.getElementById('howto-touch'),
+      howtoGamepad: document.getElementById('howto-gamepad'),
+      gamepadStatus: document.getElementById('gamepad-status'),
       pause: document.getElementById('screen-pause'),
       btnResume: document.getElementById('btn-resume'),
       btnQuit: document.getElementById('btn-quit'),
       btnPause: document.getElementById('btn-pause'),
       howtoDesktopPause: document.getElementById('howto-desktop-pause'),
       howtoTouchPause: document.getElementById('howto-touch-pause'),
+      howtoGamepadPause: document.getElementById('howto-gamepad-pause'),
       settings: document.getElementById('screen-settings'),
       btnOpenSettings: document.getElementById('btn-open-settings'),
       btnCloseSettings: document.getElementById('btn-close-settings'),
@@ -302,12 +305,32 @@ export class UIManager {
 
   /** Swaps the title screen's instructions panel and reserves HUD space for on-screen touch controls. */
   applyTouchMode(isTouch) {
-    this.el.howtoDesktop.classList.toggle('hidden', isTouch);
-    this.el.howtoTouch.classList.toggle('hidden', !isTouch);
-    this.el.howtoDesktopPause?.classList.toggle('hidden', isTouch);
-    this.el.howtoTouchPause?.classList.toggle('hidden', !isTouch);
+    this._isTouch = isTouch;
     this.el.hud.classList.toggle('touch-mode', isTouch);
-    this.el.weaponSwitchHint.textContent = isTouch ? 'SELECT' : '1 / 2 / 3';
+    this._updateInputHelp();
+  }
+
+  /** Shows gamepad-specific controls whenever a standard-mapped pad is active. */
+  setGamepadMode(connected, name = '') {
+    this._gamepadConnected = connected;
+    this.el.gamepadStatus?.classList.toggle('hidden', !connected);
+    if (this.el.gamepadStatus) {
+      this.el.gamepadStatus.title = name || '';
+      this.el.gamepadStatus.textContent = connected ? '● GAMEPAD CONNECTED' : '';
+    }
+    this._updateInputHelp();
+  }
+
+  _updateInputHelp() {
+    const useGamepad = !!this._gamepadConnected;
+    const useTouch = !useGamepad && !!this._isTouch;
+    this.el.howtoDesktop?.classList.toggle('hidden', useGamepad || useTouch);
+    this.el.howtoTouch?.classList.toggle('hidden', useGamepad || !useTouch);
+    this.el.howtoGamepad?.classList.toggle('hidden', !useGamepad);
+    this.el.howtoDesktopPause?.classList.toggle('hidden', useGamepad || useTouch);
+    this.el.howtoTouchPause?.classList.toggle('hidden', useGamepad || !useTouch);
+    this.el.howtoGamepadPause?.classList.toggle('hidden', !useGamepad);
+    this.el.weaponSwitchHint.textContent = useGamepad ? 'X / D-PAD' : (useTouch ? 'SELECT' : '1 / 2 / 3');
   }
 
   showTitle() { this.el.title.classList.remove('hidden'); }

@@ -16,6 +16,7 @@
       <div class="title-card">
         <h1 class="game-logo">CHROMA <span class="logo-accent">DUEL</span></h1>
         <p class="game-tagline">1 対 1 インクバトル &mdash; 床を塗って陣地を制圧せよ</p>
+        <div id="gamepad-status" class="gamepad-status hidden" aria-live="polite"></div>
 
         <div id="match-record" class="match-record hidden">
           <span class="mr-line">通算 <b id="mr-wins">0</b>勝 <b id="mr-losses">0</b>敗 <b id="mr-draws">0</b>分 ・ 平均塗装率 <b id="mr-avg-pct">0%</b></span>
@@ -75,6 +76,21 @@
             <strong id="selected-character-name">CHROMA RIDER</strong>
             <small id="selected-character-tagline">インクストリートの万能ファイター</small>
           </div>
+        </div>
+
+        <div class="panel how-to-play hidden" id="howto-gamepad">
+          <h2>ゲームパッド操作</h2>
+          <ul class="key-list">
+            <li><kbd>左スティック</kbd><span>移動</span></li>
+            <li><kbd>右スティック</kbd><span>カメラ / 照準</span></li>
+            <li><kbd>RT / RB</kbd><span>インク発射</span></li>
+            <li><kbd>A</kbd><span>ジャンプ / 決定</span></li>
+            <li><kbd>LB / LT</kbd><span>インクに潜る</span></li>
+            <li><kbd>B</kbd><span>インクボム</span></li>
+            <li><kbd>X</kbd><span>メイン武器切替</span></li>
+            <li><kbd>Y</kbd><span>インクバースト</span></li>
+          </ul>
+          <p class="mouse-hint">※ D-PAD左右・上で武器を直接選択。MENU / OPTIONSでポーズできます。</p>
         </div>
 
         <div class="character-picker" role="group" aria-label="操作キャラクター">
@@ -196,6 +212,20 @@
             <li><kbd>DIVE</kbd><span>自分のインクに潜って移動</span></li>
             <li><kbd>方向</kbd>+<kbd>DIVE</kbd>+<kbd>JUMP</kbd><span>潜伏中にインクロール</span></li>
             <li><kbd>BURST</kbd><span>満タン時に広範囲を塗装</span></li>
+          </ul>
+        </div>
+
+        <div class="panel how-to-play hidden" id="howto-gamepad-pause">
+          <h2>ゲームパッド操作</h2>
+          <ul class="key-list">
+            <li><kbd>左スティック</kbd><span>移動</span></li>
+            <li><kbd>右スティック</kbd><span>カメラ / 照準</span></li>
+            <li><kbd>RT / RB</kbd><span>インク発射</span></li>
+            <li><kbd>A</kbd><span>ジャンプ / 再開</span></li>
+            <li><kbd>LB / LT</kbd><span>インクに潜る</span></li>
+            <li><kbd>B</kbd><span>インクボム</span></li>
+            <li><kbd>X / D-PAD</kbd><span>メイン武器切替</span></li>
+            <li><kbd>Y</kbd><span>インクバースト</span></li>
           </ul>
         </div>
       </div>
