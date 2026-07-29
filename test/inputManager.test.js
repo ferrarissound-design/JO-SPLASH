@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { InputManager, DEFAULT_KEY_BINDINGS } from '../src/core/InputManager.js';
 
 function press(code) {
@@ -208,6 +208,74 @@ describe('InputManager gamepad support', () => {
     expect(input.isDown('KeyA')).toBe(false);
     expect(input.fireHeld).toBe(false);
     expect(connectionStates).toEqual([true, false]);
+    input.dispose();
+  });
+});
+
+describe('InputManager gamepad haptics', () => {
+  it('plays a clamped dual-rumble effect on supported controllers', async () => {
+    const playEffect = vi.fn().mockResolvedValue('complete');
+    const pad = {
+      ...createGamepad(),
+      vibrationActuator: { playEffect },
+    };
+    Object.defineProperty(navigator, 'getGamepads', {
+      configurable: true,
+      value: () => [pad],
+    });
+    const input = makeInput();
+    input.updateGamepad(0);
+
+    await expect(input.pulseGamepad({
+      duration: 2000,
+      weakMagnitude: -1,
+      strongMagnitude: 2,
+    })).resolves.toBe(true);
+    expect(playEffect).toHaveBeenCalledWith('dual-rumble', {
+      startDelay: 0,
+      duration: 1000,
+      weakMagnitude: 0,
+      strongMagnitude: 1,
+    });
+    input.dispose();
+  });
+
+  it('falls back to the legacy single-channel pulse API', async () => {
+    const pulse = vi.fn().mockResolvedValue(true);
+    const pad = {
+      ...createGamepad(),
+      hapticActuators: [{ pulse }],
+    };
+    Object.defineProperty(navigator, 'getGamepads', {
+      configurable: true,
+      value: () => [pad],
+    });
+    const input = makeInput();
+    input.updateGamepad(0);
+
+    await expect(input.pulseGamepad({
+      duration: 90,
+      weakMagnitude: 0.35,
+      strongMagnitude: 0.6,
+    })).resolves.toBe(true);
+    expect(pulse).toHaveBeenCalledWith(0.6, 90);
+    input.dispose();
+  });
+
+  it('is a safe no-op when haptics are unavailable or rejected', async () => {
+    const pad = createGamepad();
+    Object.defineProperty(navigator, 'getGamepads', {
+      configurable: true,
+      value: () => [pad],
+    });
+    const input = makeInput();
+    input.updateGamepad(0);
+    await expect(input.pulseGamepad()).resolves.toBe(false);
+
+    pad.vibrationActuator = {
+      playEffect: vi.fn().mockRejectedValue(new Error('not supported')),
+    };
+    await expect(input.pulseGamepad()).resolves.toBe(false);
     input.dispose();
   });
 });

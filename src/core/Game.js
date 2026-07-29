@@ -535,7 +535,15 @@ export class Game {
     const died = target.takeDamage(damage);
     this.audioManager.playDamage();
     this.ui.flashCrosshair(targetTeam === TEAM.CPU);
-    if (targetTeam === TEAM.PLAYER) this.ui.flashHit();
+    if (targetTeam === TEAM.PLAYER) {
+      this.ui.flashHit();
+      void this.input.pulseGamepad({
+        duration: died ? 360 : 145,
+        weakMagnitude: died ? 0.85 : 0.42,
+        strongMagnitude: died ? 1 : 0.72,
+        force: true,
+      });
+    }
     if (targetTeam === TEAM.CPU) this._flashCpuBody();
 
     if (died) {
@@ -558,6 +566,14 @@ export class Game {
       this.audioManager.playKO();
       this.ui.showStatusMessage(targetTeam === TEAM.PLAYER ? 'YOU WERE SPLATTED!' : 'CPU DEFEATED!', 1.8);
       if (targetTeam === TEAM.PLAYER) this.ui.showRespawnBanner();
+      else {
+        void this.input.pulseGamepad({
+          duration: 170,
+          weakMagnitude: 0.62,
+          strongMagnitude: 0.34,
+          force: true,
+        });
+      }
     }
   }
 

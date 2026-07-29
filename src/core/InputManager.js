@@ -72,6 +72,7 @@ export class InputManager {
     this.gamepadConnected = false;
     this.gamepadName = '';
     this._gamepadIndex = null;
+    this._lastGamepadPulseAt = -Infinity;
     /** Set by Game/UI to update input hints when a pad connects or disconnects. */
     this.onGamepadConnectionChange = null;
     this._suppressLockLostCallback = false;
@@ -203,9 +204,7 @@ export class InputManager {
    * actions. Call once per frame before gameplay reads input.
    */
   updateGamepad(dt) {
-    const pads = typeof navigator.getGamepads === 'function'
-      ? Array.from(navigator.getGamepads() || [])
-      : [];
+    const pads = this._readGamepads();
     const pad = (
       this._gamepadIndex !== null
         ? pads.find((candidate) => candidate?.connected && candidate.index === this._gamepadIndex)
@@ -239,6 +238,66 @@ export class InputManager {
       axis(2) * GAMEPAD.lookSpeedPixelsPerSecond * dt,
       axis(3) * GAMEPAD.lookSpeedPixelsPerSecond * dt,
     );
+  }
+
+  /**
+   * Plays optional controller haptics without making gameplay depend on them.
+   * Supports the modern dual-rumble API and the older single-channel pulse API.
+   */
+  async pulseGamepad({
+    duration = 60,
+    weakMagnitude = 0.2,
+    strongMagnitude = 0.1,
+    minInterval = 45,
+    force = false,
+  } = {}) {
+    if (!this.gamepadConnected || this._gamepadIndex === null) return false;
+    const pad = this._readGamepads().find(
+      (candidate) => candidate?.connected && candidate.index === this._gamepadIndex,
+    );
+    const actuator = pad?.vibrationActuator || pad?.hapticActuators?.[0];
+    if (!actuator) return false;
+
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    if (!force && now - this._lastGamepadPulseAt < Math.max(0, minInterval)) return false;
+
+    const clampMagnitude = (value) => Math.max(0, Math.min(1, Number(value) || 0));
+    const safeDuration = Math.max(0, Math.min(1000, Number(duration) || 0));
+    // Reserve the interval before awaiting the browser API so rapid-fire
+    // calls cannot all slip through while the first effect is still pending.
+    this._lastGamepadPulseAt = now;
+    try {
+      let result;
+      if (typeof actuator.playEffect === 'function') {
+        result = await actuator.playEffect('dual-rumble', {
+          startDelay: 0,
+          duration: safeDuration,
+          weakMagnitude: clampMagnitude(weakMagnitude),
+          strongMagnitude: clampMagnitude(strongMagnitude),
+        });
+      } else if (typeof actuator.pulse === 'function') {
+        result = await actuator.pulse(
+          Math.max(clampMagnitude(weakMagnitude), clampMagnitude(strongMagnitude)),
+          safeDuration,
+        );
+      } else {
+        return false;
+      }
+      return result !== false;
+    } catch {
+      // Haptics are optional and some browsers expose an actuator that still
+      // rejects effects; never let that interrupt input or the game loop.
+      return false;
+    }
+  }
+
+  _readGamepads() {
+    if (typeof navigator.getGamepads !== 'function') return [];
+    try {
+      return Array.from(navigator.getGamepads() || []);
+    } catch {
+      return [];
+    }
   }
 
   _setGamepad(pad) {

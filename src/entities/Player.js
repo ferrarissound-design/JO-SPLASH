@@ -98,7 +98,15 @@ export class Player extends Character {
 
     const wasInkSurfing = this.inkSurfActive;
     if (controlsEnabled && !this.isInkRolling && this.input.wasJustPressed('KeyQ')) {
-      if (this.special.activate(this, audioManager, ctx.ui)) this.specialsUsed++;
+      if (this.special.activate(this, audioManager, ctx.ui)) {
+        this.specialsUsed++;
+        void this.input.pulseGamepad?.({
+          duration: 260,
+          weakMagnitude: 0.65,
+          strongMagnitude: 0.8,
+          force: true,
+        });
+      }
     }
     if (controlsEnabled) this._handleWeaponSelection(ctx.ui);
 
@@ -504,7 +512,7 @@ export class Player extends Character {
         this.weapon.updateCharge(dt, this, audioManager);
       } else if (this._fireWasHeld && this.weapon.charging) {
         this._prepareShot();
-        this.weapon.releaseCharge(
+        const fired = this.weapon.releaseCharge(
           this,
           _fireOrigin,
           _aimDir,
@@ -512,6 +520,13 @@ export class Player extends Character {
           audioManager,
           particleManager,
         );
+        if (fired) {
+          void this.input.pulseGamepad?.({
+            duration: 100,
+            weakMagnitude: 0.48,
+            strongMagnitude: 0.34,
+          });
+        }
       }
       this._fireWasHeld = fireHeld;
       return;
@@ -523,7 +538,13 @@ export class Player extends Character {
 
     this._prepareShot();
 
-    this.weapon.fire(this, _fireOrigin, _aimDir, projectileManager, audioManager, particleManager);
+    if (this.weapon.fire(this, _fireOrigin, _aimDir, projectileManager, audioManager, particleManager)) {
+      void this.input.pulseGamepad?.({
+        duration: 36,
+        weakMagnitude: 0.22,
+        strongMagnitude: 0.08,
+      });
+    }
   }
 
   _handleWeaponSelection(ui) {
@@ -546,6 +567,11 @@ export class Player extends Character {
     this._prepareShot();
     if (this.subWeapon.fire(this, _fireOrigin, _aimDir, projectileManager, audioManager, particleManager)) {
       this.bombsThrown++;
+      void this.input.pulseGamepad?.({
+        duration: 120,
+        weakMagnitude: 0.3,
+        strongMagnitude: 0.48,
+      });
     }
   }
 }
