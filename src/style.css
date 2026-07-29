@@ -207,6 +207,76 @@ details[open] > .key-list-toggle::before { transform: rotate(90deg); }
   color: var(--clr-text-dim);
 }
 
+.character-picker {
+  display:grid;
+  grid-template-columns:auto repeat(2,minmax(0,1fr));
+  gap:.5rem;
+  align-items:stretch;
+  margin:-.5rem 0 1rem;
+}
+.character-picker-title {
+  align-self:center;
+  padding-right:.25rem;
+  color:var(--clr-text-dim);
+  font-size:.64rem;
+  font-weight:900;
+  letter-spacing:.12em;
+}
+.character-option {
+  appearance:none;
+  min-width:0;
+  min-height:52px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:.48rem;
+  padding:.48rem .56rem;
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:10px;
+  background:rgba(255,255,255,.035);
+  color:var(--clr-text-dim);
+  cursor:pointer;
+  text-align:left;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  transition:transform .12s ease,border-color .12s ease,background .12s ease,box-shadow .12s ease;
+}
+.character-option:hover { transform:translateY(-1px); border-color:rgba(47,244,241,.58); }
+.character-option strong { display:block; font-size:.72rem; letter-spacing:.035em; white-space:nowrap; }
+.character-option small { display:block; margin-top:.12rem; font-size:.54rem; opacity:.72; white-space:nowrap; }
+.character-option.selected {
+  border-color:#2ff4f1;
+  background:linear-gradient(135deg,rgba(47,244,241,.2),rgba(47,184,255,.11));
+  color:#fff;
+  box-shadow:0 0 16px rgba(47,244,241,.2),inset 0 0 12px rgba(255,255,255,.04);
+}
+.character-swatch {
+  flex:0 0 auto;
+  width:28px;
+  height:20px;
+  border-radius:52% 52% 40% 40%;
+  background:#2fb8ff;
+  box-shadow:0 0 10px rgba(47,184,255,.45);
+  position:relative;
+}
+.character-swatch::before,.character-swatch::after {
+  content:"";
+  position:absolute;
+  top:6px;
+  width:9px;
+  height:7px;
+  border-radius:50%;
+  background:inherit;
+}
+.character-swatch::before { left:-6px; transform:rotate(-24deg); }
+.character-swatch::after { right:-6px; transform:rotate(24deg); }
+.character-swatch-default { border-radius:50%; background:linear-gradient(135deg,#2fb8ff 60%,#c8ff32 61%); }
+.character-swatch-default::before,.character-swatch-default::after { display:none; }
+.character-swatch-joray {
+  background:linear-gradient(180deg,#8cfff4,#2ff4f1 65%,#081427 66%);
+  box-shadow:0 0 12px rgba(47,244,241,.7);
+}
+
 .difficulty-picker {
   display:grid;
   grid-template-columns:auto repeat(3,minmax(0,1fr));
@@ -986,6 +1056,12 @@ details[open] > .key-list-toggle::before { transform: rotate(90deg); }
   .panel.how-to-play { padding: 0.8rem 1rem; margin-bottom: 1.1rem; }
   .key-list { gap: 0.4rem; }
   .key-list li { font-size: 0.82rem; }
+  .character-picker { grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:-.35rem; }
+  .character-picker-title { grid-column:1/-1; padding:0; text-align:left; }
+  .character-option { min-height:48px; padding:.4rem .42rem; gap:.35rem; }
+  .character-option strong { font-size:.64rem; }
+  .character-option small { font-size:.49rem; }
+  .character-swatch { width:24px; height:18px; }
   .difficulty-picker { grid-template-columns:repeat(3,minmax(0,1fr)); margin-top:-.35rem; }
   .difficulty-title { grid-column:1/-1; padding:0; }
   .difficulty-option small { white-space:normal; line-height:1.2; }

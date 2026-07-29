@@ -64,7 +64,7 @@ function makeExtraMaterial(materials, color, options = {}) {
  * protagonist-only shapes are tracked separately so Player can dispose them
  * without invalidating the CPU's shared geometry cache.
  */
-export function createPlayerCharacter() {
+export function createDefaultCharacter() {
   const group = new THREE.Group();
   const rig = new THREE.Group();
   const motionRoot = new THREE.Group();
@@ -325,3 +325,283 @@ export function createPlayerCharacter() {
 
   return { group, rig, materials };
 }
+
+/**
+ * Build JO-RAY, an original neon manta-ray fighter.
+ *
+ * The model deliberately uses a small set of low-segment Three.js primitives:
+ * a wide flattened head, broad side fins, compact limbs, a back tank and a
+ * hand-held blaster. It keeps the same feet origin and muzzle-side alignment as
+ * the default protagonist so gameplay collision and camera aiming stay shared.
+ */
+export function createJoRayCharacter() {
+  const group = new THREE.Group();
+  const rig = new THREE.Group();
+  const motionRoot = new THREE.Group();
+  const bodyGroup = new THREE.Group();
+  const headGroup = new THREE.Group();
+  const gearGroup = new THREE.Group();
+  const ownedGeometries = [];
+  const materials = [];
+
+  group.add(rig);
+  rig.add(motionRoot);
+  motionRoot.add(bodyGroup, headGroup, gearGroup);
+
+  const cyanMat = makeExtraMaterial(materials, '#2FF4F1', {
+    emissive: '#063E4A',
+    emissiveIntensity: 0.48,
+    roughness: 0.38,
+    metalness: 0.12,
+  });
+  const navyMat = makeExtraMaterial(materials, '#081427', {
+    roughness: 0.45,
+    metalness: 0.24,
+  });
+  const neonMat = makeExtraMaterial(materials, '#8CFFF4', {
+    emissive: '#19BDB8',
+    emissiveIntensity: 0.9,
+    roughness: 0.22,
+    metalness: 0.16,
+  });
+  const eyeMat = makeExtraMaterial(materials, '#F5FFFF', {
+    emissive: '#5BFFEE',
+    emissiveIntensity: 0.46,
+    roughness: 0.2,
+  });
+  const pupilMat = makeExtraMaterial(materials, '#06111D', {
+    roughness: 0.28,
+  });
+  const metalMat = makeExtraMaterial(materials, '#A9D7E1', {
+    roughness: 0.25,
+    metalness: 0.68,
+  });
+  const tankMat = makeExtraMaterial(materials, '#0A304A', {
+    emissive: '#031820',
+    emissiveIntensity: 0.3,
+    roughness: 0.3,
+    metalness: 0.42,
+  });
+
+  // Compact torso, with a bright chest seam that remains legible at distance.
+  const torso = addOwnedMesh(
+    bodyGroup,
+    new THREE.CapsuleGeometry(0.29, 0.45, 4, 10),
+    navyMat,
+    ownedGeometries,
+  );
+  torso.position.set(0, 1.05, 0);
+  const chest = addOwnedMesh(
+    bodyGroup,
+    new THREE.BoxGeometry(0.34, 0.34, 0.08),
+    cyanMat,
+    ownedGeometries,
+  );
+  chest.position.set(0, 1.12, -0.28);
+  const chestStripe = addOwnedMesh(
+    bodyGroup,
+    new THREE.BoxGeometry(0.08, 0.27, 0.035),
+    neonMat,
+    ownedGeometries,
+  );
+  chestStripe.position.set(0, 1.13, -0.335);
+
+  // Short arms and legs use the same pivot names consumed by Player animation.
+  const limbGeometry = new THREE.CapsuleGeometry(0.085, 0.25, 3, 8);
+  const handGeometry = new THREE.SphereGeometry(0.105, 9, 7);
+  const shoeGeometry = new THREE.BoxGeometry(0.25, 0.14, 0.34);
+  ownedGeometries.push(limbGeometry, handGeometry, shoeGeometry);
+
+  const legLPivot = new THREE.Group();
+  const legRPivot = new THREE.Group();
+  const armLPivot = new THREE.Group();
+  const armRPivot = new THREE.Group();
+  legLPivot.position.set(-0.15, 0.62, 0);
+  legRPivot.position.set(0.15, 0.62, 0);
+  armLPivot.position.set(-0.32, 1.27, 0);
+  armRPivot.position.set(0.32, 1.27, 0);
+
+  const legL = new THREE.Mesh(limbGeometry, cyanMat);
+  const legR = new THREE.Mesh(limbGeometry, cyanMat);
+  legL.position.y = -0.22;
+  legR.position.y = -0.22;
+  const shoeL = new THREE.Mesh(shoeGeometry, navyMat);
+  const shoeR = new THREE.Mesh(shoeGeometry, navyMat);
+  shoeL.position.set(0, -0.48, -0.06);
+  shoeR.position.set(0, -0.48, -0.06);
+  const soleL = new THREE.Mesh(new THREE.BoxGeometry(0.23, 0.035, 0.36), neonMat);
+  const soleR = soleL.clone();
+  ownedGeometries.push(soleL.geometry);
+  soleL.position.set(0, -0.555, -0.06);
+  soleR.position.copy(soleL.position);
+  legLPivot.add(legL, shoeL, soleL);
+  legRPivot.add(legR, shoeR, soleR);
+
+  const armL = new THREE.Mesh(limbGeometry, cyanMat);
+  const armR = new THREE.Mesh(limbGeometry, cyanMat);
+  armL.position.y = -0.2;
+  armR.position.y = -0.2;
+  const handL = new THREE.Mesh(handGeometry, cyanMat);
+  const handR = new THREE.Mesh(handGeometry, cyanMat);
+  handL.position.y = -0.43;
+  handR.position.y = -0.43;
+  armLPivot.add(armL, handL);
+  armRPivot.add(armR, handR);
+  bodyGroup.add(legLPivot, legRPivot, armLPivot, armRPivot);
+
+  // The wide head and side fins define JO-RAY's manta silhouette.
+  const head = addOwnedMesh(
+    headGroup,
+    new THREE.SphereGeometry(0.46, 16, 10),
+    cyanMat,
+    ownedGeometries,
+  );
+  head.position.set(0, 1.67, 0);
+  head.scale.set(1.3, 0.72, 0.78);
+
+  const finGeometry = new THREE.SphereGeometry(0.36, 10, 7);
+  ownedGeometries.push(finGeometry);
+  const finL = new THREE.Mesh(finGeometry, cyanMat);
+  const finR = new THREE.Mesh(finGeometry, cyanMat);
+  finL.position.set(-0.61, 1.64, 0.04);
+  finR.position.set(0.61, 1.64, 0.04);
+  finL.scale.set(1.18, 0.18, 0.72);
+  finR.scale.copy(finL.scale);
+  finL.rotation.z = -0.18;
+  finR.rotation.z = 0.18;
+  headGroup.add(finL, finR);
+
+  // Thin glowing fin edges add neon character without adding dynamic lights.
+  const finEdgeGeometry = new THREE.CapsuleGeometry(0.025, 0.46, 3, 7);
+  ownedGeometries.push(finEdgeGeometry);
+  for (const side of [-1, 1]) {
+    const edge = new THREE.Mesh(finEdgeGeometry, neonMat);
+    edge.position.set(side * 0.73, 1.68, -0.08);
+    edge.rotation.z = side * -Math.PI / 2.7;
+    headGroup.add(edge);
+  }
+
+  const eyeGeometry = new THREE.SphereGeometry(0.135, 12, 8);
+  const pupilGeometry = new THREE.SphereGeometry(0.06, 10, 7);
+  ownedGeometries.push(eyeGeometry, pupilGeometry);
+  for (const side of [-1, 1]) {
+    const eye = new THREE.Mesh(eyeGeometry, eyeMat);
+    eye.position.set(side * 0.22, 1.7, -0.345);
+    eye.scale.set(1, 1.12, 0.5);
+    headGroup.add(eye);
+
+    const pupil = new THREE.Mesh(pupilGeometry, pupilMat);
+    pupil.position.set(side * 0.22, 1.7, -0.438);
+    pupil.scale.set(0.72, 1.2, 0.45);
+    headGroup.add(pupil);
+  }
+
+  const smile = addOwnedMesh(
+    headGroup,
+    new THREE.BoxGeometry(0.16, 0.025, 0.025),
+    navyMat,
+    ownedGeometries,
+  );
+  smile.position.set(0.02, 1.51, -0.37);
+  smile.rotation.z = -0.08;
+
+  // Small rear ink tank with one emissive liquid window.
+  const tank = new THREE.Group();
+  tank.position.set(0, 1.08, 0.35);
+  const tankShell = addOwnedMesh(
+    tank,
+    new THREE.CylinderGeometry(0.17, 0.19, 0.5, 10),
+    tankMat,
+    ownedGeometries,
+  );
+  const tankWindow = addOwnedMesh(
+    tank,
+    new THREE.BoxGeometry(0.16, 0.3, 0.055),
+    neonMat,
+    ownedGeometries,
+  );
+  tankWindow.position.z = 0.17;
+  const tankCap = addOwnedMesh(
+    tank,
+    new THREE.CylinderGeometry(0.19, 0.19, 0.07, 10),
+    metalMat,
+    ownedGeometries,
+  );
+  tankCap.position.y = 0.27;
+  gearGroup.add(tank);
+
+  // Right-hand blaster stays aligned with CameraController's shared muzzle.
+  const shooter = new THREE.Group();
+  shooter.position.set(0.39, 1.18, -0.36);
+  const blasterBody = addOwnedMesh(
+    shooter,
+    new THREE.BoxGeometry(0.22, 0.2, 0.54),
+    navyMat,
+    ownedGeometries,
+  );
+  blasterBody.position.z = -0.12;
+  const chamber = addOwnedMesh(
+    shooter,
+    new THREE.CylinderGeometry(0.13, 0.13, 0.25, 10),
+    cyanMat,
+    ownedGeometries,
+  );
+  chamber.rotation.z = Math.PI / 2;
+  chamber.position.set(0, 0.02, -0.12);
+  const nozzle = addOwnedMesh(
+    shooter,
+    new THREE.CylinderGeometry(0.055, 0.08, 0.38, 9),
+    neonMat,
+    ownedGeometries,
+  );
+  nozzle.rotation.x = Math.PI / 2;
+  nozzle.position.z = -0.52;
+  const grip = addOwnedMesh(
+    shooter,
+    new THREE.BoxGeometry(0.11, 0.27, 0.13),
+    navyMat,
+    ownedGeometries,
+  );
+  grip.position.set(0, -0.2, -0.05);
+  gearGroup.add(shooter);
+
+  group.userData.appearanceParts = {
+    motionRoot,
+    hairGroup: headGroup,
+    gearGroup,
+    shooter,
+    tank,
+    finL,
+    finR,
+    legLPivot,
+    legRPivot,
+    armLPivot,
+    armRPivot,
+    shoeL,
+    shoeR,
+  };
+  group.userData.ownedGeometries = ownedGeometries;
+
+  return { group, rig, materials };
+}
+
+export const characterConfigs = Object.freeze({
+  default: Object.freeze({
+    id: 'default',
+    name: 'CHROMA RIDER',
+    createModel: createDefaultCharacter,
+  }),
+  joRay: Object.freeze({
+    id: 'joRay',
+    name: 'ジョーレイ',
+    createModel: createJoRayCharacter,
+  }),
+});
+
+export function getCharacterConfig(id = 'default') {
+  return characterConfigs[id] ?? characterConfigs.default;
+}
+
+// Backward-compatible export for any external debug code that used the old
+// protagonist factory name.
+export const createPlayerCharacter = createDefaultCharacter;

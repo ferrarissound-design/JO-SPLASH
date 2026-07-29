@@ -3,7 +3,7 @@ import { Character } from './Character.js';
 import { MOVEMENT, TEAM, COLORS, CAMERA } from '../config.js';
 import { InkBurstSpecial } from '../systems/SpecialWeapon.js';
 import { InkBomb } from '../systems/SubWeapon.js';
-import { createPlayerCharacter } from './PlayerAppearance.js';
+import { getCharacterConfig } from './PlayerAppearance.js';
 
 const _wish = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
@@ -28,12 +28,11 @@ const WEAPON_SELECT_KEYS = [
 // base Character class.
 // ============================================================================
 export class Player extends Character {
-  _createMesh() {
-    return createPlayerCharacter();
-  }
-
-  constructor(spawnPoint, cameraController, inputManager) {
-    super(TEAM.PLAYER, spawnPoint);
+  constructor(spawnPoint, cameraController, inputManager, characterId = 'default') {
+    const characterConfig = getCharacterConfig(characterId);
+    super(TEAM.PLAYER, spawnPoint, characterConfig.createModel);
+    this.characterId = characterConfig.id;
+    this.characterName = characterConfig.name;
     this.camera = cameraController;
     this.input = inputManager;
     this.appearanceParts = this.mesh.userData.appearanceParts;
@@ -51,6 +50,8 @@ export class Player extends Character {
     this.climbsCompleted = 0;
     this._fireWasHeld = false;
     this._debugClimbHold = false;
+    this._wasGroundedForAnimation = true;
+    this._landingStartedAt = -Infinity;
   }
 
   takeDamage(amount) {
@@ -370,14 +371,23 @@ export class Player extends Character {
     const runBlend = THREE.MathUtils.clamp((moveAmount - 0.35) / 0.75, 0, 1);
     const gaitPhase = Math.sin(stride);
     const gaitRise = Math.abs(Math.sin(stride * 2));
+    const idleBob = Math.sin(elapsedTime * 2.4) * 0.018 * (1 - Math.min(1, gaitAmount));
     const strideSwing = gaitPhase * THREE.MathUtils.lerp(0.42, 1.02, runBlend) * gaitAmount;
 
-    parts.motionRoot.position.y = gaitRise * THREE.MathUtils.lerp(0.025, 0.07, runBlend) * gaitAmount;
+    if (this.grounded && !this._wasGroundedForAnimation) this._landingStartedAt = elapsedTime;
+    this._wasGroundedForAnimation = this.grounded;
+    const landingProgress = THREE.MathUtils.clamp((elapsedTime - this._landingStartedAt) / 0.16, 0, 1);
+    const landingSquash = Math.sin(landingProgress * Math.PI) * 0.12;
+
+    parts.motionRoot.position.y = idleBob
+      + gaitRise * THREE.MathUtils.lerp(0.025, 0.07, runBlend) * gaitAmount
+      - landingSquash * 0.16;
     parts.motionRoot.rotation.z = gaitPhase * THREE.MathUtils.lerp(0.035, 0.075, runBlend) * gaitAmount;
-    parts.motionRoot.scale.set(1, surfScale, 1);
+    parts.motionRoot.scale.set(1 + landingSquash * 0.32, surfScale * (1 - landingSquash), 1 + landingSquash * 0.18);
     parts.hairGroup.rotation.z = Math.sin(stride - 0.8) * 0.055 * moveAmount;
     parts.hairGroup.rotation.x = -0.05 - Math.min(0.16, moveAmount * 0.09);
-    parts.shooter.rotation.x = Math.sin(stride * 2 + 0.7) * 0.025 * moveAmount;
+    parts.shooter.rotation.x = Math.sin(stride * 2 + 0.7) * 0.025 * moveAmount
+      + this.weapon.recoilTimer * 0.13;
     parts.tank.rotation.z = -Math.sin(stride) * 0.02 * moveAmount;
 
     // Reset joint-local offsets first so every special pose cleanly returns to
@@ -390,6 +400,12 @@ export class Player extends Character {
     parts.armRPivot.rotation.z = 0;
     parts.shoeL.rotation.x = 0;
     parts.shoeR.rotation.x = 0;
+    if (parts.finL && parts.finR) {
+      const jumpLift = this.grounded ? 0 : 0.34;
+      const finFlutter = Math.sin(elapsedTime * 5.2) * (this.grounded ? 0.025 : 0.055);
+      parts.finL.rotation.z = -0.18 - jumpLift - finFlutter;
+      parts.finR.rotation.z = 0.18 + jumpLift + finFlutter;
+    }
 
     if (this.isClimbing) {
       const climbSwing = Math.sin(elapsedTime * 9) * 0.48;

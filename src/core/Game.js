@@ -79,7 +79,13 @@ export class Game {
     );
     this.projectileManager.onCharacterHit = (targetTeam, damage, hitPoint) => this._onCharacterHit(targetTeam, damage, hitPoint);
 
-    this.player = new Player(this.arena.spawnPoints.player, this.cameraController, this.input);
+    this.selectedCharacterId = 'default';
+    this.player = new Player(
+      this.arena.spawnPoints.player,
+      this.cameraController,
+      this.input,
+      this.selectedCharacterId,
+    );
     this.touchControls?.setWeaponType(this.player.weapon.type);
     this.selectedDifficulty = AI_DIFFICULTY[this.settings.values.difficultyId] ? this.settings.values.difficultyId : 'standard';
     this.practiceMode = false;
@@ -113,6 +119,7 @@ export class Game {
     this._wasPlayerInkSurfing = false;
 
     this._bindUI();
+    this.ui.setCharacter(this.selectedCharacterId);
     this._selectDifficulty(this.selectedDifficulty);
     this._bindWindow();
     this.ui.updateMatchRecord(this.matchRecord);
@@ -174,6 +181,7 @@ export class Game {
     this.ui.bindStart(() => this._startMatch());
     this.ui.bindRestart(() => this._startMatch());
     this.ui.bindCycleAppearance(() => this._cycleEnemyAppearance());
+    this.ui.bindCharacterSelection((characterId) => this._selectCharacter(characterId));
     this.ui.bindDifficultySelection((difficultyId) => this._selectDifficulty(difficultyId));
     this.ui.bindPracticeModeChange((checked) => { this.practiceMode = checked; });
     this.ui.bindResume(() => this._resumeFromPause());
@@ -197,6 +205,30 @@ export class Game {
       this.settings.resetKeyBindings();
       this.ui.updateKeybindLabels(this.settings.values.keyBindings);
     });
+  }
+
+  _selectCharacter(characterId) {
+    const nextPlayer = new Player(
+      this.arena.spawnPoints.player,
+      this.cameraController,
+      this.input,
+      characterId,
+    );
+    const resolvedId = nextPlayer.characterId;
+    this.ui.setCharacter(resolvedId);
+    this.selectedCharacterId = resolvedId;
+
+    if (this.player.characterId === resolvedId) {
+      nextPlayer.dispose();
+      return;
+    }
+
+    this.scene.remove(this.player.mesh);
+    this.player.dispose();
+    this.player = nextPlayer;
+    this.scene.add(this.player.mesh);
+    this.touchControls?.setWeaponType(this.player.weapon.type);
+    this._faceSpawnPoints();
   }
 
   _selectDifficulty(difficultyId) {

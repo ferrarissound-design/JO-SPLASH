@@ -68,6 +68,18 @@
           <p class="mouse-hint">※ 画面左側をドラッグで移動、右側をドラッグでカメラ操作。ボタンは押している間だけ効果があります。</p>
         </div>
 
+        <div class="character-picker" role="group" aria-label="操作キャラクター">
+          <span class="character-picker-title">PLAYER</span>
+          <button type="button" class="character-option selected" data-character="default" aria-pressed="true">
+            <span class="character-swatch character-swatch-default" aria-hidden="true"></span>
+            <span><strong>CHROMA RIDER</strong><small>スタンダード</small></span>
+          </button>
+          <button type="button" class="character-option" data-character="joRay" aria-pressed="false">
+            <span class="character-swatch character-swatch-joray" aria-hidden="true"></span>
+            <span><strong>ジョーレイ</strong><small>ネオン・エイ</small></span>
+          </button>
+        </div>
+
         <div class="difficulty-picker" role="group" aria-label="CPU難易度">
           <span class="difficulty-title">CPU LEVEL</span>
           <button type="button" class="difficulty-option" data-difficulty="rookie" aria-pressed="false">

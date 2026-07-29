@@ -14,7 +14,7 @@ const _floorFxPos = new THREE.Vector3();
 // input/decision layer on top.
 // ============================================================================
 export class Character {
-  constructor(team, spawnPoint) {
+  constructor(team, spawnPoint, meshFactory = null) {
     this.team = team;
     this.spawnPoint = spawnPoint.clone();
 
@@ -50,7 +50,9 @@ export class Character {
     // Virtual hook: subclasses may replace the visual rig (e.g. EnemyAI's
     // appearance variations) without touching stats/collision. Runs during the
     // base constructor, so overrides must only read their arguments.
-    const { group, rig, materials } = this._createMesh(color, deep);
+    const { group, rig, materials } = meshFactory
+      ? meshFactory(color, deep)
+      : this._createMesh(color, deep);
     this.mesh = group;
     this.rig = rig;
     this.materials = materials;

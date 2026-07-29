@@ -75,6 +75,7 @@ export class UIManager {
       result: document.getElementById('screen-result'),
       btnStart: document.getElementById('btn-start'),
       btnRestart: document.getElementById('btn-restart'),
+      characterButtons: Array.from(document.querySelectorAll('[data-character]')),
       difficultyButtons: Array.from(document.querySelectorAll('[data-difficulty]')),
       cpuLevelLabel: document.getElementById('cpu-level-label'),
       practiceModeToggle: document.getElementById('practice-mode-toggle'),
@@ -247,6 +248,11 @@ export class UIManager {
   showSettings() { this.el.settings?.classList.remove('hidden'); }
   hideSettings() { this.el.settings?.classList.add('hidden'); }
   bindCycleAppearance(cb) { this.el.btnCycleAppearance?.addEventListener('click', cb); }
+  bindCharacterSelection(cb) {
+    for (const button of this.el.characterButtons) {
+      button.addEventListener('click', () => cb(button.dataset.character));
+    }
+  }
   bindDifficultySelection(cb) {
     for (const button of this.el.difficultyButtons) {
       button.addEventListener('click', () => cb(button.dataset.difficulty));
@@ -254,6 +260,14 @@ export class UIManager {
   }
   bindPracticeModeChange(cb) {
     this.el.practiceModeToggle?.addEventListener('change', () => cb(this.el.practiceModeToggle.checked));
+  }
+
+  setCharacter(id) {
+    for (const button of this.el.characterButtons) {
+      const selected = button.dataset.character === id;
+      button.classList.toggle('selected', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    }
   }
 
   setDifficulty(id, label) {
