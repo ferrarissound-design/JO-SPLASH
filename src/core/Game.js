@@ -20,6 +20,18 @@ import { CharacterPreview } from '../ui/CharacterPreview.js';
 
 const _enemyScreenPos = new THREE.Vector3();
 const _enemyMarkerOffset = new THREE.Vector3(0, 2.35, 0);
+const _damageCameraForward = new THREE.Vector3();
+const _damageCameraRight = new THREE.Vector3();
+
+/** Returns a screen-relative bearing: 0=front, +PI/2=right, PI=behind. */
+export function calculateRelativeDirectionAngle(origin, source, forward, right) {
+  const dx = source.x - origin.x;
+  const dz = source.z - origin.z;
+  if (Math.hypot(dx, dz) < 1e-6) return 0;
+  const towardFront = dx * forward.x + dz * forward.z;
+  const towardRight = dx * right.x + dz * right.z;
+  return Math.atan2(towardRight, towardFront);
+}
 
 const STATE = {
   TITLE: 'title',
@@ -405,6 +417,7 @@ export class Game {
     this.ui.updateEnemySpecialWarning({ visible: false });
     this.ui.resetFinale();
     this.ui.resetInkRollFeedback();
+    this.ui.hideDamageDirection();
     this.ui.resetTurfMap();
     this._cpuHitFlashTimer = 0;
     this._wasPlayerInkSurfing = false;
@@ -456,6 +469,7 @@ export class Game {
     this.ui.hidePause();
     this.ui.hideHUD();
     this.ui.hideRespawnBanner();
+    this.ui.hideDamageDirection();
     this.ui.updateEnemyMarker({ visible: false });
     this.ui.updateEnemySpecialWarning({ visible: false });
     this.audioManager.resumeContext();
@@ -477,6 +491,7 @@ export class Game {
     this.audioManager.playTimeUp();
     this.ui.updateEnemySpecialWarning({ visible: false });
     this.ui.resetInkRollFeedback();
+    this.ui.hideDamageDirection();
     this.ui.showTimeUp();
   }
 
@@ -537,6 +552,17 @@ export class Game {
     this.ui.flashCrosshair(targetTeam === TEAM.CPU);
     if (targetTeam === TEAM.PLAYER) {
       this.ui.flashHit();
+      this.cameraController.getFlatForward(_damageCameraForward);
+      this.cameraController.getFlatRight(_damageCameraRight);
+      this.ui.showDamageDirection(
+        calculateRelativeDirectionAngle(
+          this.player.position,
+          shooter.position,
+          _damageCameraForward,
+          _damageCameraRight,
+        ),
+        died,
+      );
       void this.input.pulseGamepad({
         duration: died ? 360 : 145,
         weakMagnitude: died ? 0.85 : 0.42,
@@ -811,7 +837,10 @@ export class Game {
       visible: this.cpu.alive && (this.cpu.specialWindingUp || this.cpu.special.active),
       active: this.cpu.special.active,
     });
-    if (!playerWasAlive && this.player.alive) this._paintSpawnSafeZone(this.arena.spawnPoints.player, TEAM.PLAYER);
+    if (!playerWasAlive && this.player.alive) {
+      this._paintSpawnSafeZone(this.arena.spawnPoints.player, TEAM.PLAYER);
+      this.ui.hideDamageDirection();
+    }
     if (!cpuWasAlive && this.cpu.alive) this._paintSpawnSafeZone(this.arena.spawnPoints.cpu, TEAM.CPU);
 
     // Show the archetype name banner when the enemy (re)appears.
@@ -830,6 +859,7 @@ export class Game {
 
     this.ui.tickStatusMessage(dt);
     this.ui.tickHitFlash(dt);
+    this.ui.tickDamageDirection(dt);
     this._updateCpuVisibility(dt);
 
     const cov = this.paintSystem.getCoverage();

@@ -116,6 +116,7 @@ export class UIManager {
       koCpu: document.getElementById('ko-cpu'),
 
       crosshair: document.getElementById('crosshair'),
+      damageDirection: document.getElementById('damage-direction'),
       enemyIntro: document.getElementById('enemy-intro'),
       enemyIntroType: document.getElementById('enemy-intro-type'),
       enemyIntroName: document.getElementById('enemy-intro-name'),
@@ -156,6 +157,7 @@ export class UIManager {
     this._lastKoPlayer = 0;
     this._lastKoCpu = 0;
     this._crosshairTimer = 0;
+    this._damageDirectionTimer = 0;
     this._turfMapTimer = 0;
     this._turfMapCtx = this.el.turfMapCanvas?.getContext('2d') ?? null;
     this._turfMapImage = null;
@@ -480,6 +482,29 @@ export class UIManager {
     void this.el.crosshair.offsetWidth;
     this.el.crosshair.classList.add(enemyHit ? 'enemy-hit' : 'hit-confirm');
     this._crosshairTimer = 0.12;
+  }
+
+  showDamageDirection(angleRad, lethal = false) {
+    const el = this.el.damageDirection;
+    if (!el || !Number.isFinite(angleRad)) return;
+    el.style.setProperty('--damage-angle', `${angleRad}rad`);
+    el.classList.remove('hidden', 'pulse', 'lethal');
+    void el.offsetWidth;
+    el.classList.add('pulse');
+    el.classList.toggle('lethal', lethal);
+    this._damageDirectionTimer = lethal ? 1.05 : 0.78;
+  }
+
+  tickDamageDirection(dt) {
+    if (this._damageDirectionTimer <= 0) return;
+    this._damageDirectionTimer -= dt;
+    if (this._damageDirectionTimer <= 0) this.hideDamageDirection();
+  }
+
+  hideDamageDirection() {
+    this._damageDirectionTimer = 0;
+    this.el.damageDirection?.classList.add('hidden');
+    this.el.damageDirection?.classList.remove('pulse', 'lethal');
   }
 
   updateEnemyMarker({ visible, x = 0, y = 0, hp = 100, scale = 1 }) {

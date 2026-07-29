@@ -761,6 +761,44 @@ details[open] > .key-list-toggle::before { transform: rotate(90deg); }
 .ch-top,.ch-bottom { left:50%; width:2px; height:8px; margin-left:-1px; }.ch-top{top:0}.ch-bottom{bottom:0}.ch-left,.ch-right{top:50%;height:2px;width:8px;margin-top:-1px}.ch-left{left:0}.ch-right{right:0}
 .ch-dot { position:absolute; top:50%; left:50%; width:4px; height:4px; margin:-2px 0 0 -2px; border-radius:50%; background:#fff; box-shadow:0 0 0 1px rgba(0,0,0,.55); }
 #crosshair.firing { width:35px; height:35px; } #crosshair.firing .ch-dot{background:var(--clr-player);} #crosshair.hit-confirm .ch-line,#crosshair.hit-confirm .ch-dot{background:#fff27a;} #crosshair.enemy-hit .ch-line,#crosshair.enemy-hit .ch-dot{background:var(--clr-cpu);}
+
+#damage-direction {
+  --damage-angle: 0rad;
+  position: absolute;
+  inset: 0;
+  z-index: 13;
+  pointer-events: none;
+  transform: rotate(var(--damage-angle));
+}
+.damage-direction-arrow {
+  position: absolute;
+  top: calc(50% - clamp(82px, 17vmin, 145px));
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-bottom: 22px solid #ff4b58;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 3px rgba(0,0,0,.9)) drop-shadow(0 0 8px rgba(255,45,60,.9));
+}
+#damage-direction.pulse .damage-direction-arrow {
+  animation: damage-direction-pulse .78s ease-out both;
+}
+#damage-direction.lethal .damage-direction-arrow {
+  border-left-width: 15px;
+  border-right-width: 15px;
+  border-bottom-width: 28px;
+  border-bottom-color: #ff2438;
+  animation-duration: 1.05s;
+}
+@keyframes damage-direction-pulse {
+  0% { opacity:0; transform:translate(-50%,-50%) scale(.55); }
+  14% { opacity:1; transform:translate(-50%,-50%) scale(1.18); }
+  38% { opacity:.92; transform:translate(-50%,-50%) scale(1); }
+  100% { opacity:0; transform:translate(-50%,-50%) scale(.88); }
+}
 #hud.precision-charging #crosshair { width:24px; height:24px; filter:drop-shadow(0 0 3px #000) drop-shadow(0 0 7px rgba(47,184,255,.7)); }
 #hud.precision-charging #crosshair .ch-line,#hud.precision-charging #crosshair .ch-dot { background:var(--clr-player); }
 #hud.precision-ready #crosshair { width:20px; height:20px; animation:precision-ready-crosshair .46s ease-in-out infinite alternate; }
