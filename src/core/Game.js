@@ -7,6 +7,7 @@ import { CameraController } from './CameraController.js';
 import { TouchControls } from './TouchControls.js';
 import { Settings } from './Settings.js';
 import { MatchRecord } from './MatchRecord.js';
+import { calculateBattleRank } from './BattleRank.js';
 import { Arena } from '../systems/Arena.js';
 import { StageDecor } from '../systems/StageDecor.js';
 import { PaintSystem } from '../systems/PaintSystem.js';
@@ -518,18 +519,31 @@ export class Game {
       this.ui.updateMatchRecord(this.matchRecord);
     }
 
+    const stats = {
+      inkRolls: { player: this.player.inkRollsUsed, cpu: 0 }, // CPU never ink-rolls
+      climbs: { player: this.player.climbsCompleted, cpu: this.cpu.climbsCompleted },
+      bombs: { player: this.player.bombsThrown, cpu: this.cpu.bombsThrown },
+      specials: { player: this.player.specialsUsed, cpu: this.cpu.specialsUsed },
+    };
+    const rank = calculateBattleRank({
+      playerPct: cov.playerPct,
+      cpuPct: cov.cpuPct,
+      koPlayer: this.player.koScored,
+      koCpu: this.cpu.koScored,
+      outcome,
+      difficultyId: this.selectedDifficulty,
+      practiceMode: this.practiceMode,
+      stats,
+    });
+
     this.ui.showResult({
       playerPct: cov.playerPct,
       cpuPct: cov.cpuPct,
       koPlayer: this.player.koScored,
       koCpu: this.cpu.koScored,
       outcome,
-      stats: {
-        inkRolls: { player: this.player.inkRollsUsed, cpu: 0 }, // CPU never ink-rolls
-        climbs: { player: this.player.climbsCompleted, cpu: this.cpu.climbsCompleted },
-        bombs: { player: this.player.bombsThrown, cpu: this.cpu.bombsThrown },
-        specials: { player: this.player.specialsUsed, cpu: this.cpu.specialsUsed },
-      },
+      stats,
+      rank,
     });
   }
 

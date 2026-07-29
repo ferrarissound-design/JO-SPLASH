@@ -132,6 +132,10 @@ export class UIManager {
       respawnBanner: document.getElementById('respawn-banner'),
 
       resultTitle: document.getElementById('result-title'),
+      resultRank: document.getElementById('result-rank'),
+      resultRankGrade: document.getElementById('result-rank-grade'),
+      resultRankTitle: document.getElementById('result-rank-title'),
+      resultRankScore: document.getElementById('result-rank-score'),
       resultMargin: document.getElementById('result-margin'),
       resultBarPlayer: document.getElementById('result-bar-player'),
       resultBarCpu: document.getElementById('result-bar-cpu'),
@@ -711,11 +715,31 @@ export class UIManager {
   showRespawnBanner() { this.el.respawnBanner.classList.remove('hidden'); }
   hideRespawnBanner() { this.el.respawnBanner.classList.add('hidden'); }
 
+  showBattleRank(rank) {
+    if (!rank || !this.el.resultRank) return;
+
+    const rankClass = rank.practice ? 'rank-practice' : `rank-${String(rank.grade).toLowerCase()}`;
+    this.el.resultRank.classList.remove('rank-s', 'rank-a', 'rank-b', 'rank-c', 'rank-practice', 'pop');
+    this.el.resultRank.classList.add(rankClass);
+    if (this.el.resultRankGrade) this.el.resultRankGrade.textContent = rank.practice ? 'PRACTICE' : rank.grade;
+    if (this.el.resultRankTitle) this.el.resultRankTitle.textContent = rank.title;
+    if (this.el.resultRankScore) {
+      this.el.resultRankScore.textContent = rank.practice
+        ? 'NO SCORE — TRAINING MODE'
+        : `BATTLE SCORE ${rank.score}`;
+    }
+
+    // Restart the reveal animation when playing consecutive matches.
+    void this.el.resultRank.offsetWidth;
+    this.el.resultRank.classList.add('pop');
+  }
+
   /** Animates the result percentages counting up from 0 to their final values. */
-  showResult({ playerPct, cpuPct, koPlayer, koCpu, outcome, stats = null }) {
+  showResult({ playerPct, cpuPct, koPlayer, koCpu, outcome, stats = null, rank = null }) {
     this.el.resultTitle.textContent = outcome === 'win' ? 'VICTORY' : outcome === 'lose' ? 'DEFEAT' : 'DRAW';
     this.el.resultTitle.classList.remove('win', 'lose', 'draw');
     this.el.resultTitle.classList.add(outcome === 'win' ? 'win' : outcome === 'lose' ? 'lose' : 'draw');
+    this.showBattleRank(rank);
 
     const margin = Math.abs(playerPct - cpuPct);
     const CLOSE_MATCH_THRESHOLD_PCT = 4;
