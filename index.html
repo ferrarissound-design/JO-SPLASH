@@ -68,6 +68,15 @@
           <p class="mouse-hint">※ 画面左側をドラッグで移動、右側をドラッグでカメラ操作。ボタンは押している間だけ効果があります。</p>
         </div>
 
+        <div class="character-preview-panel" aria-live="polite">
+          <canvas id="character-preview-canvas" aria-hidden="true"></canvas>
+          <div class="character-preview-copy">
+            <span>SELECTED PLAYER</span>
+            <strong id="selected-character-name">CHROMA RIDER</strong>
+            <small id="selected-character-tagline">インクストリートの万能ファイター</small>
+          </div>
+        </div>
+
         <div class="character-picker" role="group" aria-label="操作キャラクター">
           <span class="character-picker-title">PLAYER</span>
           <button type="button" class="character-option selected" data-character="default" aria-pressed="true">
@@ -98,7 +107,10 @@
           <span>練習モード（CPUは攻撃・反撃しません）</span>
         </label>
 
-        <button id="btn-start" class="btn-primary" type="button">START</button>
+        <button id="btn-start" class="btn-primary" type="button">
+          <span>START</span>
+          <small id="start-character-name">CHROMA RIDER</small>
+        </button>
         <button id="btn-open-settings" class="btn-link" type="button">⚙ 設定</button>
         <p class="rule-hint">制限時間 90秒 &mdash; 塗装面積が多い方が勝利</p>
       </div>
@@ -229,6 +241,7 @@
               <span id="special-value" class="gauge-value">0%</span>
             </div>
           </div>
+          <div class="player-character-chip"><span>PLAYER</span><strong id="player-character-name">CHROMA RIDER</strong></div>
           <div class="weapon-strip"><span>MAIN</span><strong id="weapon-name">STREAM</strong><small id="weapon-switch-hint">1 / 2 / 3</small></div>
           <div id="charge-meter" class="charge-meter hidden" aria-label="PRECISION charge">
             <span>CHARGE</span>

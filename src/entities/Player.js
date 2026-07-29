@@ -33,6 +33,7 @@ export class Player extends Character {
     super(TEAM.PLAYER, spawnPoint, characterConfig.createModel);
     this.characterId = characterConfig.id;
     this.characterName = characterConfig.name;
+    this.characterTagline = characterConfig.tagline;
     this.camera = cameraController;
     this.input = inputManager;
     this.appearanceParts = this.mesh.userData.appearanceParts;

@@ -16,6 +16,7 @@ import { AudioManager } from '../audio/AudioManager.js';
 import { Player } from '../entities/Player.js';
 import { EnemyAI } from '../entities/EnemyAI.js';
 import { UIManager } from '../ui/UIManager.js';
+import { CharacterPreview } from '../ui/CharacterPreview.js';
 
 const _enemyScreenPos = new THREE.Vector3();
 const _enemyMarkerOffset = new THREE.Vector3(0, 2.35, 0);
@@ -86,6 +87,16 @@ export class Game {
       this.input,
       this.selectedCharacterId,
     );
+    try {
+      this.characterPreview = new CharacterPreview(
+        document.getElementById('character-preview-canvas'),
+        { lowQuality: this.input.isTouch },
+      );
+      this.characterPreview.setCharacter(this.selectedCharacterId);
+    } catch {
+      this.characterPreview = null;
+      document.querySelector('.character-preview-panel')?.classList.add('preview-unavailable');
+    }
     this.touchControls?.setWeaponType(this.player.weapon.type);
     this.selectedDifficulty = AI_DIFFICULTY[this.settings.values.difficultyId] ? this.settings.values.difficultyId : 'standard';
     this.practiceMode = false;
@@ -119,7 +130,11 @@ export class Game {
     this._wasPlayerInkSurfing = false;
 
     this._bindUI();
-    this.ui.setCharacter(this.selectedCharacterId);
+    this.ui.setCharacter(
+      this.selectedCharacterId,
+      this.player.characterName,
+      this.player.characterTagline,
+    );
     this._selectDifficulty(this.selectedDifficulty);
     this._bindWindow();
     this.ui.updateMatchRecord(this.matchRecord);
@@ -215,7 +230,8 @@ export class Game {
       characterId,
     );
     const resolvedId = nextPlayer.characterId;
-    this.ui.setCharacter(resolvedId);
+    this.ui.setCharacter(resolvedId, nextPlayer.characterName, nextPlayer.characterTagline);
+    this.characterPreview?.setCharacter(resolvedId);
     this.selectedCharacterId = resolvedId;
 
     if (this.player.characterId === resolvedId) {
@@ -689,6 +705,7 @@ export class Game {
     this.cameraController.update(dt, this.player.position);
     this.player.syncMesh(this.elapsedTime);
     this.cpu.syncMesh(this.elapsedTime);
+    this.characterPreview?.update(this.elapsedTime);
   }
 
   _updateCountdown(dt) {

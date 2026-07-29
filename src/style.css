@@ -207,6 +207,63 @@ details[open] > .key-list-toggle::before { transform: rotate(90deg); }
   color: var(--clr-text-dim);
 }
 
+.character-preview-panel {
+  height:112px;
+  display:grid;
+  grid-template-columns:148px minmax(0,1fr);
+  align-items:center;
+  margin:-.5rem 0 .7rem;
+  overflow:hidden;
+  border:1px solid rgba(47,244,241,.24);
+  border-radius:13px;
+  background:
+    radial-gradient(circle at 22% 58%,rgba(47,244,241,.18),transparent 36%),
+    linear-gradient(120deg,rgba(4,15,28,.88),rgba(18,34,55,.72));
+  box-shadow:inset 0 0 24px rgba(47,244,241,.06);
+}
+#character-preview-canvas {
+  width:148px;
+  height:112px;
+  display:block;
+}
+.character-preview-copy {
+  min-width:0;
+  padding:.65rem .85rem .65rem .2rem;
+  text-align:left;
+}
+.character-preview-copy span {
+  display:block;
+  margin-bottom:.2rem;
+  color:#78eaff;
+  font-size:.55rem;
+  font-weight:900;
+  letter-spacing:.16em;
+}
+.character-preview-copy strong {
+  display:block;
+  overflow:hidden;
+  color:#fff;
+  font-size:1.05rem;
+  letter-spacing:.055em;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  text-shadow:0 0 14px rgba(47,244,241,.42);
+}
+.character-preview-copy small {
+  display:block;
+  margin-top:.25rem;
+  color:var(--clr-text-dim);
+  font-size:.62rem;
+  line-height:1.35;
+}
+.character-preview-panel.preview-unavailable {
+  height:auto;
+  grid-template-columns:1fr;
+  padding:.65rem .8rem;
+}
+.character-preview-panel.preview-unavailable #character-preview-canvas { display:none; }
+.character-preview-panel.preview-unavailable .character-preview-copy { padding:0; text-align:center; }
+
 .character-picker {
   display:grid;
   grid-template-columns:auto repeat(2,minmax(0,1fr));
@@ -346,6 +403,16 @@ details[open] > .key-list-toggle::before { transform: rotate(90deg); }
 }
 .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(47,184,255,0.55); }
 .btn-primary:active { transform: translateY(0); }
+#btn-start { min-width:190px; line-height:1; }
+#btn-start span { display:block; }
+#btn-start small {
+  display:block;
+  margin-top:.28rem;
+  font-size:.52rem;
+  font-weight:900;
+  letter-spacing:.09em;
+  opacity:.68;
+}
 
 .btn-secondary {
   appearance: none;
@@ -612,6 +679,8 @@ details[open] > .key-list-toggle::before { transform: rotate(90deg); }
 .weapon-strip { align-self:flex-start; display:flex; align-items:center; gap:.38rem; background:rgba(9,15,25,.62); border:1px solid rgba(255,255,255,.12); border-radius:999px; padding:.25rem .6rem; font-size:.58rem; letter-spacing:.05em; color:var(--clr-text-dim); }
 .weapon-strip strong { color:#fff; font-size:.66rem; }
 .weapon-strip small { opacity:.6; }
+.player-character-chip { align-self:flex-start; display:flex; align-items:center; gap:.38rem; max-width:min(70vw,220px); padding:.25rem .6rem; border:1px solid rgba(47,244,241,.25); border-radius:999px; background:rgba(7,31,43,.68); color:#77eaf2; font-size:.55rem; font-weight:900; letter-spacing:.06em; }
+.player-character-chip strong { overflow:hidden; color:#fff; font-size:.62rem; text-overflow:ellipsis; white-space:nowrap; }
 .charge-meter { align-self:flex-start; display:grid; grid-template-columns:auto minmax(68px,110px) 3.1rem; align-items:center; gap:.38rem; min-height:24px; padding:.26rem .52rem; border:1px solid rgba(47,184,255,.28); border-radius:999px; background:rgba(9,15,25,.72); color:var(--clr-text-dim); font-size:.54rem; font-weight:900; letter-spacing:.06em; backdrop-filter:blur(6px); }
 .charge-track { height:7px; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.09); box-shadow:inset 0 0 0 1px rgba(255,255,255,.05); }
 .charge-fill { width:0%; height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--clr-player-deep),var(--clr-player),#d8f7ff); transition:width .04s linear; }
@@ -1056,6 +1125,11 @@ details[open] > .key-list-toggle::before { transform: rotate(90deg); }
   .panel.how-to-play { padding: 0.8rem 1rem; margin-bottom: 1.1rem; }
   .key-list { gap: 0.4rem; }
   .key-list li { font-size: 0.82rem; }
+  .character-preview-panel { height:96px; grid-template-columns:112px minmax(0,1fr); }
+  #character-preview-canvas { width:112px; height:96px; }
+  .character-preview-copy { padding:.5rem .6rem .5rem .05rem; }
+  .character-preview-copy strong { font-size:.85rem; }
+  .character-preview-copy small { font-size:.55rem; }
   .character-picker { grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:-.35rem; }
   .character-picker-title { grid-column:1/-1; padding:0; text-align:left; }
   .character-option { min-height:48px; padding:.4rem .42rem; gap:.35rem; }

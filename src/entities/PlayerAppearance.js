@@ -589,11 +589,13 @@ export const characterConfigs = Object.freeze({
   default: Object.freeze({
     id: 'default',
     name: 'CHROMA RIDER',
+    tagline: 'インクストリートの万能ファイター',
     createModel: createDefaultCharacter,
   }),
   joRay: Object.freeze({
     id: 'joRay',
     name: 'ジョーレイ',
+    tagline: 'ネオンのヒレで舞うエイファイター',
     createModel: createJoRayCharacter,
   }),
 });

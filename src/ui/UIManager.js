@@ -74,6 +74,10 @@ export class UIManager {
       hud: document.getElementById('hud'),
       result: document.getElementById('screen-result'),
       btnStart: document.getElementById('btn-start'),
+      selectedCharacterName: document.getElementById('selected-character-name'),
+      selectedCharacterTagline: document.getElementById('selected-character-tagline'),
+      startCharacterName: document.getElementById('start-character-name'),
+      playerCharacterName: document.getElementById('player-character-name'),
       btnRestart: document.getElementById('btn-restart'),
       characterButtons: Array.from(document.querySelectorAll('[data-character]')),
       difficultyButtons: Array.from(document.querySelectorAll('[data-difficulty]')),
@@ -262,12 +266,17 @@ export class UIManager {
     this.el.practiceModeToggle?.addEventListener('change', () => cb(this.el.practiceModeToggle.checked));
   }
 
-  setCharacter(id) {
+  setCharacter(id, name = '', tagline = '') {
     for (const button of this.el.characterButtons) {
       const selected = button.dataset.character === id;
       button.classList.toggle('selected', selected);
       button.setAttribute('aria-pressed', String(selected));
     }
+    if (this.el.selectedCharacterName) this.el.selectedCharacterName.textContent = name;
+    if (this.el.selectedCharacterTagline) this.el.selectedCharacterTagline.textContent = tagline;
+    if (this.el.startCharacterName) this.el.startCharacterName.textContent = name;
+    if (this.el.playerCharacterName) this.el.playerCharacterName.textContent = name;
+    if (this.el.btnStart) this.el.btnStart.setAttribute('aria-label', `${name}でスタート`);
   }
 
   setDifficulty(id, label) {
