@@ -4,6 +4,7 @@ import {
   InputManager,
   DEFAULT_KEY_BINDINGS,
   detectGamepadLayout,
+  resolveGamepadFaceButtons,
   resolveKeyBindings,
 } from '../src/core/InputManager.js';
 
@@ -146,6 +147,53 @@ describe('InputManager gamepad support', () => {
     expect(detectGamepadLayout('Nintendo Switch Pro Controller')).toBe('nintendo');
     expect(detectGamepadLayout('Pro Controller (STANDARD GAMEPAD Vendor: 057e Product: 2009)')).toBe('nintendo');
     expect(detectGamepadLayout('Xbox Wireless Controller')).toBe('standard');
+  });
+
+  it('uses WebKit semantic face-button order for Apple extended Nintendo gamepads', () => {
+    expect(resolveGamepadFaceButtons('Nintendo Switch Pro Controller Extended Gamepad')).toEqual({
+      jump: 1,
+      bomb: 0,
+      weapon: 3,
+      special: 2,
+      confirm: 0,
+    });
+    expect(resolveGamepadFaceButtons('Nintendo Switch Pro Controller')).toEqual({
+      jump: 0,
+      bomb: 1,
+      weapon: 2,
+      special: 3,
+      confirm: 1,
+    });
+  });
+
+  it('maps iPad Safari Pro Controller B/A/Y/X buttons to the intended actions', () => {
+    const pad = createGamepad();
+    pad.id = 'Nintendo Switch Pro Controller Extended Gamepad';
+    Object.defineProperty(navigator, 'getGamepads', {
+      configurable: true,
+      value: () => [pad],
+    });
+    const input = makeInput();
+
+    pad.buttons[1] = { pressed: true, value: 1 }; // B: jump
+    pad.buttons[2] = { pressed: true, value: 1 }; // X: special
+    pad.buttons[6] = { pressed: true, value: 1 }; // ZL: ink surf
+    input.updateGamepad(1 / 60);
+    expect(input.isDown('Space')).toBe(true);
+    expect(input.wasJustPressed('KeyQ')).toBe(true);
+    expect(input.isDown('ShiftLeft')).toBe(true);
+
+    pad.buttons[1] = { pressed: false, value: 0 };
+    pad.buttons[2] = { pressed: false, value: 0 };
+    pad.buttons[6] = { pressed: false, value: 0 };
+    input.updateGamepad(1 / 60);
+    pad.buttons[0] = { pressed: true, value: 1 }; // A: bomb / confirm
+    pad.buttons[3] = { pressed: true, value: 1 }; // Y: weapon
+    input.updateGamepad(1 / 60);
+    expect(input.isDown('KeyE')).toBe(true);
+    expect(input.wasJustPressed('GamepadConfirm')).toBe(true);
+    expect(input.wasJustPressed('GamepadNextWeapon')).toBe(true);
+    input.dispose();
   });
 
   it('uses the Nintendo face-button labels while preserving physical positions', () => {

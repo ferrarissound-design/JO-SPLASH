@@ -65,17 +65,44 @@ export function detectGamepadLayout(id = '') {
   ) ? 'nintendo' : 'standard';
 }
 
+const STANDARD_FACE_BUTTONS = Object.freeze({
+  jump: 0,
+  bomb: 1,
+  weapon: 2,
+  special: 3,
+  confirm: 0,
+});
+
+const NINTENDO_POSITION_FACE_BUTTONS = Object.freeze({
+  jump: 0,    // B is the bottom face button
+  bomb: 1,    // A is the right face button
+  weapon: 2,  // Y is the left face button
+  special: 3, // X is the top face button
+  confirm: 1,
+});
+
+const APPLE_NINTENDO_FACE_BUTTONS = Object.freeze({
+  // WebKit's GameController provider exposes GCInputButtonA/B/X/Y in semantic
+  // order instead of the standard mapping's physical-position order.
+  jump: 1,
+  bomb: 0,
+  weapon: 3,
+  special: 2,
+  confirm: 0,
+});
+
+/** Resolves face-button indices, including iPad/macOS Safari's Nintendo order. */
+export function resolveGamepadFaceButtons(id = '') {
+  if (detectGamepadLayout(id) !== 'nintendo') return STANDARD_FACE_BUTTONS;
+  return /extended gamepad/i.test(String(id))
+    ? APPLE_NINTENDO_FACE_BUTTONS
+    : NINTENDO_POSITION_FACE_BUTTONS;
+}
+
 // Standard Gamepad mapping. Values are the same canonical actions consumed by
 // Player/Game, so gamepad play does not need a parallel movement/combat path.
 const GAMEPAD_BUTTON_ACTIONS = Object.freeze([
-  [0, 'Space'],             // Bottom face button: Xbox A / Switch B / Cross
-  [1, 'KeyE'],              // Right face button: Xbox B / Switch A / Circle
-  [2, 'GamepadNextWeapon'], // Left face button: Xbox X / Switch Y / Square
-  [3, 'KeyQ'],              // Top face button: Xbox Y / Switch X / Triangle
-  [4, 'ShiftLeft'],         // LB / L: ink surf
-  [6, 'ShiftLeft'],         // LT / ZL: ink surf
   [9, 'Escape'],            // Menu / Options / Plus: pause
-  [10, 'ShiftLeft'],        // L3: ink surf
   [12, 'Digit2'],           // D-pad up: spread
   [14, 'Digit1'],           // D-pad left: stream
   [15, 'Digit3'],           // D-pad right: precision
@@ -261,15 +288,19 @@ export class InputManager {
       const button = pad.buttons?.[index];
       return !!(button && (button.pressed || button.value > 0.55));
     };
+    const faceButtons = resolveGamepadFaceButtons(pad.id);
+    this._setGamepadKey('Space', pressed(faceButtons.jump));
+    this._setGamepadKey('KeyE', pressed(faceButtons.bomb));
+    this._setGamepadKey('GamepadNextWeapon', pressed(faceButtons.weapon));
+    this._setGamepadKey('KeyQ', pressed(faceButtons.special));
     for (const [buttonIndex, action] of GAMEPAD_BUTTON_ACTIONS) {
       this._setGamepadKey(action, pressed(buttonIndex));
     }
-    // Nintendo's menu confirm button is the right face button (A). Other
-    // standard layouts confirm with the bottom face button (A / Cross).
     this._setGamepadKey(
-      'GamepadConfirm',
-      pressed(this.gamepadLayout === 'nintendo' ? 1 : 0),
+      'ShiftLeft',
+      pressed(4) || pressed(6) || pressed(10), // LB/L, LT/ZL, or L3
     );
+    this._setGamepadKey('GamepadConfirm', pressed(faceButtons.confirm));
 
     const axis = (index) => {
       const value = Number(pad.axes?.[index]) || 0;
