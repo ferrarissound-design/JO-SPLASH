@@ -9,8 +9,10 @@ import { Settings } from './Settings.js';
 import { MatchRecord } from './MatchRecord.js';
 import { calculateBattleRank } from './BattleRank.js';
 import { isSuddenDeathTie, getSuddenDeathLeader } from './SuddenDeath.js';
-import { MATCH_RULES, ZONE_TARGET_SECONDS, KO_TARGET, getZoneOwner, resolveRuleOutcome } from './MatchRules.js';
+import { MATCH_RULES } from './MatchRules.js';
 import { Progression, CHALLENGES } from './Progression.js';
+import { RuleController } from './RuleController.js';
+import { CupController } from './CupController.js';
 import { Arena, STAGES } from '../systems/Arena.js';
 import { JumpPadSystem } from '../systems/JumpPadSystem.js';
 import { StageDecor } from '../systems/StageDecor.js';
@@ -64,13 +66,12 @@ export class Game {
     this.matchRecord = new MatchRecord();
     this.progression = new Progression();
     this.selectedStageId = 'harbor';
-    this.selectedRuleId = 'turf';
+    this.ruleController = new RuleController('turf');
+    this.selectedRuleId = this.ruleController.ruleId;
     this.selectedSubWeaponId = 'bomb';
     this.selectedBattleMode = 'single';
-    this.cupActive = false;
-    this.cupRound = 0;
-    this.cupWins = 0;
-    this.zoneControl = { player: 0, cpu: 0 };
+    this.cupController = new CupController();
+    this.cupSessionActive = false;
 
     this._setupRenderer();
     this._setupScene();
@@ -107,7 +108,7 @@ export class Game {
     this.projectileManager = new ProjectileManager(
       this.scene, this.arena, this.paintSystem, this.particleManager, this.audioManager
     );
-    this.jumpPadSystem = new JumpPadSystem(this.scene);
+    this.jumpPadSystem = new JumpPadSystem(this.scene, this.arena.stage.jumpPads);
     this.projectileManager.onCharacterHit = (targetTeam, damage, hitPoint, metadata) => (
       this._onCharacterHit(targetTeam, damage, hitPoint, metadata)
     );
@@ -183,6 +184,9 @@ export class Game {
     this._bindWindow();
     this.ui.updateMatchRecord(this.matchRecord);
     this.ui.setChallengeBoard(CHALLENGES, this.progression.unlocked);
+    this.ui.setRewardLoadout(CHALLENGES, this.progression.unlocked, this.progression.equipped);
+    this.ui.setRuleHint(MATCH_RULES[this.selectedRuleId]);
+    this._updateCupProgressUI();
     this._applyRewardTheme();
     this.input.onLockLost = () => this._pauseFromLockLoss();
 
@@ -195,6 +199,11 @@ export class Game {
     // Global debug helper, per spec: cycles the enemy's appearance type.
     window.cycleEnemyAppearance = () => this._cycleEnemyAppearance();
   }
+
+  get cupActive() { return this.cupSessionActive && this.cupController.active; }
+  get cupRound() { return this.cupController.round; }
+  get cupWins() { return this.cupController.wins; }
+  get zoneControl() { return this.ruleController.zone; }
 
   _setupRenderer() {
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true });
@@ -247,13 +256,21 @@ export class Game {
     this.ui.bindPracticeModeChange((checked) => { this.practiceMode = checked; });
     this.ui.bindStageSelection((stageId) => this._selectStage(stageId));
     this.ui.bindRuleSelection((ruleId) => {
-      this.selectedRuleId = MATCH_RULES[ruleId] ? ruleId : 'turf';
+      this.selectedRuleId = this.ruleController.setRule(ruleId);
+      this.ui.setRuleHint(MATCH_RULES[this.selectedRuleId]);
     });
     this.ui.bindSubWeaponSelection((subWeaponId) => {
       this.selectedSubWeaponId = subWeaponId;
       this.player.subWeapon.setType(subWeaponId);
+      this.touchControls?.setSubWeaponType(subWeaponId);
     });
     this.ui.bindBattleModeSelection((mode) => { this.selectedBattleMode = mode === 'cup' ? 'cup' : 'single'; });
+    this.ui.bindResumeCup(() => this._resumeCup());
+    this.ui.bindRewardSelection((rewardId) => {
+      if (!this.progression.equip(rewardId)) return;
+      this.ui.setRewardLoadout(CHALLENGES, this.progression.unlocked, this.progression.equipped);
+      this._applyRewardTheme();
+    });
     this.ui.bindResume(() => this._resumeFromPause());
     this.ui.bindQuit(() => this._quitToTitle());
     this.ui.bindPause(() => this._pauseMatch());
@@ -278,40 +295,71 @@ export class Game {
   }
 
   _beginSelectedMode() {
-    this.cupActive = this.selectedBattleMode === 'cup';
-    this.cupRound = this.cupActive ? 1 : 0;
-    this.cupWins = 0;
-    if (this.cupActive) this._configureCupRound();
+    this.cupSessionActive = this.selectedBattleMode === 'cup';
+    if (this.cupSessionActive) {
+      this.cupController.start();
+      this._configureCupRound();
+    } else {
+      this.cpu.setRivalTactics();
+    }
     this._startMatch();
   }
 
   _continueFromResult() {
-    if (this.cupActive && this.cupRound < 3) {
-      this.cupRound++;
+    if (this.cupActive && !this.cupController.isFinalRound) {
+      this.cupController.advance();
       this._configureCupRound();
       this._startMatch();
       return;
     }
-    if (this.cupActive && this.cupRound >= 3) {
-      this.cupActive = false;
+    if (this.cupActive && this.cupController.isFinalRound) {
+      this.cupController.finish();
+      this.cupSessionActive = false;
       this.state = STATE.TITLE;
       this.ui.hideResultScreen();
       this.ui.showTitle();
       this.ui.setRestartLabel('もう一度戦う (R)');
+      this.ui.setCupSummary({ visible: false });
+      this._updateCupProgressUI();
       return;
     }
     this._startMatch();
   }
 
   _configureCupRound() {
-    const difficultyIds = ['rookie', 'standard', 'elite'];
-    const difficultyId = difficultyIds[Math.max(0, Math.min(2, this.cupRound - 1))];
-    this._selectDifficulty(difficultyId);
-    this.cpu.applyAppearance(this.cupRound - 1, { playIntro: false });
+    const rival = this.cupController.currentRival;
+    if (!rival) return;
+    this._selectStage(rival.stageId);
+    this._selectDifficulty(rival.difficultyId);
+    this.cpu.applyAppearance(rival.appearanceType, { playIntro: false });
+    this.cpu.setRivalTactics(rival.tactics);
+    this._updateCupProgressUI();
+  }
+
+  _resumeCup() {
+    const rival = this.cupController.resume();
+    if (!rival) return;
+    this.cupSessionActive = true;
+    this.selectedBattleMode = 'cup';
+    this.ui.setBattleMode('cup');
+    this._configureCupRound();
+    this._startMatch();
+  }
+
+  _updateCupProgressUI() {
+    const rival = this.cupController.currentRival;
+    this.ui.setCupProgress({
+      visible: this.cupActive || this.cupController.resumeAvailable,
+      round: this.cupController.round,
+      wins: this.cupController.wins,
+      rival,
+      resumeAvailable: !this.cupSessionActive && this.cupController.resumeAvailable,
+    });
   }
 
   _selectStage(stageId) {
     const nextId = STAGES[stageId] ? stageId : 'harbor';
+    this.ui.setStage(nextId);
     if (nextId === this.selectedStageId) return;
     this.selectedStageId = nextId;
     this._rebuildArena(nextId);
@@ -329,6 +377,7 @@ export class Game {
     this.gadgetSystem?.reset();
     this.projectileManager?.dispose();
     this.paintSystem?.dispose();
+    this.jumpPadSystem?.dispose();
     if (this.stageDecor?.group) {
       this.scene.remove(this.stageDecor.group);
       this._disposeObjectTree(this.stageDecor.group);
@@ -343,6 +392,7 @@ export class Game {
     this.paintSystem = new PaintSystem(this.arena.halfWidth, this.arena.halfDepth);
     for (const mesh of this.arena.paintableFloorMeshes) this.paintSystem.applyToMaterial(mesh.material);
     this.stageDecor = new StageDecor(this.scene, this.arena, { lowQuality: this.input.isTouch });
+    this.jumpPadSystem = new JumpPadSystem(this.scene, this.arena.stage.jumpPads);
     this.cameraController.arena = this.arena;
     this.cameraController.collisionMeshes = this.arena.group.children;
 
@@ -372,9 +422,11 @@ export class Game {
   }
 
   _applyRewardTheme() {
-    const unlocked = this.progression.unlocked;
-    document.body.dataset.rewardGold = String(unlocked.has('champion'));
-    document.body.dataset.rewardCombo = String(unlocked.has('combo'));
+    const equipped = this.progression.equipped;
+    document.body.dataset.rewardGold = String(equipped.theme === 'goldChampion');
+    document.body.dataset.rewardCombo = String(equipped.effect === 'comboGlow');
+    document.body.dataset.rewardTrail = String(equipped.trail === 'aquaTrail');
+    document.body.dataset.rewardTitle = String(equipped.title === 'skyAce');
   }
 
   _selectCharacter(characterId) {
@@ -527,6 +579,7 @@ export class Game {
     this.player._fireWasHeld = false;
     this.player.subWeapon.cooldown = 0;
     this.player.subWeapon.setType(this.selectedSubWeaponId);
+    this.touchControls?.setSubWeaponType(this.selectedSubWeaponId);
 
     this.cpu.position.copy(this.arena.spawnPoints.cpu);
     this.cpu.velocity.set(0, 0, 0);
@@ -546,7 +599,11 @@ export class Game {
     this.cpu.resetTactics({ newMatch: true });
     // Fresh random look each match; the entrance animation plays once the
     // countdown ends (see _updateCountdown), not during the reset.
-    if (this.cupActive) this.cpu.applyAppearance(this.cupRound - 1, { playIntro: false });
+    if (this.cupActive) {
+      const rival = this.cupController.currentRival;
+      this.cpu.applyAppearance(rival.appearanceType, { playIntro: false });
+      this.cpu.setRivalTactics(rival.tactics);
+    }
     else this.cpu.randomizeAppearance({ playIntro: false });
 
     this._faceSpawnPoints();
@@ -557,7 +614,7 @@ export class Game {
     this._lastFinalSecond = null;
     this.inSuddenDeath = false;
     this._suddenDeathForcedWinnerTeam = null;
-    this.zoneControl = { player: 0, cpu: 0 };
+    this.ruleController.reset();
 
     this.ui.hideTitle();
     this.ui.hideResultScreen();
@@ -570,6 +627,7 @@ export class Game {
     this.ui.resetFinale();
     this.ui.setSuddenDeathActive(false);
     this.ui.setObjectiveStatus(MATCH_RULES[this.selectedRuleId].label);
+    this.ui.setCupSummary({ visible: false });
     this.ui.resetInkRollFeedback();
     this.ui.hideDamageDirection();
     this.ui.resetTurfMap();
@@ -630,6 +688,8 @@ export class Game {
     this.audioManager.stopBattleBGM();
     this.audioManager.stopInkSurfLoop();
     this.touchControls?.hide();
+    if (this.cupActive) this.cupSessionActive = false;
+    this._updateCupProgressUI();
     this.ui.showTitle();
   }
 
@@ -687,17 +747,15 @@ export class Game {
     // scorer's favor (see _onCharacterHit), overriding the usual
     // coverage-based outcome check — the instant of a KO doesn't necessarily
     // line up with whoever currently has more floor painted.
-    const outcome = resolveRuleOutcome(this.selectedRuleId, {
+    const outcome = this.ruleController.resolveOutcome({
       coverage: cov,
       koPlayer: this.player.koScored,
       koCpu: this.cpu.koScored,
-      zonePlayer: this.zoneControl.player,
-      zoneCpu: this.zoneControl.cpu,
       forcedWinnerTeam: this._suddenDeathForcedWinnerTeam,
     });
 
-    if (this.cupActive && outcome === 'win') this.cupWins++;
-    const cupChampion = this.cupActive && this.cupRound === 3 && this.cupWins >= 2;
+    if (this.cupActive) this.cupController.recordResult(outcome);
+    const cupChampion = this.cupActive && this.cupController.champion;
     const earned = this.progression.evaluate({
       playerPct: cov.playerPct,
       skySplashes: this.player.skySplashHits,
@@ -705,6 +763,7 @@ export class Game {
       cupChampion,
     });
     this.ui.setChallengeBoard(CHALLENGES, this.progression.unlocked);
+    this.ui.setRewardLoadout(CHALLENGES, this.progression.unlocked, this.progression.equipped);
     this._applyRewardTheme();
 
     if (outcome === 'win') this.audioManager.playWin();
@@ -752,13 +811,13 @@ export class Game {
       rank,
       suddenDeath: this.inSuddenDeath,
     });
-    const objective = this.selectedRuleId === 'zone'
-      ? `YOU ${this.zoneControl.player.toFixed(1)}s / CPU ${this.zoneControl.cpu.toFixed(1)}s`
-      : this.selectedRuleId === 'ko'
-        ? `YOU ${this.player.koScored} KO / CPU ${this.cpu.koScored} KO`
-        : STAGES[this.selectedStageId].label;
+    const objective = this.ruleController.getResultSummary({
+      koPlayer: this.player.koScored,
+      koCpu: this.cpu.koScored,
+      stageLabel: STAGES[this.selectedStageId].label,
+    });
     const cup = this.cupActive
-      ? `RIVAL CUP ${this.cupRound}/3 · ${this.cupWins} WIN${this.cupWins === 1 ? '' : 'S'}${this.cupRound === 3 ? (cupChampion ? ' · CHAMPION' : ' · CUP COMPLETE') : ''}`
+      ? `RIVAL CUP ${this.cupRound}/3 · ${this.cupController.currentRival.name} · ${this.cupWins} WIN${this.cupWins === 1 ? '' : 'S'}${this.cupController.isFinalRound ? (cupChampion ? ' · CHAMPION' : ' · CUP COMPLETE') : ''}`
       : '';
     this.ui.setResultMeta({
       ruleLabel: MATCH_RULES[this.selectedRuleId].label,
@@ -766,9 +825,16 @@ export class Game {
       cup,
       rewards: earned.map((challenge) => challenge.reward),
     });
+    this.ui.setCupSummary({
+      visible: this.cupActive && this.cupController.isFinalRound,
+      results: this.cupController.results,
+      wins: this.cupWins,
+      champion: cupChampion,
+    });
+    this._updateCupProgressUI();
     this.ui.setRestartLabel(
       this.cupActive
-        ? (this.cupRound < 3 ? `NEXT RIVAL (${this.cupRound + 1}/3)` : 'RETURN TO TITLE')
+        ? (!this.cupController.isFinalRound ? `NEXT RIVAL (${this.cupRound + 1}/3)` : 'RETURN TO TITLE')
         : 'もう一度戦う (R)',
     );
   }
@@ -1085,6 +1151,11 @@ export class Game {
       onCharacterHit: (targetTeam, damage, hitPoint) => this._onCharacterHit(targetTeam, damage, hitPoint),
       controlsEnabled: true,
       elapsedTime: this.elapsedTime,
+      ruleContext: this.ruleController.getAIContext({
+        timeRemaining: this.matchTimeRemaining,
+        koPlayer: this.player.koScored,
+        koCpu: this.cpu.koScored,
+      }),
     };
 
     const playerWasAlive = this.player.alive;
@@ -1109,7 +1180,8 @@ export class Game {
 
     // Show the archetype name banner when the enemy (re)appears.
     if (this.cpu.consumeIntroBanner()) {
-      this.ui.showEnemyIntro(this.cpu.appearanceName, this.cpu.appearanceId, this.cpu.appearance.main);
+      const rival = this.cupActive ? this.cupController.currentRival : null;
+      this.ui.showEnemyIntro(rival?.name ?? this.cpu.appearanceName, this.cpu.appearanceId, this.cpu.appearance.main);
     }
 
     this.projectileManager.update(dt, [this.player, this.cpu]);
@@ -1129,23 +1201,18 @@ export class Game {
     this._updateCpuVisibility(dt);
 
     const cov = this.paintSystem.getCoverage();
-    if (this.selectedRuleId === 'zone') {
-      const zoneOwner = getZoneOwner(this.paintSystem.ownerGrid, this.paintSystem.gridRes);
-      if (zoneOwner === TEAM.PLAYER) this.zoneControl.player += dt;
-      else if (zoneOwner === TEAM.CPU) this.zoneControl.cpu += dt;
-      this.ui.setObjectiveStatus(
-        `ZONE HOLD · YOU ${this.zoneControl.player.toFixed(1)} / CPU ${this.zoneControl.cpu.toFixed(1)} · ${ZONE_TARGET_SECONDS}s`,
-      );
-      if (this.zoneControl.player >= ZONE_TARGET_SECONDS || this.zoneControl.cpu >= ZONE_TARGET_SECONDS) {
-        this._suddenDeathForcedWinnerTeam = this.zoneControl.player >= ZONE_TARGET_SECONDS ? TEAM.PLAYER : TEAM.CPU;
-        matchOver = true;
-      }
-    } else if (this.selectedRuleId === 'ko') {
-      this.ui.setObjectiveStatus(`KO RUSH · YOU ${this.player.koScored} / CPU ${this.cpu.koScored} · FIRST TO ${KO_TARGET}`);
-      if (this.player.koScored >= KO_TARGET || this.cpu.koScored >= KO_TARGET) {
-        this._suddenDeathForcedWinnerTeam = this.player.koScored >= KO_TARGET ? TEAM.PLAYER : TEAM.CPU;
-        matchOver = true;
-      }
+    const ruleWinner = this.ruleController.update(dt, {
+      paintSystem: this.paintSystem,
+      koPlayer: this.player.koScored,
+      koCpu: this.cpu.koScored,
+    });
+    this.ui.setObjectiveStatus(this.ruleController.getObjectiveText({
+      koPlayer: this.player.koScored,
+      koCpu: this.cpu.koScored,
+    }));
+    if (ruleWinner) {
+      this._suddenDeathForcedWinnerTeam = ruleWinner;
+      matchOver = true;
     }
     // Once in overtime, breaking the tie by more than the margin ends the
     // match immediately rather than waiting out the sudden-death clock.
@@ -1185,6 +1252,9 @@ export class Game {
       weaponChargeStored: this.player.weapon.chargeStored,
       weaponChargeStoreTimer: this.player.weapon.chargeStoreTimer,
       weaponChargeStoreDuration: this.player.weapon.chargeStoreDuration,
+      subWeaponName: this.player.subWeapon.profile.label,
+      subWeaponCooldown: this.player.subWeapon.cooldown,
+      subWeaponCost: this.player.subWeapon.profile.cost,
       koPlayer: this.player.koScored,
       koCpu: this.cpu.koScored,
       firing: this.input.fireHeld && this.player.alive && !this.player.inkSurfActive,
@@ -1317,6 +1387,7 @@ export class Game {
       `player cell: (${pgx}, ${pgz})  grounded:${this.player.grounded}  climbing:${this.player.isClimbing}`,
       `cpu    cell: (${cgx}, ${cgz})  grounded:${this.cpu.grounded}  climbing:${this.cpu.isClimbing}`,
       `cpu ai state: ${this.cpu.state}  wall:${this.cpu._climbPlanPanel?.label ?? '-'}`,
+      `cpu rule intent: ${this.cpu.ruleIntent}  rule:${this.selectedRuleId}`,
       `cpu climbs: ${this.cpu.climbsCompleted}/${this.cpu.climbAttempts}`,
       `cpu difficulty: ${this.cpu.difficulty.id}`,
       `map cpu visible: ${this.cpu.alive && !this.cpu.isConcealed}`,

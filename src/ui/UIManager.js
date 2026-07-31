@@ -91,6 +91,10 @@ export class UIManager {
       subWeaponButtons: Array.from(document.querySelectorAll('[data-subweapon]')),
       battleModeButtons: Array.from(document.querySelectorAll('[data-battle-mode]')),
       challengeBoard: document.getElementById('challenge-board'),
+      rewardButtons: Array.from(document.querySelectorAll('[data-reward]')),
+      cupProgress: document.getElementById('cup-progress'),
+      btnResumeCup: document.getElementById('btn-resume-cup'),
+      ruleHint: document.getElementById('rule-hint'),
 
       timer: document.getElementById('timer'),
       coveragePlayerPct: document.getElementById('coverage-player-pct'),
@@ -113,6 +117,8 @@ export class UIManager {
       specialFill: document.getElementById('special-fill'),
       specialValue: document.getElementById('special-value'),
       weaponName: document.getElementById('weapon-name'),
+      subWeaponName: document.getElementById('sub-weapon-name'),
+      subWeaponStatus: document.getElementById('sub-weapon-status'),
       weaponSwitchHint: document.getElementById('weapon-switch-hint'),
       chargeMeter: document.getElementById('charge-meter'),
       chargeFill: document.getElementById('charge-fill'),
@@ -162,6 +168,7 @@ export class UIManager {
       resultStatBestCombos: document.getElementById('result-stat-best-combos'),
       resultObjective: document.getElementById('result-objective'),
       resultRewards: document.getElementById('result-rewards'),
+      cupSummary: document.getElementById('cup-summary'),
 
       debugOverlay: document.getElementById('debug-overlay'),
       debugFps: document.getElementById('debug-fps'),
@@ -307,6 +314,21 @@ export class UIManager {
   bindRuleSelection(cb) { this._bindOptionButtons(this.el.ruleButtons, 'rule', cb); }
   bindSubWeaponSelection(cb) { this._bindOptionButtons(this.el.subWeaponButtons, 'subweapon', cb); }
   bindBattleModeSelection(cb) { this._bindOptionButtons(this.el.battleModeButtons, 'battleMode', cb); }
+  bindResumeCup(cb) { this.el.btnResumeCup?.addEventListener('click', cb); }
+  bindRewardSelection(cb) {
+    for (const button of this.el.rewardButtons) button.addEventListener('click', () => cb(button.dataset.reward));
+  }
+
+  _setOptionSelection(buttons, dataKey, value) {
+    for (const button of buttons) {
+      const selected = button.dataset[dataKey] === value;
+      button.classList.toggle('selected', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    }
+  }
+
+  setStage(id) { this._setOptionSelection(this.el.stageButtons, 'stage', id); }
+  setBattleMode(id) { this._setOptionSelection(this.el.battleModeButtons, 'battleMode', id); }
 
   setChallengeBoard(challenges, unlocked) {
     if (!this.el.challengeBoard) return;
@@ -334,6 +356,41 @@ export class UIManager {
 
   setObjectiveStatus(text) {
     if (this.el.objectiveStatus) this.el.objectiveStatus.textContent = text;
+  }
+
+  setRuleHint(rule) {
+    if (this.el.ruleHint) this.el.ruleHint.textContent = `${rule.label} — ${rule.description}`;
+  }
+
+  setRewardLoadout(challenges, unlocked, equipped = {}) {
+    const done = unlocked instanceof Set ? unlocked : new Set(unlocked ?? []);
+    for (const button of this.el.rewardButtons) {
+      const challenge = challenges.find((candidate) => candidate.rewardId === button.dataset.reward);
+      const available = done.has(challenge?.id);
+      const isEquipped = Object.values(equipped).includes(button.dataset.reward);
+      button.disabled = !available;
+      button.classList.toggle('equipped', isEquipped);
+      button.setAttribute('aria-pressed', String(isEquipped));
+      button.title = available ? (isEquipped ? 'Equipped' : 'Equip reward') : 'Complete its challenge to unlock';
+    }
+  }
+
+  setCupProgress({ visible = false, round = 0, wins = 0, rival = null, resumeAvailable = false } = {}) {
+    if (this.el.cupProgress) {
+      this.el.cupProgress.innerHTML = visible && rival
+        ? `<strong>RIVAL CUP ${round}/3 — ${rival.name}</strong><br>${rival.tagline}<br>${wins} win${wins === 1 ? '' : 's'}`
+        : '';
+      this.el.cupProgress.classList.toggle('hidden', !visible || !rival);
+    }
+    this.el.btnResumeCup?.classList.toggle('hidden', !resumeAvailable);
+  }
+
+  setCupSummary({ visible = false, results = [], wins = 0, champion = false } = {}) {
+    if (!this.el.cupSummary) return;
+    this.el.cupSummary.innerHTML = visible
+      ? `<strong>${champion ? 'RIVAL CUP CHAMPION' : 'RIVAL CUP COMPLETE'}</strong><br>${results.map((result, index) => `R${index + 1}: ${result.toUpperCase()}`).join(' · ')}<br>TOTAL: ${wins} WINS`
+      : '';
+    this.el.cupSummary.classList.toggle('hidden', !visible);
   }
 
   setCharacter(id, name = '', tagline = '') {
@@ -438,6 +495,7 @@ export class UIManager {
     weaponCharging = false, weaponChargeReady = false,
     weaponChargeStored = false, weaponChargeStoreTimer = 0,
     weaponChargeStoreDuration = 0,
+    subWeaponName = 'INK BOMB', subWeaponCooldown = 0, subWeaponCost = 0,
     koPlayer, koCpu, firing,
     submerged = false, rolling = false, enemyFloor = false,
   }) {
@@ -467,6 +525,13 @@ export class UIManager {
     this.el.specialRow.classList.toggle('special-active', specialActive);
     this.el.specialValue.textContent = specialActive ? 'NOW' : specialReady ? 'Q!' : `${Math.floor(specialPct)}%`;
     this.el.weaponName.textContent = weaponName;
+    if (this.el.subWeaponName) this.el.subWeaponName.textContent = subWeaponName;
+    if (this.el.subWeaponStatus) {
+      const lowInk = ink < subWeaponCost;
+      this.el.subWeaponStatus.textContent = subWeaponCooldown > 0 ? `${subWeaponCooldown.toFixed(1)}s` : lowInk ? 'LOW INK' : 'READY';
+      this.el.subWeaponStatus.classList.toggle('cooldown', subWeaponCooldown > 0);
+      this.el.subWeaponStatus.classList.toggle('low-ink', lowInk);
+    }
     const chargePct = Math.max(0, Math.min(1, weaponCharge));
     this.el.chargeMeter?.classList.toggle('hidden', !weaponUsesCharge);
     this.el.chargeMeter?.classList.toggle('charging', weaponCharging && !weaponChargeReady);

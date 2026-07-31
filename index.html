@@ -121,20 +121,20 @@
         <div class="battle-options" aria-label="Battle setup">
           <div class="option-picker" role="group" aria-label="Stage">
             <span class="option-picker-title">STAGE</span>
-            <button type="button" class="setup-option selected" data-stage="harbor" aria-pressed="true"><strong>NEON HARBOR</strong><small>Balanced routes</small></button>
-            <button type="button" class="setup-option" data-stage="vertical" aria-pressed="false"><strong>VERTICAL YARD</strong><small>Climb and launch</small></button>
+            <button type="button" class="setup-option stage-option selected" data-stage="harbor" aria-pressed="true"><span class="stage-mini stage-mini-harbor" aria-hidden="true"></span><strong>NEON HARBOR</strong><small>Balanced routes</small></button>
+            <button type="button" class="setup-option stage-option" data-stage="vertical" aria-pressed="false"><span class="stage-mini stage-mini-vertical" aria-hidden="true"></span><strong>VERTICAL YARD</strong><small>Climb and launch</small></button>
           </div>
           <div class="option-picker" role="group" aria-label="Rule">
             <span class="option-picker-title">RULE</span>
             <button type="button" class="setup-option selected" data-rule="turf" aria-pressed="true"><strong>TURF WAR</strong><small>Paint coverage</small></button>
-            <button type="button" class="setup-option" data-rule="zone" aria-pressed="false"><strong>ZONE HOLD</strong><small>Hold center 20s</small></button>
-            <button type="button" class="setup-option" data-rule="ko" aria-pressed="false"><strong>KO RUSH</strong><small>First to 5 KOs</small></button>
+            <button type="button" class="setup-option" data-rule="zone" aria-pressed="false"><strong>ZONE HOLD</strong><small>Hold center 18s</small></button>
+            <button type="button" class="setup-option" data-rule="ko" aria-pressed="false"><strong>KO RUSH</strong><small>First to 4 KOs</small></button>
           </div>
           <div class="option-picker" role="group" aria-label="Sub weapon">
             <span class="option-picker-title">SUB</span>
             <button type="button" class="setup-option selected" data-subweapon="bomb" aria-pressed="true"><strong>INK BOMB</strong><small>Large splash</small></button>
             <button type="button" class="setup-option" data-subweapon="mine" aria-pressed="false"><strong>INK MINE</strong><small>Proximity trap</small></button>
-            <button type="button" class="setup-option" data-subweapon="wall" aria-pressed="false"><strong>SPLASH WALL</strong><small>6s barrier</small></button>
+            <button type="button" class="setup-option" data-subweapon="wall" aria-pressed="false"><strong>SPLASH WALL</strong><small>5.5s barrier</small></button>
           </div>
           <div class="option-picker" role="group" aria-label="Battle mode">
             <span class="option-picker-title">MODE</span>
@@ -144,6 +144,17 @@
         </div>
 
         <div id="challenge-board" class="challenge-board" aria-live="polite"></div>
+        <div id="reward-loadout" class="reward-loadout" aria-label="Unlocked reward loadout">
+          <strong>REWARD LOADOUT</strong>
+          <div class="reward-grid">
+            <button type="button" data-reward="aquaTrail" disabled>AQUA TRAIL</button>
+            <button type="button" data-reward="skyAce" disabled>SKY ACE</button>
+            <button type="button" data-reward="comboGlow" disabled>COMBO GLOW</button>
+            <button type="button" data-reward="goldChampion" disabled>GOLD CHAMPION</button>
+          </div>
+        </div>
+        <div id="cup-progress" class="cup-progress hidden" aria-live="polite"></div>
+        <button id="btn-resume-cup" class="btn-secondary hidden" type="button">RESUME RIVAL CUP</button>
 
         <label class="practice-mode-toggle">
           <input type="checkbox" id="practice-mode-toggle" />
@@ -155,7 +166,7 @@
           <small id="start-character-name">CHROMA RIDER</small>
         </button>
         <button id="btn-open-settings" class="btn-link" type="button">⚙ 設定</button>
-        <p class="rule-hint">制限時間 90秒 &mdash; 塗装面積が多い方が勝利</p>
+        <p class="rule-hint" id="rule-hint">TURF WAR — Paint more ground than the rival.</p>
       </div>
     </section>
 
@@ -301,6 +312,7 @@
           </div>
           <div class="player-character-chip"><span>PLAYER</span><strong id="player-character-name">CHROMA RIDER</strong></div>
           <div class="weapon-strip"><span>MAIN</span><strong id="weapon-name">STREAM</strong><small id="weapon-switch-hint">1 / 2 / 3</small></div>
+          <div class="weapon-strip sub-weapon-strip"><span>SUB</span><strong id="sub-weapon-name">INK BOMB</strong><small id="sub-weapon-status">READY</small></div>
           <div id="charge-meter" class="charge-meter hidden" aria-label="PRECISION charge">
             <span>CHARGE</span>
             <div class="charge-track"><div id="charge-fill" class="charge-fill"></div></div>
@@ -384,6 +396,7 @@
           <li class="result-stat-combo"><span>BEST COMBO</span><b id="result-stat-best-combos">0 / 0</b></li>
         </ul>
         <div id="result-rewards" class="result-rewards hidden"></div>
+        <div id="cup-summary" class="cup-summary hidden"></div>
         <button id="btn-restart" class="btn-primary" type="button">もう一度戦う (R)</button>
       </div>
     </section>

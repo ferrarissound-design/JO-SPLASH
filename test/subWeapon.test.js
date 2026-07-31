@@ -16,7 +16,7 @@ describe('InkBomb selectable sub weapons', () => {
     const deployMine = vi.fn(() => true);
     expect(weapon.fire(owner, origin, direction, { gadgetSystem: { deployMine } })).toBe(true);
     expect(deployMine).toHaveBeenCalledWith(owner);
-    expect(owner.ink).toBe(76);
+    expect(owner.ink).toBe(74);
   });
 
   it('deploys a wall and rejects use without enough ink', () => {
@@ -27,6 +27,6 @@ describe('InkBomb selectable sub weapons', () => {
     const owner = character();
     expect(weapon.fire(owner, origin, direction, { gadgetSystem: { deployWall } })).toBe(true);
     expect(deployWall).toHaveBeenCalledWith(owner, direction);
-    expect(owner.ink).toBe(68);
+    expect(owner.ink).toBe(66);
   });
 });

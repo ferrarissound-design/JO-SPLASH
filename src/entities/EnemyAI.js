@@ -54,6 +54,36 @@ function yawFromDirection(dx, dz) {
   return Math.atan2(-dx, -dz);
 }
 
+export function chooseRuleDirective(ruleContext, {
+  distanceToPlayer = Infinity,
+  cpuHp = 100,
+  hasLineOfSight = false,
+  aggression = 1,
+  objectiveBias = 1,
+  retreatBias = 1,
+} = {}) {
+  if (!ruleContext) return null;
+  if (ruleContext.ruleId === 'zone') {
+    const cpuBehind = ruleContext.zoneCpu + 0.5 < ruleContext.zonePlayer;
+    const zoneLost = ruleContext.zoneOwner !== TEAM.CPU;
+    if (zoneLost && (cpuBehind || objectiveBias >= 1 || ruleContext.timeRemaining < 40)) {
+      return { type: 'zone', intent: cpuBehind ? 'RECLAIM ZONE' : 'CAPTURE ZONE' };
+    }
+    if (ruleContext.zoneOwner === TEAM.CPU && hasLineOfSight && distanceToPlayer <= AI.attackRange * aggression) {
+      return { type: 'attack', intent: 'DEFEND ZONE' };
+    }
+  }
+  if (ruleContext.ruleId === 'ko') {
+    const cpuLead = ruleContext.koCpu - ruleContext.koPlayer;
+    if (cpuLead > 0 && cpuHp <= 48 * retreatBias) return { type: 'flee', intent: 'PROTECT LEAD' };
+    const mustChase = cpuLead < 0 || ruleContext.timeRemaining < 30;
+    if (hasLineOfSight && (mustChase || distanceToPlayer <= AI.attackRange * aggression)) {
+      return { type: 'attack', intent: mustChase ? 'CHASE KO' : 'PRESSURE' };
+    }
+  }
+  return null;
+}
+
 // ============================================================================
 // EnemyAI — CPU-controlled Character. Re-evaluates a small state machine
 // every ~0.25-0.5s (not every frame) and executes simple steering movement +
@@ -75,6 +105,8 @@ export class EnemyAI extends Character {
     // ATTACK/BOMB/SPECIAL — it just wanders and paints, a passive target
     // the player can safely practice against.
     this.practiceMode = false;
+    this.rivalTactics = { aggression: 1, objectiveBias: 1, retreatBias: 1 };
+    this.ruleIntent = 'TURF PATROL';
 
     this.state = STATE.EXPLORE;
     this._decisionTimer = 0;
@@ -175,6 +207,15 @@ export class EnemyAI extends Character {
     return this.difficulty;
   }
 
+  setRivalTactics(tactics = {}) {
+    this.rivalTactics = {
+      aggression: 1,
+      objectiveBias: 1,
+      retreatBias: 1,
+      ...tactics,
+    };
+  }
+
   /** Combines the selected difficulty preset with the current appearance's behavior traits into `this.difficulty`. */
   _recomputeEffectiveDifficulty() {
     const base = this._baseDifficulty ?? {
@@ -215,7 +256,7 @@ export class EnemyAI extends Character {
   update(dt, ctx) {
     const {
       arena, paintSystem, projectileManager, particleManager,
-      audioManager, player, ui, onCharacterHit, controlsEnabled,
+      audioManager, player, ui, onCharacterHit, controlsEnabled, ruleContext,
     } = ctx;
 
     this.updateTimers(dt);
@@ -242,7 +283,7 @@ export class EnemyAI extends Character {
 
     this._decisionTimer -= dt;
     if (this._decisionTimer <= 0) {
-      this._reevaluate(arena, paintSystem, player, ui);
+      this._reevaluate(arena, paintSystem, player, ui, ruleContext);
       this._decisionTimer = THREE.MathUtils.lerp(AI.decisionIntervalMin, AI.decisionIntervalMax, Math.random())
         * this.difficulty.decisionIntervalMult;
     }
@@ -276,7 +317,7 @@ export class EnemyAI extends Character {
   }
 
   // ---------------------------------------------------------------- decide
-  _reevaluate(arena, paintSystem, player, ui) {
+  _reevaluate(arena, paintSystem, player, ui, ruleContext = null) {
     // Once the CPU commits to a wall route it keeps painting/climbing long
     // enough to complete it instead of discarding the plan every 0.25s.
     if (this.isClimbing) return;
@@ -286,6 +327,7 @@ export class EnemyAI extends Character {
     if (this.state === STATE.SPECIAL && this._specialWindupTimer > 0) return;
 
     if (this.practiceMode) {
+      this.ruleIntent = 'PRACTICE PAINT';
       const survey = this._surveySurroundings(arena, paintSystem);
       this._selectUtilityWeapon();
       if (survey.neutralPoint) {
@@ -302,17 +344,46 @@ export class EnemyAI extends Character {
     const hasLOS = this._hasLineOfSight(arena, player);
 
     if (this._shouldUseSpecial(paintSystem, player, dist)) {
+      this.ruleIntent = 'SPECIAL PRESSURE';
       this._beginSpecialWindup(ui);
       return;
     }
 
+    const directive = chooseRuleDirective(ruleContext, {
+      distanceToPlayer: dist,
+      cpuHp: this.hp,
+      hasLineOfSight: hasLOS,
+      ...this.rivalTactics,
+    });
+    if (directive?.type === 'zone') {
+      this.ruleIntent = directive.intent;
+      this._selectUtilityWeapon();
+      this.state = STATE.RETAKE;
+      this.targetPoint.set(0, arena.getGroundHeight(0, 0), 0);
+      return;
+    }
+    if (directive?.type === 'attack') {
+      this.ruleIntent = directive.intent;
+      this._selectCombatWeapon(dist);
+      this.state = STATE.ATTACK;
+      return;
+    }
+    if (directive?.type === 'flee') {
+      this.ruleIntent = directive.intent;
+      this.state = STATE.FLEE;
+      this.targetPoint = this._findFleeTarget(arena, paintSystem, player);
+      return;
+    }
+
     if (this.hp < AI.fleeHpThreshold * this.difficulty.fleeHpThresholdMult) {
+      this.ruleIntent = 'RECOVER';
       this.state = STATE.FLEE;
       this.targetPoint = this._findFleeTarget(arena, paintSystem, player);
       return;
     }
 
     if (this._shouldThrowBomb(player, dist, hasLOS)) {
+      this.ruleIntent = 'BOMB PRESSURE';
       this.state = STATE.BOMB;
       this._bombPlanTimer = 0.8;
       this._bombTarget.copy(player.position);
@@ -320,12 +391,14 @@ export class EnemyAI extends Character {
     }
 
     if (dist <= AI.attackRange && hasLOS && this.ink >= WEAPON.costPerShot * 2) {
+      this.ruleIntent = ruleContext?.ruleId === 'ko' ? 'SEEK KO' : 'ENGAGE';
       this._selectCombatWeapon(dist);
       this.state = STATE.ATTACK;
       return;
     }
 
     if (this.ink < AI.refillInkThreshold) {
+      this.ruleIntent = 'REFILL';
       this._selectUtilityWeapon();
       this.state = STATE.REFILL;
       this.targetPoint = this._findOwnTarget(arena, paintSystem);
@@ -339,6 +412,7 @@ export class EnemyAI extends Character {
 
     const survey = this._surveySurroundings(arena, paintSystem);
     if (survey.enemyCount >= survey.sampleCount * 0.4 && survey.enemyPoint) {
+      this.ruleIntent = 'RETAKE TURF';
       this._selectUtilityWeapon();
       this.state = STATE.RETAKE;
       this.targetPoint = survey.enemyPoint;
@@ -346,6 +420,7 @@ export class EnemyAI extends Character {
     }
 
     if (survey.neutralPoint) {
+      this.ruleIntent = 'PAINT TURF';
       this._selectUtilityWeapon();
       this.state = STATE.PAINT;
       this.targetPoint = survey.neutralPoint;
@@ -353,6 +428,7 @@ export class EnemyAI extends Character {
     }
 
     this.state = STATE.EXPLORE;
+    this.ruleIntent = 'PATROL';
     this.targetPoint = this._findExploreTarget(arena);
   }
 

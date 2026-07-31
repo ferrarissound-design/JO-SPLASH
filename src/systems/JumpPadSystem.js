@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { COLORS, JUMP_PAD, TEAM, THEME } from '../config.js';
 
-const PAD_DEFS = Object.freeze([
+export const DEFAULT_PAD_DEFS = Object.freeze([
   Object.freeze({ x: -12, z: 8, targetX: -2.4, targetZ: 1.6 }),
   Object.freeze({ x: 12, z: -8, targetX: 2.4, targetZ: -1.6 }),
 ]);
@@ -27,10 +27,11 @@ export function launchCharacterFromPad(character, pad) {
 }
 
 export class JumpPadSystem {
-  constructor(scene) {
+  constructor(scene, definitions = DEFAULT_PAD_DEFS) {
+    this.scene = scene;
     this.group = new THREE.Group();
     this.group.name = 'JumpPads';
-    this.pads = PAD_DEFS.map((definition, index) => this._createPad(definition, index));
+    this.pads = definitions.map((definition, index) => this._createPad(definition, index));
     this._cooldowns = new WeakMap();
     scene.add(this.group);
   }
@@ -134,5 +135,14 @@ export class JumpPadSystem {
       audioManager?.playJumpPad();
       if (character.team === TEAM.PLAYER) ui?.showStatusMessage('BOOST LAUNCH!', 0.7);
     }
+  }
+
+  dispose() {
+    this.scene.remove(this.group);
+    this.group.traverse((obj) => {
+      obj.geometry?.dispose?.();
+      obj.material?.dispose?.();
+    });
+    this.pads = [];
   }
 }
