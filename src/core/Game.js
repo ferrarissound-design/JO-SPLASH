@@ -9,9 +9,12 @@ import { Settings } from './Settings.js';
 import { MatchRecord } from './MatchRecord.js';
 import { calculateBattleRank } from './BattleRank.js';
 import { isSuddenDeathTie, getSuddenDeathLeader } from './SuddenDeath.js';
-import { Arena } from '../systems/Arena.js';
+import { MATCH_RULES, ZONE_TARGET_SECONDS, KO_TARGET, getZoneOwner, resolveRuleOutcome } from './MatchRules.js';
+import { Progression, CHALLENGES } from './Progression.js';
+import { Arena, STAGES } from '../systems/Arena.js';
 import { JumpPadSystem } from '../systems/JumpPadSystem.js';
 import { StageDecor } from '../systems/StageDecor.js';
+import { GadgetSystem } from '../systems/GadgetSystem.js';
 import { PaintSystem } from '../systems/PaintSystem.js';
 import { ProjectileManager } from '../systems/ProjectileManager.js';
 import { ParticleManager } from '../systems/ParticleManager.js';
@@ -59,17 +62,24 @@ export class Game {
     this.settings = new Settings();
     this.settings.apply();
     this.matchRecord = new MatchRecord();
+    this.progression = new Progression();
+    this.selectedStageId = 'harbor';
+    this.selectedRuleId = 'turf';
+    this.selectedSubWeaponId = 'bomb';
+    this.selectedBattleMode = 'single';
+    this.cupActive = false;
+    this.cupRound = 0;
+    this.cupWins = 0;
+    this.zoneControl = { player: 0, cpu: 0 };
 
     this._setupRenderer();
     this._setupScene();
 
-    this.arena = new Arena();
+    this.arena = new Arena(this.selectedStageId);
     this.scene.add(this.arena.group);
 
     this.paintSystem = new PaintSystem(this.arena.halfWidth, this.arena.halfDepth);
-    this.paintSystem.applyToMaterial(this.arena.floorMesh.material);
-    this.paintSystem.applyToMaterial(this.arena.platformTopMesh.material);
-    this.paintSystem.applyToMaterial(this.arena.rampTopMesh.material);
+    for (const mesh of this.arena.paintableFloorMeshes) this.paintSystem.applyToMaterial(mesh.material);
 
     this.input = new InputManager(this.canvas);
     this.settings.attachInput(this.input);
@@ -101,6 +111,16 @@ export class Game {
     this.projectileManager.onCharacterHit = (targetTeam, damage, hitPoint, metadata) => (
       this._onCharacterHit(targetTeam, damage, hitPoint, metadata)
     );
+    this.gadgetSystem = new GadgetSystem(
+      this.scene,
+      this.arena,
+      this.paintSystem,
+      this.particleManager,
+      this.audioManager,
+      (targetTeam, damage, hitPoint, metadata) => this._onCharacterHit(targetTeam, damage, hitPoint, metadata),
+    );
+    this.gadgetSystem.attachProjectileManager(this.projectileManager);
+    this.projectileManager.gadgetSystem = this.gadgetSystem;
 
     this.selectedCharacterId = 'default';
     this.player = new Player(
@@ -162,6 +182,8 @@ export class Game {
     this._selectDifficulty(this.selectedDifficulty);
     this._bindWindow();
     this.ui.updateMatchRecord(this.matchRecord);
+    this.ui.setChallengeBoard(CHALLENGES, this.progression.unlocked);
+    this._applyRewardTheme();
     this.input.onLockLost = () => this._pauseFromLockLoss();
 
     this.clock = new THREE.Clock();
@@ -217,12 +239,21 @@ export class Game {
   }
 
   _bindUI() {
-    this.ui.bindStart(() => this._startMatch());
-    this.ui.bindRestart(() => this._startMatch());
+    this.ui.bindStart(() => this._beginSelectedMode());
+    this.ui.bindRestart(() => this._continueFromResult());
     this.ui.bindCycleAppearance(() => this._cycleEnemyAppearance());
     this.ui.bindCharacterSelection((characterId) => this._selectCharacter(characterId));
     this.ui.bindDifficultySelection((difficultyId) => this._selectDifficulty(difficultyId));
     this.ui.bindPracticeModeChange((checked) => { this.practiceMode = checked; });
+    this.ui.bindStageSelection((stageId) => this._selectStage(stageId));
+    this.ui.bindRuleSelection((ruleId) => {
+      this.selectedRuleId = MATCH_RULES[ruleId] ? ruleId : 'turf';
+    });
+    this.ui.bindSubWeaponSelection((subWeaponId) => {
+      this.selectedSubWeaponId = subWeaponId;
+      this.player.subWeapon.setType(subWeaponId);
+    });
+    this.ui.bindBattleModeSelection((mode) => { this.selectedBattleMode = mode === 'cup' ? 'cup' : 'single'; });
     this.ui.bindResume(() => this._resumeFromPause());
     this.ui.bindQuit(() => this._quitToTitle());
     this.ui.bindPause(() => this._pauseMatch());
@@ -244,6 +275,106 @@ export class Game {
       this.settings.resetKeyBindings();
       this.ui.updateKeybindLabels(this.settings.values.keyBindings);
     });
+  }
+
+  _beginSelectedMode() {
+    this.cupActive = this.selectedBattleMode === 'cup';
+    this.cupRound = this.cupActive ? 1 : 0;
+    this.cupWins = 0;
+    if (this.cupActive) this._configureCupRound();
+    this._startMatch();
+  }
+
+  _continueFromResult() {
+    if (this.cupActive && this.cupRound < 3) {
+      this.cupRound++;
+      this._configureCupRound();
+      this._startMatch();
+      return;
+    }
+    if (this.cupActive && this.cupRound >= 3) {
+      this.cupActive = false;
+      this.state = STATE.TITLE;
+      this.ui.hideResultScreen();
+      this.ui.showTitle();
+      this.ui.setRestartLabel('もう一度戦う (R)');
+      return;
+    }
+    this._startMatch();
+  }
+
+  _configureCupRound() {
+    const difficultyIds = ['rookie', 'standard', 'elite'];
+    const difficultyId = difficultyIds[Math.max(0, Math.min(2, this.cupRound - 1))];
+    this._selectDifficulty(difficultyId);
+    this.cpu.applyAppearance(this.cupRound - 1, { playIntro: false });
+  }
+
+  _selectStage(stageId) {
+    const nextId = STAGES[stageId] ? stageId : 'harbor';
+    if (nextId === this.selectedStageId) return;
+    this.selectedStageId = nextId;
+    this._rebuildArena(nextId);
+  }
+
+  _disposeObjectTree(root) {
+    root?.traverse((obj) => {
+      obj.geometry?.dispose?.();
+      if (Array.isArray(obj.material)) obj.material.forEach((material) => material?.dispose?.());
+      else obj.material?.dispose?.();
+    });
+  }
+
+  _rebuildArena(stageId) {
+    this.gadgetSystem?.reset();
+    this.projectileManager?.dispose();
+    this.paintSystem?.dispose();
+    if (this.stageDecor?.group) {
+      this.scene.remove(this.stageDecor.group);
+      this._disposeObjectTree(this.stageDecor.group);
+    }
+    if (this.arena?.group) {
+      this.scene.remove(this.arena.group);
+      this._disposeObjectTree(this.arena.group);
+    }
+
+    this.arena = new Arena(stageId);
+    this.scene.add(this.arena.group);
+    this.paintSystem = new PaintSystem(this.arena.halfWidth, this.arena.halfDepth);
+    for (const mesh of this.arena.paintableFloorMeshes) this.paintSystem.applyToMaterial(mesh.material);
+    this.stageDecor = new StageDecor(this.scene, this.arena, { lowQuality: this.input.isTouch });
+    this.cameraController.arena = this.arena;
+    this.cameraController.collisionMeshes = this.arena.group.children;
+
+    this.projectileManager = new ProjectileManager(
+      this.scene, this.arena, this.paintSystem, this.particleManager, this.audioManager,
+    );
+    this.projectileManager.onCharacterHit = (targetTeam, damage, hitPoint, metadata) => (
+      this._onCharacterHit(targetTeam, damage, hitPoint, metadata)
+    );
+    this.projectileManager.onPaint = (team, paintedCells) => {
+      if (team === TEAM.PLAYER) this.player.special.addCharge(paintedCells);
+      else if (team === TEAM.CPU) {
+        this.cpu.special.addCharge(paintedCells * AI.specialChargeMultiplier * this.cpu.difficulty.specialChargeMult);
+      }
+    };
+    this.gadgetSystem = new GadgetSystem(
+      this.scene, this.arena, this.paintSystem, this.particleManager, this.audioManager,
+      (targetTeam, damage, hitPoint, metadata) => this._onCharacterHit(targetTeam, damage, hitPoint, metadata),
+    );
+    this.gadgetSystem.attachProjectileManager(this.projectileManager);
+    this.projectileManager.gadgetSystem = this.gadgetSystem;
+    this.player.spawnPoint.copy(this.arena.spawnPoints.player);
+    this.cpu.spawnPoint.copy(this.arena.spawnPoints.cpu);
+    this.player.position.copy(this.player.spawnPoint);
+    this.cpu.position.copy(this.cpu.spawnPoint);
+    this._faceSpawnPoints();
+  }
+
+  _applyRewardTheme() {
+    const unlocked = this.progression.unlocked;
+    document.body.dataset.rewardGold = String(unlocked.has('champion'));
+    document.body.dataset.rewardCombo = String(unlocked.has('combo'));
   }
 
   _selectCharacter(characterId) {
@@ -364,6 +495,7 @@ export class Game {
     this.paintSystem.reset();
     for (const panel of this.arena.wallPanels) panel.paint.reset();
     this.projectileManager.reset();
+    this.gadgetSystem.reset();
     this.particleManager.reset();
     this.jumpPadSystem.reset();
     this._paintSpawnSafeZone(this.arena.spawnPoints.player, TEAM.PLAYER);
@@ -394,6 +526,7 @@ export class Game {
     this.player.weapon.resetCharge();
     this.player._fireWasHeld = false;
     this.player.subWeapon.cooldown = 0;
+    this.player.subWeapon.setType(this.selectedSubWeaponId);
 
     this.cpu.position.copy(this.arena.spawnPoints.cpu);
     this.cpu.velocity.set(0, 0, 0);
@@ -413,7 +546,8 @@ export class Game {
     this.cpu.resetTactics({ newMatch: true });
     // Fresh random look each match; the entrance animation plays once the
     // countdown ends (see _updateCountdown), not during the reset.
-    this.cpu.randomizeAppearance({ playIntro: false });
+    if (this.cupActive) this.cpu.applyAppearance(this.cupRound - 1, { playIntro: false });
+    else this.cpu.randomizeAppearance({ playIntro: false });
 
     this._faceSpawnPoints();
 
@@ -423,6 +557,7 @@ export class Game {
     this._lastFinalSecond = null;
     this.inSuddenDeath = false;
     this._suddenDeathForcedWinnerTeam = null;
+    this.zoneControl = { player: 0, cpu: 0 };
 
     this.ui.hideTitle();
     this.ui.hideResultScreen();
@@ -434,6 +569,7 @@ export class Game {
     this.ui.updateEnemySpecialWarning({ visible: false });
     this.ui.resetFinale();
     this.ui.setSuddenDeathActive(false);
+    this.ui.setObjectiveStatus(MATCH_RULES[this.selectedRuleId].label);
     this.ui.resetInkRollFeedback();
     this.ui.hideDamageDirection();
     this.ui.resetTurfMap();
@@ -519,7 +655,13 @@ export class Game {
    * only extends into overtime once, so this can't loop forever.
    */
   _handleTimeExpired(cov) {
-    if (!this.inSuddenDeath && isSuddenDeathTie(cov.playerPct, cov.cpuPct, MATCH.suddenDeathMarginPct)) {
+    if (this._suddenDeathForcedWinnerTeam) {
+      this._beginJudging();
+      return;
+    }
+    if (this.selectedRuleId === 'turf'
+      && !this.inSuddenDeath
+      && isSuddenDeathTie(cov.playerPct, cov.cpuPct, MATCH.suddenDeathMarginPct)) {
       this._enterSuddenDeath();
       return;
     }
@@ -545,9 +687,25 @@ export class Game {
     // scorer's favor (see _onCharacterHit), overriding the usual
     // coverage-based outcome check — the instant of a KO doesn't necessarily
     // line up with whoever currently has more floor painted.
-    const outcome = this._suddenDeathForcedWinnerTeam
-      ? (this._suddenDeathForcedWinnerTeam === TEAM.PLAYER ? 'win' : 'lose')
-      : (cov.playerCells === cov.cpuCells ? 'draw' : (cov.playerCells > cov.cpuCells ? 'win' : 'lose'));
+    const outcome = resolveRuleOutcome(this.selectedRuleId, {
+      coverage: cov,
+      koPlayer: this.player.koScored,
+      koCpu: this.cpu.koScored,
+      zonePlayer: this.zoneControl.player,
+      zoneCpu: this.zoneControl.cpu,
+      forcedWinnerTeam: this._suddenDeathForcedWinnerTeam,
+    });
+
+    if (this.cupActive && outcome === 'win') this.cupWins++;
+    const cupChampion = this.cupActive && this.cupRound === 3 && this.cupWins >= 2;
+    const earned = this.progression.evaluate({
+      playerPct: cov.playerPct,
+      skySplashes: this.player.skySplashHits,
+      bestCombo: this.player.bestHitCombo,
+      cupChampion,
+    });
+    this.ui.setChallengeBoard(CHALLENGES, this.progression.unlocked);
+    this._applyRewardTheme();
 
     if (outcome === 'win') this.audioManager.playWin();
     else if (outcome === 'lose') this.audioManager.playLose();
@@ -594,6 +752,25 @@ export class Game {
       rank,
       suddenDeath: this.inSuddenDeath,
     });
+    const objective = this.selectedRuleId === 'zone'
+      ? `YOU ${this.zoneControl.player.toFixed(1)}s / CPU ${this.zoneControl.cpu.toFixed(1)}s`
+      : this.selectedRuleId === 'ko'
+        ? `YOU ${this.player.koScored} KO / CPU ${this.cpu.koScored} KO`
+        : STAGES[this.selectedStageId].label;
+    const cup = this.cupActive
+      ? `RIVAL CUP ${this.cupRound}/3 · ${this.cupWins} WIN${this.cupWins === 1 ? '' : 'S'}${this.cupRound === 3 ? (cupChampion ? ' · CHAMPION' : ' · CUP COMPLETE') : ''}`
+      : '';
+    this.ui.setResultMeta({
+      ruleLabel: MATCH_RULES[this.selectedRuleId].label,
+      objective,
+      cup,
+      rewards: earned.map((challenge) => challenge.reward),
+    });
+    this.ui.setRestartLabel(
+      this.cupActive
+        ? (this.cupRound < 3 ? `NEXT RIVAL (${this.cupRound + 1}/3)` : 'RETURN TO TITLE')
+        : 'もう一度戦う (R)',
+    );
   }
 
   /** Pre-inks a safe home patch around a spawn point so nobody wakes up standing on neutral/enemy ground. */
@@ -887,7 +1064,7 @@ export class Game {
     if (this.input.wasJustPressed('Escape')) this._pauseMatch();
 
     this.matchTimeRemaining -= dt;
-    const matchOver = this.matchTimeRemaining <= 0;
+    let matchOver = this.matchTimeRemaining <= 0;
     this.matchTimeRemaining = Math.max(0, this.matchTimeRemaining);
     this._updateFinalCountdown();
 
@@ -936,6 +1113,7 @@ export class Game {
     }
 
     this.projectileManager.update(dt, [this.player, this.cpu]);
+    this.gadgetSystem.update(dt, [this.player, this.cpu]);
     this.particleManager.update(dt);
     this.paintSystem.update(dt);
 
@@ -951,6 +1129,24 @@ export class Game {
     this._updateCpuVisibility(dt);
 
     const cov = this.paintSystem.getCoverage();
+    if (this.selectedRuleId === 'zone') {
+      const zoneOwner = getZoneOwner(this.paintSystem.ownerGrid, this.paintSystem.gridRes);
+      if (zoneOwner === TEAM.PLAYER) this.zoneControl.player += dt;
+      else if (zoneOwner === TEAM.CPU) this.zoneControl.cpu += dt;
+      this.ui.setObjectiveStatus(
+        `ZONE HOLD · YOU ${this.zoneControl.player.toFixed(1)} / CPU ${this.zoneControl.cpu.toFixed(1)} · ${ZONE_TARGET_SECONDS}s`,
+      );
+      if (this.zoneControl.player >= ZONE_TARGET_SECONDS || this.zoneControl.cpu >= ZONE_TARGET_SECONDS) {
+        this._suddenDeathForcedWinnerTeam = this.zoneControl.player >= ZONE_TARGET_SECONDS ? TEAM.PLAYER : TEAM.CPU;
+        matchOver = true;
+      }
+    } else if (this.selectedRuleId === 'ko') {
+      this.ui.setObjectiveStatus(`KO RUSH · YOU ${this.player.koScored} / CPU ${this.cpu.koScored} · FIRST TO ${KO_TARGET}`);
+      if (this.player.koScored >= KO_TARGET || this.cpu.koScored >= KO_TARGET) {
+        this._suddenDeathForcedWinnerTeam = this.player.koScored >= KO_TARGET ? TEAM.PLAYER : TEAM.CPU;
+        matchOver = true;
+      }
+    }
     // Once in overtime, breaking the tie by more than the margin ends the
     // match immediately rather than waiting out the sudden-death clock.
     if (this.inSuddenDeath && getSuddenDeathLeader(cov.playerPct, cov.cpuPct, MATCH.suddenDeathMarginPct)) {
@@ -1028,7 +1224,7 @@ export class Game {
     this.player.syncMesh(this.elapsedTime);
     this.cpu.syncMesh(this.elapsedTime);
 
-    if (this.input.wasJustPressed('KeyR') || this.input.wasJustPressed('Space')) this._startMatch();
+    if (this.input.wasJustPressed('KeyR') || this.input.wasJustPressed('Space')) this._continueFromResult();
   }
 
   _updateSurfFeedback(dt, active, rolling = false) {

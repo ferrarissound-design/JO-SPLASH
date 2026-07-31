@@ -118,6 +118,33 @@
           </button>
         </div>
 
+        <div class="battle-options" aria-label="Battle setup">
+          <div class="option-picker" role="group" aria-label="Stage">
+            <span class="option-picker-title">STAGE</span>
+            <button type="button" class="setup-option selected" data-stage="harbor" aria-pressed="true"><strong>NEON HARBOR</strong><small>Balanced routes</small></button>
+            <button type="button" class="setup-option" data-stage="vertical" aria-pressed="false"><strong>VERTICAL YARD</strong><small>Climb and launch</small></button>
+          </div>
+          <div class="option-picker" role="group" aria-label="Rule">
+            <span class="option-picker-title">RULE</span>
+            <button type="button" class="setup-option selected" data-rule="turf" aria-pressed="true"><strong>TURF WAR</strong><small>Paint coverage</small></button>
+            <button type="button" class="setup-option" data-rule="zone" aria-pressed="false"><strong>ZONE HOLD</strong><small>Hold center 20s</small></button>
+            <button type="button" class="setup-option" data-rule="ko" aria-pressed="false"><strong>KO RUSH</strong><small>First to 5 KOs</small></button>
+          </div>
+          <div class="option-picker" role="group" aria-label="Sub weapon">
+            <span class="option-picker-title">SUB</span>
+            <button type="button" class="setup-option selected" data-subweapon="bomb" aria-pressed="true"><strong>INK BOMB</strong><small>Large splash</small></button>
+            <button type="button" class="setup-option" data-subweapon="mine" aria-pressed="false"><strong>INK MINE</strong><small>Proximity trap</small></button>
+            <button type="button" class="setup-option" data-subweapon="wall" aria-pressed="false"><strong>SPLASH WALL</strong><small>6s barrier</small></button>
+          </div>
+          <div class="option-picker" role="group" aria-label="Battle mode">
+            <span class="option-picker-title">MODE</span>
+            <button type="button" class="setup-option selected" data-battle-mode="single" aria-pressed="true"><strong>SINGLE</strong><small>One match</small></button>
+            <button type="button" class="setup-option" data-battle-mode="cup" aria-pressed="false"><strong>RIVAL CUP</strong><small>3 rival matches</small></button>
+          </div>
+        </div>
+
+        <div id="challenge-board" class="challenge-board" aria-live="polite"></div>
+
         <label class="practice-mode-toggle">
           <input type="checkbox" id="practice-mode-toggle" />
           <span>練習モード（CPUは攻撃・反撃しません）</span>
@@ -244,6 +271,7 @@
           <div class="match-side match-player"><span class="side-tag side-player">YOU</span><span id="coverage-player-pct">0%</span></div>
           <div id="timer">01:30</div>
           <div class="match-side match-cpu"><span class="side-tag side-cpu" id="cpu-level-label">CPU · STANDARD</span><span id="coverage-cpu-pct">0%</span></div>
+          <div id="objective-status" class="objective-status">TURF WAR</div>
           <div class="coverage-bar" aria-hidden="true">
             <div id="coverage-bar-player" class="coverage-fill fill-player"></div>
             <div id="coverage-bar-cpu" class="coverage-fill fill-cpu"></div>
@@ -343,6 +371,7 @@
         <div class="result-detail">
           <span>未占有エリア: <b id="result-pct-neutral">0%</b></span>
         </div>
+        <div id="result-objective" class="result-objective hidden"></div>
         <div class="result-ko">
           <span>撃破数 — YOU: <b id="result-ko-player">0</b> / CPU: <b id="result-ko-cpu">0</b></span>
         </div>
@@ -354,6 +383,7 @@
           <li class="result-stat-highlight"><span>SKY SPLASH</span><b id="result-stat-sky-splashes">0 / 0</b></li>
           <li class="result-stat-combo"><span>BEST COMBO</span><b id="result-stat-best-combos">0 / 0</b></li>
         </ul>
+        <div id="result-rewards" class="result-rewards hidden"></div>
         <button id="btn-restart" class="btn-primary" type="button">もう一度戦う (R)</button>
       </div>
     </section>

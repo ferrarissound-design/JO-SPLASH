@@ -86,12 +86,18 @@ export class UIManager {
       difficultyButtons: Array.from(document.querySelectorAll('[data-difficulty]')),
       cpuLevelLabel: document.getElementById('cpu-level-label'),
       practiceModeToggle: document.getElementById('practice-mode-toggle'),
+      stageButtons: Array.from(document.querySelectorAll('[data-stage]')),
+      ruleButtons: Array.from(document.querySelectorAll('[data-rule]')),
+      subWeaponButtons: Array.from(document.querySelectorAll('[data-subweapon]')),
+      battleModeButtons: Array.from(document.querySelectorAll('[data-battle-mode]')),
+      challengeBoard: document.getElementById('challenge-board'),
 
       timer: document.getElementById('timer'),
       coveragePlayerPct: document.getElementById('coverage-player-pct'),
       coverageCpuPct: document.getElementById('coverage-cpu-pct'),
       coverageBarPlayer: document.getElementById('coverage-bar-player'),
       coverageBarCpu: document.getElementById('coverage-bar-cpu'),
+      objectiveStatus: document.getElementById('objective-status'),
       statusMsg: document.getElementById('status-msg'),
       turfMap: document.getElementById('turf-map'),
       turfMapCanvas: document.getElementById('turf-map-canvas'),
@@ -154,6 +160,8 @@ export class UIManager {
       resultStatRolls: document.getElementById('result-stat-rolls'),
       resultStatSkySplashes: document.getElementById('result-stat-sky-splashes'),
       resultStatBestCombos: document.getElementById('result-stat-best-combos'),
+      resultObjective: document.getElementById('result-objective'),
+      resultRewards: document.getElementById('result-rewards'),
 
       debugOverlay: document.getElementById('debug-overlay'),
       debugFps: document.getElementById('debug-fps'),
@@ -280,6 +288,52 @@ export class UIManager {
   }
   bindPracticeModeChange(cb) {
     this.el.practiceModeToggle?.addEventListener('change', () => cb(this.el.practiceModeToggle.checked));
+  }
+
+  _bindOptionButtons(buttons, dataKey, cb) {
+    for (const button of buttons) {
+      button.addEventListener('click', () => {
+        for (const candidate of buttons) {
+          const selected = candidate === button;
+          candidate.classList.toggle('selected', selected);
+          candidate.setAttribute('aria-pressed', String(selected));
+        }
+        cb(button.dataset[dataKey]);
+      });
+    }
+  }
+
+  bindStageSelection(cb) { this._bindOptionButtons(this.el.stageButtons, 'stage', cb); }
+  bindRuleSelection(cb) { this._bindOptionButtons(this.el.ruleButtons, 'rule', cb); }
+  bindSubWeaponSelection(cb) { this._bindOptionButtons(this.el.subWeaponButtons, 'subweapon', cb); }
+  bindBattleModeSelection(cb) { this._bindOptionButtons(this.el.battleModeButtons, 'battleMode', cb); }
+
+  setChallengeBoard(challenges, unlocked) {
+    if (!this.el.challengeBoard) return;
+    const done = unlocked instanceof Set ? unlocked : new Set(unlocked ?? []);
+    this.el.challengeBoard.innerHTML = `<b>CHALLENGES</b><br>${challenges.map((challenge) => (
+      `<span class="${done.has(challenge.id) ? 'done' : ''}">${done.has(challenge.id) ? '✓' : '○'} ${challenge.label} — ${challenge.reward}</span>`
+    )).join('<br>')}`;
+  }
+
+  setResultMeta({ ruleLabel = '', objective = '', cup = '', rewards = [] } = {}) {
+    if (this.el.resultObjective) {
+      const text = [ruleLabel, objective, cup].filter(Boolean).join(' · ');
+      this.el.resultObjective.textContent = text;
+      this.el.resultObjective.classList.toggle('hidden', !text);
+    }
+    if (this.el.resultRewards) {
+      this.el.resultRewards.textContent = rewards.length ? `UNLOCKED: ${rewards.join(' / ')}` : '';
+      this.el.resultRewards.classList.toggle('hidden', rewards.length === 0);
+    }
+  }
+
+  setRestartLabel(label) {
+    if (this.el.btnRestart) this.el.btnRestart.textContent = label;
+  }
+
+  setObjectiveStatus(text) {
+    if (this.el.objectiveStatus) this.el.objectiveStatus.textContent = text;
   }
 
   setCharacter(id, name = '', tagline = '') {

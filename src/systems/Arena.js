@@ -23,8 +23,27 @@ const _up = new THREE.Vector3(0, 1, 0);
 // of recognizing which mesh a projectile hit. Vertical surfaces use separate
 // grids because their paint is also gameplay state for climbing.
 // ============================================================================
+export const STAGES = Object.freeze({
+  harbor: Object.freeze({
+    id: 'harbor',
+    label: 'NEON HARBOR',
+    rampOffsetX: ARENA.rampOffsetX,
+    playerSpawn: [-13, 0, 12.5],
+    cpuSpawn: [13.5, 0, -13],
+  }),
+  vertical: Object.freeze({
+    id: 'vertical',
+    label: 'VERTICAL YARD',
+    rampOffsetX: -ARENA.rampOffsetX,
+    playerSpawn: [-14, 0, -13],
+    cpuSpawn: [14, 0, 13],
+  }),
+});
+
 export class Arena {
-  constructor() {
+  constructor(stageId = 'harbor') {
+    this.stage = STAGES[stageId] ?? STAGES.harbor;
+    this.stageId = this.stage.id;
     this.group = new THREE.Group();
     this.group.name = 'Arena';
 
@@ -57,8 +76,8 @@ export class Arena {
     // points separated" requirement, with a slightly asymmetric route to
     // each side of the central platform.
     this.spawnPoints = {
-      player: new THREE.Vector3(-13, 0, 12.5),
-      cpu: new THREE.Vector3(13.5, 0, -13),
+      player: new THREE.Vector3(...this.stage.playerSpawn),
+      cpu: new THREE.Vector3(...this.stage.cpuSpawn),
     };
   }
 
@@ -223,7 +242,7 @@ export class Arena {
     // walls (see _buildPlatformSideWalls) and every exposed side is paintable.
     const rampWidth = ARENA.rampWidth;
     const rampLen = ARENA.rampLength;
-    const rampOffsetX = ARENA.rampOffsetX;
+    const rampOffsetX = this.stage.rampOffsetX;
     const rampMinX = rampOffsetX - rampWidth / 2;
     const rampMaxX = rampOffsetX + rampWidth / 2;
     const rampCenterZ = hp + rampLen / 2;
@@ -402,7 +421,7 @@ export class Arena {
   }
 
   _buildObstacles() {
-    const defs = [
+    const harborDefs = [
       { type: 'box', pos: [-9, 1, 6], size: [2.4, 2, 2.4] },
       { type: 'box', pos: [9.5, 1, -3.5], size: [2.2, 2, 3] },
       { type: 'cylinder', pos: [-6.5, 1.1, -10], radius: 1.4, height: 2.2 },
@@ -423,6 +442,21 @@ export class Arena {
       { type: 'box', pos: [0, 0.45, -11], size: [1.2, 0.9, 3.8] },
       { type: 'box', pos: [0, 0.45, 11], size: [1.2, 0.9, 3.8] },
     ];
+    const verticalDefs = [
+      { type: 'box', pos: [-8, 1.8, -5], size: [3, 3.6, 3] },
+      { type: 'box', pos: [8, 1.8, 5], size: [3, 3.6, 3] },
+      { type: 'box', pos: [-12, 1.3, 6], size: [2.5, 2.6, 5] },
+      { type: 'box', pos: [12, 1.3, -6], size: [2.5, 2.6, 5] },
+      { type: 'cylinder', pos: [-4, 1.5, 12], radius: 1.8, height: 3 },
+      { type: 'cylinder', pos: [4, 1.5, -12], radius: 1.8, height: 3 },
+      { type: 'box', pos: [0, 0.55, 13], size: [5.5, 1.1, 1.4] },
+      { type: 'box', pos: [0, 0.55, -13], size: [5.5, 1.1, 1.4] },
+      { type: 'box', pos: [-13, 0.55, -2], size: [1.4, 1.1, 5.5] },
+      { type: 'box', pos: [13, 0.55, 2], size: [1.4, 1.1, 5.5] },
+      { type: 'cylinder', pos: [-10, 1, -12], radius: 1.35, height: 2 },
+      { type: 'cylinder', pos: [10, 1, 12], radius: 1.35, height: 2 },
+    ];
+    const defs = this.stageId === 'vertical' ? verticalDefs : harborDefs;
     this.obstacleDefs = defs;
 
     // Only the obstacles closest to the central platform get the stronger
