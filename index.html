@@ -22,10 +22,10 @@
           <span class="mr-line">通算 <b id="mr-wins">0</b>勝 <b id="mr-losses">0</b>敗 <b id="mr-draws">0</b>分 ・ 平均塗装率 <b id="mr-avg-pct">0%</b></span>
         </div>
 
-        <div id="player-profile" class="player-profile" aria-label="Player rank">
-          <div><span id="profile-rank">ROOKIE</span><strong>LV <b id="profile-level">1</b></strong></div>
+        <div id="player-profile" class="player-profile" aria-label="プレイヤーランク">
+          <div><span id="profile-rank">ルーキー</span><strong>レベル <b id="profile-level">1</b></strong></div>
           <div class="profile-xp-track"><span id="profile-xp-fill"></span></div>
-          <small id="profile-xp-label">0 / 100 XP</small>
+          <small id="profile-xp-label">経験値 0 / 100</small>
         </div>
 
         <div class="panel how-to-play" id="howto-desktop">
@@ -78,8 +78,8 @@
         <div class="character-preview-panel" aria-live="polite">
           <canvas id="character-preview-canvas" aria-hidden="true"></canvas>
           <div class="character-preview-copy">
-            <span>SELECTED PLAYER</span>
-            <strong id="selected-character-name">CHROMA RIDER</strong>
+            <span>選択中のプレイヤー</span>
+            <strong id="selected-character-name">クロマライダー</strong>
             <small id="selected-character-tagline">インクストリートの万能ファイター</small>
           </div>
         </div>
@@ -100,10 +100,10 @@
         </div>
 
         <div class="character-picker" role="group" aria-label="操作キャラクター">
-          <span class="character-picker-title">PLAYER</span>
+          <span class="character-picker-title">プレイヤー</span>
           <button type="button" class="character-option selected" data-character="default" aria-pressed="true">
             <span class="character-swatch character-swatch-default" aria-hidden="true"></span>
-            <span><strong>CHROMA RIDER</strong><small>スタンダード</small></span>
+            <span><strong>クロマライダー</strong><small>万能タイプ</small></span>
           </button>
           <button type="button" class="character-option" data-character="joRay" aria-pressed="false">
             <span class="character-swatch character-swatch-joray" aria-hidden="true"></span>
@@ -112,58 +112,58 @@
         </div>
 
         <div class="difficulty-picker" role="group" aria-label="CPU難易度">
-          <span class="difficulty-title">CPU LEVEL</span>
+          <span class="difficulty-title">CPU難易度</span>
           <button type="button" class="difficulty-option" data-difficulty="rookie" aria-pressed="false">
-            <strong>ROOKIE</strong><small>ゆっくり・狙いが甘い</small>
+            <strong>ビギナー</strong><small>ゆっくり・狙いが甘い</small>
           </button>
           <button type="button" class="difficulty-option selected" data-difficulty="standard" aria-pressed="true">
-            <strong>STANDARD</strong><small>推奨バランス</small>
+            <strong>スタンダード</strong><small>おすすめの強さ</small>
           </button>
           <button type="button" class="difficulty-option" data-difficulty="elite" aria-pressed="false">
-            <strong>ELITE</strong><small>高速判断・高精度</small>
+            <strong>エリート</strong><small>判断が速く狙いも正確</small>
           </button>
         </div>
 
-        <div class="battle-options" aria-label="Battle setup">
-          <div class="option-picker" role="group" aria-label="Stage">
-            <span class="option-picker-title">STAGE</span>
-            <button type="button" class="setup-option stage-option selected" data-stage="harbor" aria-pressed="true"><span class="stage-mini stage-mini-harbor" aria-hidden="true"></span><strong>NEON HARBOR</strong><small>Balanced routes</small></button>
-            <button type="button" class="setup-option stage-option" data-stage="vertical" aria-pressed="false"><span class="stage-mini stage-mini-vertical" aria-hidden="true"></span><strong>VERTICAL YARD</strong><small>Climb and launch</small></button>
+        <div class="battle-options" aria-label="対戦設定">
+          <div class="option-picker" role="group" aria-label="ステージ">
+            <span class="option-picker-title">ステージ</span>
+            <button type="button" class="setup-option stage-option selected" data-stage="harbor" aria-pressed="true"><span class="stage-mini stage-mini-harbor" aria-hidden="true"></span><strong>ネオンハーバー</strong><small>バランスのよいルート</small></button>
+            <button type="button" class="setup-option stage-option" data-stage="vertical" aria-pressed="false"><span class="stage-mini stage-mini-vertical" aria-hidden="true"></span><strong>バーティカルヤード</strong><small>壁登りとジャンプ台</small></button>
           </div>
-          <div class="option-picker" role="group" aria-label="Rule">
-            <span class="option-picker-title">RULE</span>
-            <button type="button" class="setup-option selected" data-rule="turf" aria-pressed="true"><strong>TURF WAR</strong><small>Paint coverage</small></button>
-            <button type="button" class="setup-option" data-rule="zone" aria-pressed="false"><strong>ZONE HOLD</strong><small>Hold center 18s</small></button>
-            <button type="button" class="setup-option" data-rule="ko" aria-pressed="false"><strong>KO RUSH</strong><small>First to 4 KOs</small></button>
+          <div class="option-picker" role="group" aria-label="ルール">
+            <span class="option-picker-title">ルール</span>
+            <button type="button" class="setup-option selected" data-rule="turf" aria-pressed="true"><strong>ナワバリバトル</strong><small>より広く床を塗る</small></button>
+            <button type="button" class="setup-option" data-rule="zone" aria-pressed="false"><strong>ゾーンキープ</strong><small>中央を18秒確保する</small></button>
+            <button type="button" class="setup-option" data-rule="ko" aria-pressed="false"><strong>KOラッシュ</strong><small>先に4回倒す</small></button>
           </div>
-          <div class="option-picker" role="group" aria-label="Sub weapon">
-            <span class="option-picker-title">SUB</span>
-            <button type="button" class="setup-option selected" data-subweapon="bomb" aria-pressed="true"><strong>INK BOMB</strong><small>Large splash</small></button>
-            <button type="button" class="setup-option" data-subweapon="mine" aria-pressed="false"><strong>INK MINE</strong><small>Proximity trap</small></button>
-            <button type="button" class="setup-option" data-subweapon="wall" aria-pressed="false"><strong>SPLASH WALL</strong><small>5.5s barrier</small></button>
+          <div class="option-picker" role="group" aria-label="サブウェポン">
+            <span class="option-picker-title">サブウェポン</span>
+            <button type="button" class="setup-option selected" data-subweapon="bomb" aria-pressed="true"><strong>インクボム</strong><small>広範囲を一気に塗る</small></button>
+            <button type="button" class="setup-option" data-subweapon="mine" aria-pressed="false"><strong>インクマイン</strong><small>近づくと爆発する罠</small></button>
+            <button type="button" class="setup-option" data-subweapon="wall" aria-pressed="false"><strong>スプラッシュウォール</strong><small>5.5秒間攻撃を防ぐ</small></button>
           </div>
-          <div class="option-picker" role="group" aria-label="Battle mode">
-            <span class="option-picker-title">MODE</span>
-            <button type="button" class="setup-option selected" data-battle-mode="single" aria-pressed="true"><strong>SINGLE</strong><small>One match</small></button>
-            <button type="button" class="setup-option" data-battle-mode="cup" aria-pressed="false"><strong>RIVAL CUP</strong><small>3 rival matches</small></button>
+          <div class="option-picker" role="group" aria-label="対戦モード">
+            <span class="option-picker-title">モード</span>
+            <button type="button" class="setup-option selected" data-battle-mode="single" aria-pressed="true"><strong>1試合</strong><small>気軽に1回対戦</small></button>
+            <button type="button" class="setup-option" data-battle-mode="cup" aria-pressed="false"><strong>ライバルカップ</strong><small>3人のライバルと連戦</small></button>
           </div>
         </div>
 
         <div id="challenge-board" class="challenge-board" aria-live="polite"></div>
-        <div id="reward-loadout" class="reward-loadout" aria-label="Unlocked reward loadout">
-          <strong>REWARD LOADOUT</strong>
+        <div id="reward-loadout" class="reward-loadout" aria-label="獲得した報酬の装備">
+          <strong>報酬ロードアウト</strong>
           <div class="reward-grid">
-            <button type="button" data-reward="aquaTrail" disabled>AQUA TRAIL</button>
-            <button type="button" data-reward="skyAce" disabled>SKY ACE</button>
-            <button type="button" data-reward="comboGlow" disabled>COMBO GLOW</button>
-            <button type="button" data-reward="goldChampion" disabled>GOLD CHAMPION</button>
-            <button type="button" data-reward="neonCyan" disabled>NEON CYAN</button>
-            <button type="button" data-reward="streetLegend" disabled>STREET LEGEND</button>
-            <button type="button" data-reward="rankPulse" disabled>RANK PULSE</button>
+            <button type="button" data-reward="aquaTrail" disabled>アクアトレイル</button>
+            <button type="button" data-reward="skyAce" disabled>スカイエース</button>
+            <button type="button" data-reward="comboGlow" disabled>コンボグロウ</button>
+            <button type="button" data-reward="goldChampion" disabled>ゴールドチャンピオン</button>
+            <button type="button" data-reward="neonCyan" disabled>ネオンシアン</button>
+            <button type="button" data-reward="streetLegend" disabled>ストリートレジェンド</button>
+            <button type="button" data-reward="rankPulse" disabled>ランクパルス</button>
           </div>
         </div>
         <div id="cup-progress" class="cup-progress hidden" aria-live="polite"></div>
-        <button id="btn-resume-cup" class="btn-secondary hidden" type="button">RESUME RIVAL CUP</button>
+        <button id="btn-resume-cup" class="btn-secondary hidden" type="button">ライバルカップを再開</button>
 
         <label class="practice-mode-toggle">
           <input type="checkbox" id="practice-mode-toggle" />
@@ -171,8 +171,8 @@
         </label>
 
         <button id="btn-start" class="btn-primary" type="button">
-          <span>START</span>
-          <small id="start-character-name">CHROMA RIDER</small>
+          <span>スタート</span>
+          <small id="start-character-name">クロマライダー</small>
         </button>
         <button id="btn-open-settings" class="btn-link" type="button">⚙ 設定</button>
         <p class="rule-hint" id="rule-hint">TURF WAR — Paint more ground than the rival.</p>

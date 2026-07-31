@@ -8,6 +8,7 @@ import {
 describe('player appearance configuration', () => {
   it('registers both selectable player characters and falls back safely', () => {
     expect(Object.keys(characterConfigs)).toEqual(['default', 'joRay']);
+    expect(getCharacterConfig('default').name).toBe('クロマライダー');
     expect(getCharacterConfig('joRay').name).toBe('ジョーレイ');
     expect(getCharacterConfig('missing')).toBe(characterConfigs.default);
   });
