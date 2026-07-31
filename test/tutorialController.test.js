@@ -5,6 +5,8 @@ describe('TutorialController', () => {
   it('advances through live gameplay signals in order', () => {
     const tutorial = new TutorialController();
     expect(tutorial.start().id).toBe('move');
+    expect(tutorial.step.title).toBe('移動');
+    expect(tutorial.step.instruction).toContain('スタート地点');
     expect(tutorial.update({ movedDistance: 2 }).advanced).toBe(false);
     expect(tutorial.update({ movedDistance: 3 }).step.id).toBe('fire');
     expect(tutorial.update({ shotsFired: 1 }).step.id).toBe('jump');

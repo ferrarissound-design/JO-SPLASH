@@ -220,6 +220,7 @@ export const WEAPON = {
   profiles: {
     stream: {
       name: 'STREAM',
+      nameJa: '連射',
       fireInterval: 0.16,
       costPerShot: 6,
       projectileSpeed: 34,
@@ -233,6 +234,7 @@ export const WEAPON = {
     },
     spread: {
       name: 'SPREAD',
+      nameJa: '拡散',
       fireInterval: 0.52,
       costPerShot: 16,
       projectileSpeed: 27,
@@ -246,6 +248,7 @@ export const WEAPON = {
     },
     precision: {
       name: 'PRECISION',
+      nameJa: '精密',
       fireInterval: 0.88,
       costPerShot: 18,
       projectileSpeed: 54,
@@ -447,6 +450,7 @@ export const AI_DIFFICULTY = Object.freeze({
   rookie: Object.freeze({
     id: 'rookie',
     label: 'ROOKIE',
+    labelJa: 'ビギナー',
     reactionDelay: 0.42,
     aimJitterMult: 1.65,
     decisionIntervalMult: 1.3,
@@ -457,6 +461,7 @@ export const AI_DIFFICULTY = Object.freeze({
   standard: Object.freeze({
     id: 'standard',
     label: 'STANDARD',
+    labelJa: 'スタンダード',
     reactionDelay: AI.reactionDelaySec,
     aimJitterMult: 1,
     decisionIntervalMult: 1,
@@ -467,6 +472,7 @@ export const AI_DIFFICULTY = Object.freeze({
   elite: Object.freeze({
     id: 'elite',
     label: 'ELITE',
+    labelJa: 'エリート',
     reactionDelay: 0.14,
     aimJitterMult: 0.62,
     decisionIntervalMult: 0.72,

@@ -1,8 +1,8 @@
 const RANKS = Object.freeze([
-  { minScore: 85, grade: 'S', title: 'TURF LEGEND' },
-  { minScore: 70, grade: 'A', title: 'INK ACE' },
-  { minScore: 50, grade: 'B', title: 'SPLASH FIGHTER' },
-  { minScore: 0, grade: 'C', title: 'ROOKIE RIDER' },
+  { minScore: 85, grade: 'S', title: 'TURF LEGEND', titleJa: 'ナワバリレジェンド' },
+  { minScore: 70, grade: 'A', title: 'INK ACE', titleJa: 'インクエース' },
+  { minScore: 50, grade: 'B', title: 'SPLASH FIGHTER', titleJa: 'スプラッシュファイター' },
+  { minScore: 0, grade: 'C', title: 'ROOKIE RIDER', titleJa: 'ルーキーライダー' },
 ]);
 
 const DIFFICULTY_BONUS = Object.freeze({
@@ -39,6 +39,7 @@ export function calculateBattleRank({
     return Object.freeze({
       grade: 'TRAINING',
       title: 'PRACTICE COMPLETE',
+      titleJa: '練習完了',
       score: null,
       practice: true,
     });
@@ -70,6 +71,7 @@ export function calculateBattleRank({
   return Object.freeze({
     grade: rank.grade,
     title: rank.title,
+    titleJa: rank.titleJa,
     score,
     practice: false,
   });

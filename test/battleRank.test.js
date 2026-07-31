@@ -33,6 +33,7 @@ describe('calculateBattleRank', () => {
     expect(calculateBattleRank({ practiceMode: true })).toEqual({
       grade: 'TRAINING',
       title: 'PRACTICE COMPLETE',
+      titleJa: '練習完了',
       score: null,
       practice: true,
     });
@@ -104,8 +105,8 @@ describe('UIManager battle rank presentation', () => {
     expect(ui.el.resultRank.classList.contains('rank-a')).toBe(true);
     expect(ui.el.resultRank.classList.contains('pop')).toBe(true);
     expect(ui.el.resultRankGrade.textContent).toBe('A');
-    expect(ui.el.resultRankTitle.textContent).toBe('INK ACE');
-    expect(ui.el.resultRankScore.textContent).toBe('BATTLE SCORE 73');
+    expect(ui.el.resultRankTitle.textContent).toBe('インクエース');
+    expect(ui.el.resultRankScore.textContent).toBe('バトルスコア 73');
   });
 
   it('renders practice mode without a score', () => {
@@ -118,8 +119,8 @@ describe('UIManager battle rank presentation', () => {
     });
 
     expect(ui.el.resultRank.classList.contains('rank-practice')).toBe(true);
-    expect(ui.el.resultRankGrade.textContent).toBe('PRACTICE');
-    expect(ui.el.resultRankScore.textContent).toContain('NO SCORE');
+    expect(ui.el.resultRankGrade.textContent).toBe('練習');
+    expect(ui.el.resultRankScore.textContent).toContain('スコアなし');
   });
 });
 
@@ -143,7 +144,7 @@ describe('UIManager hit combo presentation', () => {
 
     ui.showHitCombo(3, { skySplash: true });
     expect(ui.el.hitComboCount.textContent).toBe('3×');
-    expect(ui.el.hitComboLabel.textContent).toBe('TRIPLE SPLASH');
+    expect(ui.el.hitComboLabel.textContent).toBe('トリプルヒット');
     expect(ui.el.hitCombo.classList.contains('hidden')).toBe(false);
     expect(ui.el.hitCombo.classList.contains('combo-sky')).toBe(true);
   });

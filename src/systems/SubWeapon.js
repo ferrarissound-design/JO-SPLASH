@@ -5,9 +5,9 @@ import { GADGET_BALANCE } from './GadgetSystem.js';
 // pooling path with main weapons, but trades fire rate and ink economy for a
 // large paint burst and meaningful direct damage.
 export const SUB_WEAPON_TYPES = Object.freeze({
-  bomb: Object.freeze({ id: 'bomb', label: 'INK BOMB', cost: SUB_WEAPON.cost, cooldownSec: SUB_WEAPON.cooldownSec }),
-  mine: Object.freeze({ id: 'mine', label: 'INK MINE', cost: 26, cooldownSec: 2.8, durationSec: GADGET_BALANCE.mine.lifeSec }),
-  wall: Object.freeze({ id: 'wall', label: 'SPLASH WALL', cost: 34, cooldownSec: 4.2, durationSec: GADGET_BALANCE.wall.lifeSec }),
+  bomb: Object.freeze({ id: 'bomb', label: 'INK BOMB', labelJa: 'インクボム', cost: SUB_WEAPON.cost, cooldownSec: SUB_WEAPON.cooldownSec }),
+  mine: Object.freeze({ id: 'mine', label: 'INK MINE', labelJa: 'インクマイン', cost: 26, cooldownSec: 2.8, durationSec: GADGET_BALANCE.mine.lifeSec }),
+  wall: Object.freeze({ id: 'wall', label: 'SPLASH WALL', labelJa: 'スプラッシュウォール', cost: 34, cooldownSec: 4.2, durationSec: GADGET_BALANCE.wall.lifeSec }),
 });
 
 export class InkBomb {
