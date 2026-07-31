@@ -49,6 +49,10 @@ export class UIManager {
       mrLosses: document.getElementById('mr-losses'),
       mrDraws: document.getElementById('mr-draws'),
       mrAvgPct: document.getElementById('mr-avg-pct'),
+      profileRank: document.getElementById('profile-rank'),
+      profileLevel: document.getElementById('profile-level'),
+      profileXpFill: document.getElementById('profile-xp-fill'),
+      profileXpLabel: document.getElementById('profile-xp-label'),
       howtoDesktop: document.getElementById('howto-desktop'),
       howtoTouch: document.getElementById('howto-touch'),
       howtoGamepad: document.getElementById('howto-gamepad'),
@@ -70,10 +74,22 @@ export class UIManager {
       settingMusicVolume: document.getElementById('setting-music-volume'),
       settingMusicVolumeValue: document.getElementById('setting-music-volume-value'),
       settingInvertY: document.getElementById('setting-invert-y'),
+      settingQuality: document.getElementById('setting-quality'),
+      settingColorMode: document.getElementById('setting-color-mode'),
+      settingCrosshairScale: document.getElementById('setting-crosshair-scale'),
+      settingCrosshairScaleValue: document.getElementById('setting-crosshair-scale-value'),
+      settingTouchLayout: document.getElementById('setting-touch-layout'),
+      btnReplayTutorial: document.getElementById('btn-replay-tutorial'),
       keybindButtons: Array.from(document.querySelectorAll('.keybind-btn')),
       btnResetKeybinds: document.getElementById('btn-reset-keybinds'),
       countdown: document.getElementById('screen-countdown'),
       countdownNumber: document.getElementById('countdown-number'),
+      rivalIntro: document.getElementById('screen-rival-intro'),
+      rivalCard: document.getElementById('rival-card'),
+      rivalRound: document.getElementById('rival-round'),
+      rivalName: document.getElementById('rival-name'),
+      rivalTagline: document.getElementById('rival-tagline'),
+      rivalDialogue: document.getElementById('rival-dialogue'),
       hud: document.getElementById('hud'),
       result: document.getElementById('screen-result'),
       btnStart: document.getElementById('btn-start'),
@@ -146,6 +162,11 @@ export class UIManager {
       inkRollFlash: document.getElementById('ink-roll-flash'),
       hitFlash: document.getElementById('hit-flash'),
       respawnBanner: document.getElementById('respawn-banner'),
+      tutorialCard: document.getElementById('tutorial-card'),
+      tutorialProgress: document.getElementById('tutorial-progress'),
+      tutorialTitle: document.getElementById('tutorial-title'),
+      tutorialInstruction: document.getElementById('tutorial-instruction'),
+      btnSkipTutorial: document.getElementById('btn-skip-tutorial'),
 
       resultTitle: document.getElementById('result-title'),
       resultRank: document.getElementById('result-rank'),
@@ -168,6 +189,15 @@ export class UIManager {
       resultStatBestCombos: document.getElementById('result-stat-best-combos'),
       resultObjective: document.getElementById('result-objective'),
       resultRewards: document.getElementById('result-rewards'),
+      resultLoadout: document.getElementById('result-loadout'),
+      resultMvp: document.getElementById('result-mvp'),
+      resultBests: document.getElementById('result-bests'),
+      resultXp: document.getElementById('result-xp'),
+      resultLevel: document.getElementById('result-level'),
+      resultXpGained: document.getElementById('result-xp-gained'),
+      resultXpFill: document.getElementById('result-xp-fill'),
+      resultLevelUp: document.getElementById('result-level-up'),
+      resultRivalDialogue: document.getElementById('result-rival-dialogue'),
       cupSummary: document.getElementById('cup-summary'),
 
       debugOverlay: document.getElementById('debug-overlay'),
@@ -198,6 +228,8 @@ export class UIManager {
 
   bindOpenSettings(cb) { this.el.btnOpenSettings?.addEventListener('click', cb); }
   bindCloseSettings(cb) { this.el.btnCloseSettings?.addEventListener('click', cb); }
+  bindReplayTutorial(cb) { this.el.btnReplayTutorial?.addEventListener('click', cb); }
+  bindSkipTutorial(cb) { this.el.btnSkipTutorial?.addEventListener('click', cb); }
 
   bindSensitivityChange(cb) {
     const el = this.el.settingSensitivity;
@@ -235,6 +267,30 @@ export class UIManager {
     el.addEventListener('change', () => cb(el.checked));
   }
 
+  bindQualityChange(cb) {
+    this.el.settingQuality?.addEventListener('change', () => cb(this.el.settingQuality.value));
+  }
+
+  bindColorModeChange(cb) {
+    this.el.settingColorMode?.addEventListener('change', () => cb(this.el.settingColorMode.value));
+  }
+
+  bindCrosshairScaleChange(cb) {
+    const el = this.el.settingCrosshairScale;
+    if (!el) return;
+    el.addEventListener('input', () => {
+      const value = parseFloat(el.value);
+      if (this.el.settingCrosshairScaleValue) {
+        this.el.settingCrosshairScaleValue.textContent = `${Math.round(value * 100)}%`;
+      }
+      cb(value);
+    });
+  }
+
+  bindTouchLayoutChange(cb) {
+    this.el.settingTouchLayout?.addEventListener('change', () => cb(this.el.settingTouchLayout.value));
+  }
+
   /** cb(action, buttonEl) fires when a keybind "変更" button is clicked. */
   bindKeybindButtons(cb) {
     for (const btn of this.el.keybindButtons) {
@@ -262,7 +318,10 @@ export class UIManager {
   }
 
   /** Syncs slider positions/labels to persisted values whenever the settings screen opens. */
-  setSettingsValues({ sensitivityMult, masterVolume, musicVolume, invertY }) {
+  setSettingsValues({
+    sensitivityMult, masterVolume, musicVolume, invertY,
+    quality = 'auto', colorMode = 'standard', crosshairScale = 1, touchLayout = 'standard',
+  }) {
     if (this.el.settingSensitivity) {
       this.el.settingSensitivity.value = String(sensitivityMult);
       if (this.el.settingSensitivityValue) this.el.settingSensitivityValue.textContent = `x${sensitivityMult.toFixed(1)}`;
@@ -278,6 +337,15 @@ export class UIManager {
       if (this.el.settingMusicVolumeValue) this.el.settingMusicVolumeValue.textContent = `${pct}%`;
     }
     if (this.el.settingInvertY) this.el.settingInvertY.checked = Boolean(invertY);
+    if (this.el.settingQuality) this.el.settingQuality.value = quality;
+    if (this.el.settingColorMode) this.el.settingColorMode.value = colorMode;
+    if (this.el.settingCrosshairScale) {
+      this.el.settingCrosshairScale.value = String(crosshairScale);
+      if (this.el.settingCrosshairScaleValue) {
+        this.el.settingCrosshairScaleValue.textContent = `${Math.round(crosshairScale * 100)}%`;
+      }
+    }
+    if (this.el.settingTouchLayout) this.el.settingTouchLayout.value = touchLayout;
   }
 
   showSettings() { this.el.settings?.classList.remove('hidden'); }
@@ -295,6 +363,10 @@ export class UIManager {
   }
   bindPracticeModeChange(cb) {
     this.el.practiceModeToggle?.addEventListener('change', () => cb(this.el.practiceModeToggle.checked));
+  }
+
+  setPracticeMode(checked) {
+    if (this.el.practiceModeToggle) this.el.practiceModeToggle.checked = Boolean(checked);
   }
 
   _bindOptionButtons(buttons, dataKey, cb) {
@@ -330,6 +402,15 @@ export class UIManager {
   setStage(id) { this._setOptionSelection(this.el.stageButtons, 'stage', id); }
   setBattleMode(id) { this._setOptionSelection(this.el.battleModeButtons, 'battleMode', id); }
 
+  setPlayerProfile({ level = 1, rankName = 'ROOKIE', current = 0, required = 100 } = {}) {
+    if (this.el.profileRank) this.el.profileRank.textContent = rankName;
+    if (this.el.profileLevel) this.el.profileLevel.textContent = String(level);
+    if (this.el.profileXpFill) {
+      this.el.profileXpFill.style.width = `${required > 0 ? Math.min(100, current / required * 100) : 100}%`;
+    }
+    if (this.el.profileXpLabel) this.el.profileXpLabel.textContent = `${current} / ${required} XP`;
+  }
+
   setChallengeBoard(challenges, unlocked) {
     if (!this.el.challengeBoard) return;
     const done = unlocked instanceof Set ? unlocked : new Set(unlocked ?? []);
@@ -362,11 +443,12 @@ export class UIManager {
     if (this.el.ruleHint) this.el.ruleHint.textContent = `${rule.label} — ${rule.description}`;
   }
 
-  setRewardLoadout(challenges, unlocked, equipped = {}) {
-    const done = unlocked instanceof Set ? unlocked : new Set(unlocked ?? []);
+  setRewardLoadout(availableRewards, equipped = {}) {
+    const availableIds = availableRewards instanceof Set
+      ? availableRewards
+      : new Set(availableRewards ?? []);
     for (const button of this.el.rewardButtons) {
-      const challenge = challenges.find((candidate) => candidate.rewardId === button.dataset.reward);
-      const available = done.has(challenge?.id);
+      const available = availableIds.has(button.dataset.reward);
       const isEquipped = Object.values(equipped).includes(button.dataset.reward);
       button.disabled = !available;
       button.classList.toggle('equipped', isEquipped);
@@ -388,9 +470,66 @@ export class UIManager {
   setCupSummary({ visible = false, results = [], wins = 0, champion = false } = {}) {
     if (!this.el.cupSummary) return;
     this.el.cupSummary.innerHTML = visible
-      ? `<strong>${champion ? 'RIVAL CUP CHAMPION' : 'RIVAL CUP COMPLETE'}</strong><br>${results.map((result, index) => `R${index + 1}: ${result.toUpperCase()}`).join(' · ')}<br>TOTAL: ${wins} WINS`
+      ? `<strong>${champion ? 'RIVAL CUP CHAMPION' : 'RIVAL CUP COMPLETE'}</strong><br>${results.map((result, index) => `R${index + 1}: ${result.toUpperCase()}`).join(' · ')}<br>TOTAL: ${wins} WINS${champion ? '<br>THE CHROMA CROWN IS YOURS.' : ''}`
       : '';
     this.el.cupSummary.classList.toggle('hidden', !visible);
+    this.el.cupSummary.classList.toggle('champion', visible && champion);
+  }
+
+  showRivalCard({ rival, round = 1, final = false } = {}) {
+    if (!rival || !this.el.rivalIntro) return;
+    this.el.rivalRound.textContent = final ? `FINAL RIVAL · ${round}/3` : `RIVAL CUP ${round}/3`;
+    this.el.rivalName.textContent = rival.name;
+    this.el.rivalTagline.textContent = rival.tagline;
+    this.el.rivalDialogue.textContent = `“${rival.introLine ?? 'Let the colors decide.'}”`;
+    this.el.rivalCard.style.setProperty('--rival-color', rival.color ?? '#2fb8ff');
+    this.el.rivalCard.classList.toggle('final', final);
+    this.el.rivalIntro.classList.remove('hidden');
+  }
+
+  hideRivalCard() {
+    this.el.rivalIntro?.classList.add('hidden');
+  }
+
+  showTutorialStep(step, progress = '') {
+    if (!step || !this.el.tutorialCard) return;
+    this.el.tutorialProgress.textContent = progress;
+    this.el.tutorialTitle.textContent = step.title;
+    this.el.tutorialInstruction.textContent = step.instruction;
+    this.el.tutorialCard.classList.remove('hidden');
+  }
+
+  hideTutorial() {
+    this.el.tutorialCard?.classList.add('hidden');
+  }
+
+  setResultPerformance({
+    weaponName = '', subWeaponName = '', mvp = '', bestLabels = [],
+  } = {}) {
+    if (this.el.resultLoadout) this.el.resultLoadout.textContent = `LOADOUT: ${weaponName} + ${subWeaponName}`;
+    if (this.el.resultMvp) this.el.resultMvp.textContent = `MVP: ${mvp || 'ALL-ROUND PLAY'}`;
+    if (this.el.resultBests) {
+      this.el.resultBests.textContent = bestLabels.length ? `NEW BEST: ${bestLabels.join(' / ')}` : '';
+    }
+  }
+
+  setResultXp({
+    visible = false, xpGained = 0, level = 1, rankName = 'ROOKIE',
+    current = 0, required = 100, leveledUp = false,
+  } = {}) {
+    if (!this.el.resultXp) return;
+    this.el.resultXp.classList.toggle('hidden', !visible);
+    if (!visible) return;
+    this.el.resultLevel.textContent = `LV ${level} · ${rankName}`;
+    this.el.resultXpGained.textContent = `+${xpGained} XP`;
+    this.el.resultXpFill.style.width = `${required > 0 ? Math.min(100, current / required * 100) : 100}%`;
+    this.el.resultLevelUp.textContent = leveledUp ? `LEVEL UP! Welcome to ${rankName}.` : '';
+  }
+
+  setResultRivalDialogue(text = '') {
+    if (!this.el.resultRivalDialogue) return;
+    this.el.resultRivalDialogue.textContent = text ? `“${text}”` : '';
+    this.el.resultRivalDialogue.classList.toggle('hidden', !text);
   }
 
   setCharacter(id, name = '', tagline = '') {
@@ -580,6 +719,12 @@ export class UIManager {
     this.el.statusMsg.classList.remove('sky-splash');
     this.el.statusMsg.classList.add('show');
     this._statusMsgTimer = durationSec;
+  }
+
+  clearStatusMessage() {
+    this._statusMsgTimer = 0;
+    this.el.statusMsg.textContent = '';
+    this.el.statusMsg.classList.remove('show', 'sky-splash');
   }
 
   showSkySplash(count) {

@@ -11,6 +11,8 @@ import { calculateBattleRank } from './BattleRank.js';
 import { isSuddenDeathTie, getSuddenDeathLeader } from './SuddenDeath.js';
 import { MATCH_RULES } from './MatchRules.js';
 import { Progression, CHALLENGES } from './Progression.js';
+import { PlayerProfile } from './PlayerProfile.js';
+import { TutorialController } from './TutorialController.js';
 import { RuleController } from './RuleController.js';
 import { CupController } from './CupController.js';
 import { Arena, STAGES } from '../systems/Arena.js';
@@ -43,6 +45,7 @@ export function calculateRelativeDirectionAngle(origin, source, forward, right) 
 
 const STATE = {
   TITLE: 'title',
+  RIVAL_INTRO: 'rivalIntro',
   COUNTDOWN: 'countdown',
   PLAYING: 'playing',
   PAUSED: 'paused',
@@ -65,6 +68,11 @@ export class Game {
     this.settings.apply();
     this.matchRecord = new MatchRecord();
     this.progression = new Progression();
+    this.playerProfile = new PlayerProfile();
+    this.tutorialController = new TutorialController();
+    this.tutorialActive = false;
+    this._tutorialStartPosition = new THREE.Vector3();
+    this._tutorialPreviousPractice = false;
     this.selectedStageId = 'harbor';
     this.ruleController = new RuleController('turf');
     this.selectedRuleId = this.ruleController.ruleId;
@@ -97,7 +105,7 @@ export class Game {
     // scene-level group (see StageDecor's header comment) so it can never
     // affect hit-testing, collision, or AI pathing. `lowQuality` trims
     // instance counts on touch devices to protect mobile frame rate.
-    this.stageDecor = new StageDecor(this.scene, this.arena, { lowQuality: this.input.isTouch });
+    this.stageDecor = new StageDecor(this.scene, this.arena, { lowQuality: this._isLowQuality() });
 
     this.cameraController = new CameraController(this.camera, this.arena);
 
@@ -184,10 +192,12 @@ export class Game {
     this._bindWindow();
     this.ui.updateMatchRecord(this.matchRecord);
     this.ui.setChallengeBoard(CHALLENGES, this.progression.unlocked);
-    this.ui.setRewardLoadout(CHALLENGES, this.progression.unlocked, this.progression.equipped);
+    this.ui.setRewardLoadout(this.progression.availableRewards, this.progression.equipped);
+    this.ui.setPlayerProfile(this.playerProfile.progress);
     this.ui.setRuleHint(MATCH_RULES[this.selectedRuleId]);
     this._updateCupProgressUI();
     this._applyRewardTheme();
+    this._applyVisualSettings();
     this.input.onLockLost = () => this._pauseFromLockLoss();
 
     this.clock = new THREE.Clock();
@@ -207,9 +217,34 @@ export class Game {
 
   _setupRenderer() {
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, PERF.pixelRatioCap));
+    this.renderer.setPixelRatio(this._targetPixelRatio());
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     if ('outputColorSpace' in this.renderer) this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+  }
+
+  _isLowQuality() {
+    const quality = this.settings.values.quality;
+    return quality === 'low' || (quality === 'auto' && Boolean(this.input?.isTouch));
+  }
+
+  _targetPixelRatio() {
+    const deviceRatio = window.devicePixelRatio || 1;
+    if (this.settings.values.quality === 'low') return 1;
+    if (this.settings.values.quality === 'high') return Math.min(deviceRatio, 2);
+    return Math.min(deviceRatio, PERF.pixelRatioCap);
+  }
+
+  _applyVisualSettings({ rebuildDecor = false } = {}) {
+    const {
+      quality, colorMode, crosshairScale, touchLayout,
+    } = this.settings.values;
+    document.body.dataset.quality = quality;
+    document.body.dataset.colorMode = colorMode;
+    document.body.dataset.touchLayout = touchLayout;
+    document.documentElement.style.setProperty('--crosshair-scale', String(crosshairScale));
+    this.renderer?.setPixelRatio(this._targetPixelRatio());
+    this._resizeViewport();
+    if (rebuildDecor && this.arena && this.player && this.cpu) this._rebuildArena(this.selectedStageId);
   }
 
   _setupScene() {
@@ -268,7 +303,7 @@ export class Game {
     this.ui.bindResumeCup(() => this._resumeCup());
     this.ui.bindRewardSelection((rewardId) => {
       if (!this.progression.equip(rewardId)) return;
-      this.ui.setRewardLoadout(CHALLENGES, this.progression.unlocked, this.progression.equipped);
+      this.ui.setRewardLoadout(this.progression.availableRewards, this.progression.equipped);
       this._applyRewardTheme();
     });
     this.ui.bindResume(() => this._resumeFromPause());
@@ -277,6 +312,8 @@ export class Game {
 
     this.ui.bindOpenSettings(() => this._openSettings());
     this.ui.bindCloseSettings(() => this._closeSettings());
+    this.ui.bindReplayTutorial(() => this._startTutorialFromSettings());
+    this.ui.bindSkipTutorial(() => this._finishTutorial());
     this.ui.bindSensitivityChange((mult) => this.settings.setSensitivityMult(mult));
     this.ui.bindMasterVolumeChange((v) => {
       this.settings.setMasterVolume(v);
@@ -287,6 +324,22 @@ export class Game {
       this.audioManager.setMusicVolume(v);
     });
     this.ui.bindInvertYChange((checked) => this.settings.setInvertY(checked));
+    this.ui.bindQualityChange((quality) => {
+      this.settings.setQuality(quality);
+      this._applyVisualSettings({ rebuildDecor: true });
+    });
+    this.ui.bindColorModeChange((colorMode) => {
+      this.settings.setColorMode(colorMode);
+      this._applyVisualSettings();
+    });
+    this.ui.bindCrosshairScaleChange((scale) => {
+      this.settings.setCrosshairScale(scale);
+      this._applyVisualSettings();
+    });
+    this.ui.bindTouchLayoutChange((layout) => {
+      this.settings.setTouchLayout(layout);
+      this._applyVisualSettings();
+    });
     this.ui.bindKeybindButtons((action, button) => this._startKeyRebind(action, button));
     this.ui.bindResetKeybinds(() => {
       this.settings.resetKeyBindings();
@@ -295,6 +348,10 @@ export class Game {
   }
 
   _beginSelectedMode() {
+    if (!this.playerProfile.tutorialComplete) {
+      this._startTutorial();
+      return;
+    }
     this.cupSessionActive = this.selectedBattleMode === 'cup';
     if (this.cupSessionActive) {
       this.cupController.start();
@@ -303,6 +360,65 @@ export class Game {
       this.cpu.setRivalTactics();
     }
     this._startMatch();
+  }
+
+  _startTutorialFromSettings() {
+    this.ui.hideSettings();
+    this._startTutorial();
+  }
+
+  _startTutorial() {
+    this._tutorialPreviousPractice = this.practiceMode;
+    this.practiceMode = true;
+    this.ui.setPracticeMode(true);
+    this.cupSessionActive = false;
+    this.tutorialActive = true;
+    this.tutorialController.start();
+    this._startMatch();
+    this.ui.hideTutorial();
+    this.ui.clearStatusMessage();
+  }
+
+  _finishTutorial() {
+    if (!this.tutorialActive) return;
+    this.playerProfile.markTutorialComplete();
+    this.tutorialController.stop();
+    this.tutorialActive = false;
+    this.practiceMode = this._tutorialPreviousPractice;
+    this.ui.setPracticeMode(this.practiceMode);
+    this.ui.hideTutorial();
+    this.ui.hideCountdown();
+    this.ui.hideRivalCard();
+    this.ui.hideHUD();
+    this.ui.hidePause();
+    this.ui.hideResultScreen();
+    this.audioManager.stopBattleBGM();
+    this.audioManager.stopInkSurfLoop();
+    this.touchControls?.hide();
+    this.input.exitPointerLock();
+    this.state = STATE.TITLE;
+    this.ui.setPlayerProfile(this.playerProfile.progress);
+    this.ui.showTitle();
+  }
+
+  _updateTutorialProgress() {
+    if (!this.tutorialActive || !this.tutorialController.active) return;
+    const result = this.tutorialController.update({
+      movedDistance: this.player.position.distanceTo(this._tutorialStartPosition),
+      shotsFired: this.player.shotsFired,
+      airborne: this.player.position.y > 0.45,
+      subWeaponsUsed: this.player.bombsThrown,
+      jumpPadAirborne: this.player.jumpPadAirborne,
+    });
+    if (result.completed) {
+      this.ui.showStatusMessage('TRAINING COMPLETE!', 1.2);
+      this._finishTutorial();
+      return;
+    }
+    if (result.advanced) {
+      this.audioManager.playCountdownBeep();
+      this.ui.showTutorialStep(result.step, this.tutorialController.progress);
+    }
   }
 
   _continueFromResult() {
@@ -391,7 +507,7 @@ export class Game {
     this.scene.add(this.arena.group);
     this.paintSystem = new PaintSystem(this.arena.halfWidth, this.arena.halfDepth);
     for (const mesh of this.arena.paintableFloorMeshes) this.paintSystem.applyToMaterial(mesh.material);
-    this.stageDecor = new StageDecor(this.scene, this.arena, { lowQuality: this.input.isTouch });
+    this.stageDecor = new StageDecor(this.scene, this.arena, { lowQuality: this._isLowQuality() });
     this.jumpPadSystem = new JumpPadSystem(this.scene, this.arena.stage.jumpPads);
     this.cameraController.arena = this.arena;
     this.cameraController.collisionMeshes = this.arena.group.children;
@@ -427,6 +543,9 @@ export class Game {
     document.body.dataset.rewardCombo = String(equipped.effect === 'comboGlow');
     document.body.dataset.rewardTrail = String(equipped.trail === 'aquaTrail');
     document.body.dataset.rewardTitle = String(equipped.title === 'skyAce');
+    document.body.dataset.rewardNeon = String(equipped.theme === 'neonCyan');
+    document.body.dataset.rewardStreetTitle = String(equipped.title === 'streetLegend');
+    document.body.dataset.rewardRankPulse = String(equipped.effect === 'rankPulse');
   }
 
   _selectCharacter(characterId) {
@@ -570,6 +689,7 @@ export class Game {
     this.player.deaths = 0;
     this.player.specialsUsed = 0;
     this.player.bombsThrown = 0;
+    this.player.shotsFired = 0;
     this.player.climbsCompleted = 0;
     this.player.skySplashHits = 0;
     this.player.resetHitCombo({ newMatch: true });
@@ -607,6 +727,7 @@ export class Game {
     else this.cpu.randomizeAppearance({ playIntro: false });
 
     this._faceSpawnPoints();
+    this._tutorialStartPosition.copy(this.player.position);
 
     this.matchTimeRemaining = MATCH.durationSec;
     this.countdownRemaining = MATCH.countdownSec + MATCH.startFlashSec;
@@ -619,7 +740,10 @@ export class Game {
     this.ui.hideTitle();
     this.ui.hideResultScreen();
     this.ui.hidePause();
-    this.ui.showCountdown();
+    this.ui.hideCountdown();
+    this.ui.hideRivalCard();
+    this.ui.hideTutorial();
+    this.ui.clearStatusMessage();
     this.ui.showHUD();
     this.ui.hideRespawnBanner();
     this.ui.updateEnemyMarker({ visible: false });
@@ -640,7 +764,18 @@ export class Game {
     this.touchControls?.show();
 
     this._lastCountdownDigit = null;
-    this.state = STATE.COUNTDOWN;
+    if (this.cupActive) {
+      this._rivalIntroRemaining = 3.4;
+      this.ui.showRivalCard({
+        rival: this.cupController.currentRival,
+        round: this.cupRound,
+        final: this.cupController.isFinalRound,
+      });
+      this.state = STATE.RIVAL_INTRO;
+    } else {
+      this.ui.showCountdown();
+      this.state = STATE.COUNTDOWN;
+    }
 
     this.audioManager.resume();
     this.input.requestPointerLock();
@@ -688,6 +823,13 @@ export class Game {
     this.audioManager.stopBattleBGM();
     this.audioManager.stopInkSurfLoop();
     this.touchControls?.hide();
+    if (this.tutorialActive) {
+      this.tutorialController.stop();
+      this.tutorialActive = false;
+      this.practiceMode = this._tutorialPreviousPractice;
+      this.ui.setPracticeMode(this.practiceMode);
+      this.ui.hideTutorial();
+    }
     if (this.cupActive) this.cupSessionActive = false;
     this._updateCupProgressUI();
     this.ui.showTitle();
@@ -763,7 +905,7 @@ export class Game {
       cupChampion,
     });
     this.ui.setChallengeBoard(CHALLENGES, this.progression.unlocked);
-    this.ui.setRewardLoadout(CHALLENGES, this.progression.unlocked, this.progression.equipped);
+    this.ui.setRewardLoadout(this.progression.availableRewards, this.progression.equipped);
     this._applyRewardTheme();
 
     if (outcome === 'win') this.audioManager.playWin();
@@ -800,6 +942,20 @@ export class Game {
       practiceMode: this.practiceMode,
       stats,
     });
+    const profileResult = this.playerProfile.recordMatch({
+      outcome,
+      difficultyId: this.selectedDifficulty,
+      practiceMode: this.practiceMode,
+      playerPct: cov.playerPct,
+      koPlayer: this.player.koScored,
+      zoneHoldSec: this.ruleController.zone.player,
+      bestCombo: this.player.bestHitCombo,
+      battleScore: rank.score,
+    });
+    const rankRewards = this.progression.unlockRewards(profileResult.rewardIds);
+    this.ui.setRewardLoadout(this.progression.availableRewards, this.progression.equipped);
+    this.ui.setPlayerProfile(profileResult.progress);
+    this._applyRewardTheme();
 
     this.ui.showResult({
       playerPct: cov.playerPct,
@@ -811,6 +967,41 @@ export class Game {
       rank,
       suddenDeath: this.inSuddenDeath,
     });
+    const bestLabels = {
+      playerPct: 'TURF',
+      koPlayer: 'KOs',
+      zoneHoldSec: 'ZONE TIME',
+      bestCombo: 'COMBO',
+      battleScore: 'BATTLE SCORE',
+    };
+    const mvp = this.selectedRuleId === 'zone' && this.ruleController.zone.player >= 9
+      ? 'ZONE CONTROL'
+      : this.player.koScored >= 3
+        ? 'KO PRESSURE'
+        : cov.playerPct >= 55
+          ? 'TURF CONTROL'
+          : this.player.bestHitCombo >= 5
+            ? 'COMBO ATTACK'
+            : 'ALL-ROUND PLAY';
+    this.ui.setResultPerformance({
+      weaponName: this.player.weapon.displayName,
+      subWeaponName: this.player.subWeapon.profile.label,
+      mvp,
+      bestLabels: profileResult.newBests.map((key) => bestLabels[key] ?? key),
+    });
+    this.ui.setResultXp({
+      visible: !this.practiceMode,
+      xpGained: profileResult.xpGained,
+      level: profileResult.progress.level,
+      rankName: profileResult.progress.rankName,
+      current: profileResult.progress.current,
+      required: profileResult.progress.required,
+      leveledUp: profileResult.leveledUp,
+    });
+    const rival = this.cupActive ? this.cupController.currentRival : null;
+    this.ui.setResultRivalDialogue(
+      rival ? (outcome === 'win' ? rival.winLine : outcome === 'lose' ? rival.loseLine : 'A draw only delays the answer.') : '',
+    );
     const objective = this.ruleController.getResultSummary({
       koPlayer: this.player.koScored,
       koCpu: this.cpu.koScored,
@@ -823,7 +1014,10 @@ export class Game {
       ruleLabel: MATCH_RULES[this.selectedRuleId].label,
       objective,
       cup,
-      rewards: earned.map((challenge) => challenge.reward),
+      rewards: [
+        ...earned.map((challenge) => challenge.reward),
+        ...rankRewards.map((reward) => reward.label),
+      ],
     });
     this.ui.setCupSummary({
       visible: this.cupActive && this.cupController.isFinalRound,
@@ -1056,6 +1250,9 @@ export class Game {
         }
         this._updateIdleCamera(dt);
         break;
+      case STATE.RIVAL_INTRO:
+        this._updateRivalIntro(dt);
+        break;
       case STATE.COUNTDOWN:
         this._updateCountdown(dt);
         break;
@@ -1090,6 +1287,17 @@ export class Game {
     this.characterPreview?.update(this.elapsedTime);
   }
 
+  _updateRivalIntro(dt) {
+    this._rivalIntroRemaining = Math.max(0, this._rivalIntroRemaining - dt);
+    this.cameraController.update(dt, this.player.position);
+    this.player.syncMesh(this.elapsedTime);
+    this.cpu.syncMesh(this.elapsedTime);
+    if (this._rivalIntroRemaining > 0) return;
+    this.ui.hideRivalCard();
+    this.ui.showCountdown();
+    this.state = STATE.COUNTDOWN;
+  }
+
   _updateCountdown(dt) {
     this.countdownRemaining -= dt;
     const [dx, dy] = this.input.consumeMouseDelta();
@@ -1119,6 +1327,9 @@ export class Game {
       this.cpu.playIntro(); // enemy "appears" as play begins
       this.state = STATE.PLAYING;
       this.audioManager.playBattleBGM();
+      if (this.tutorialActive) {
+        this.ui.showTutorialStep(this.tutorialController.step, this.tutorialController.progress);
+      }
       if (this.practiceMode) this.ui.showStatusMessage('練習モード — CPUは攻撃しません', 2.5);
     }
   }
@@ -1129,10 +1340,15 @@ export class Game {
     // Esc wouldn't otherwise trigger anything there.
     if (this.input.wasJustPressed('Escape')) this._pauseMatch();
 
-    this.matchTimeRemaining -= dt;
-    let matchOver = this.matchTimeRemaining <= 0;
-    this.matchTimeRemaining = Math.max(0, this.matchTimeRemaining);
-    this._updateFinalCountdown();
+    let matchOver = false;
+    if (this.tutorialActive) {
+      this.matchTimeRemaining = MATCH.durationSec;
+    } else {
+      this.matchTimeRemaining -= dt;
+      matchOver = this.matchTimeRemaining <= 0;
+      this.matchTimeRemaining = Math.max(0, this.matchTimeRemaining);
+      this._updateFinalCountdown();
+    }
 
     const [dx, dy] = this.input.consumeMouseDelta();
     if (this.input.pointerLocked || this.input.isTouch || this.input.gamepadConnected) {
@@ -1168,6 +1384,8 @@ export class Game {
       audioManager: this.audioManager,
       ui: this.ui,
     });
+    this._updateTutorialProgress();
+    if (this.state !== STATE.PLAYING) return;
     this.ui.updateEnemySpecialWarning({
       visible: this.cpu.alive && (this.cpu.specialWindingUp || this.cpu.special.active),
       active: this.cpu.special.active,
@@ -1201,7 +1419,7 @@ export class Game {
     this._updateCpuVisibility(dt);
 
     const cov = this.paintSystem.getCoverage();
-    const ruleWinner = this.ruleController.update(dt, {
+    const ruleWinner = this.tutorialActive ? null : this.ruleController.update(dt, {
       paintSystem: this.paintSystem,
       koPlayer: this.player.koScored,
       koCpu: this.cpu.koScored,

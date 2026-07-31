@@ -22,6 +22,12 @@
           <span class="mr-line">通算 <b id="mr-wins">0</b>勝 <b id="mr-losses">0</b>敗 <b id="mr-draws">0</b>分 ・ 平均塗装率 <b id="mr-avg-pct">0%</b></span>
         </div>
 
+        <div id="player-profile" class="player-profile" aria-label="Player rank">
+          <div><span id="profile-rank">ROOKIE</span><strong>LV <b id="profile-level">1</b></strong></div>
+          <div class="profile-xp-track"><span id="profile-xp-fill"></span></div>
+          <small id="profile-xp-label">0 / 100 XP</small>
+        </div>
+
         <div class="panel how-to-play" id="howto-desktop">
           <h2>操作方法</h2>
           <ul class="key-list">
@@ -151,6 +157,9 @@
             <button type="button" data-reward="skyAce" disabled>SKY ACE</button>
             <button type="button" data-reward="comboGlow" disabled>COMBO GLOW</button>
             <button type="button" data-reward="goldChampion" disabled>GOLD CHAMPION</button>
+            <button type="button" data-reward="neonCyan" disabled>NEON CYAN</button>
+            <button type="button" data-reward="streetLegend" disabled>STREET LEGEND</button>
+            <button type="button" data-reward="rankPulse" disabled>RANK PULSE</button>
           </div>
         </div>
         <div id="cup-progress" class="cup-progress hidden" aria-live="polite"></div>
@@ -193,6 +202,36 @@
           <label for="setting-invert-y">マウスY軸反転</label>
           <input type="checkbox" id="setting-invert-y" />
         </div>
+        <div class="settings-row">
+          <label for="setting-quality">GRAPHICS QUALITY</label>
+          <select id="setting-quality">
+            <option value="auto">AUTO</option>
+            <option value="low">LOW</option>
+            <option value="high">HIGH</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <label for="setting-color-mode">COLOR SUPPORT</label>
+          <select id="setting-color-mode">
+            <option value="standard">STANDARD</option>
+            <option value="deuteranopia">DEUTERANOPIA</option>
+            <option value="tritanopia">TRITANOPIA</option>
+            <option value="highContrast">HIGH CONTRAST</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <label for="setting-crosshair-scale">CROSSHAIR SIZE</label>
+          <input type="range" id="setting-crosshair-scale" min="0.7" max="1.6" step="0.1" value="1" />
+          <span id="setting-crosshair-scale-value" class="settings-value">100%</span>
+        </div>
+        <div class="settings-row">
+          <label for="setting-touch-layout">TOUCH LAYOUT</label>
+          <select id="setting-touch-layout">
+            <option value="standard">STANDARD</option>
+            <option value="compact">COMPACT</option>
+            <option value="leftHanded">LEFT HANDED</option>
+          </select>
+        </div>
 
         <h3 class="keybind-title">キー設定</h3>
         <ul id="keybind-list" class="keybind-list">
@@ -210,7 +249,18 @@
         </ul>
         <button id="btn-reset-keybinds" class="btn-link" type="button">キー設定を初期値に戻す</button>
 
+        <button id="btn-replay-tutorial" class="btn-secondary" type="button">REPLAY FIRST BATTLE TUTORIAL</button>
         <button id="btn-close-settings" class="btn-primary" type="button">戻る</button>
+      </div>
+    </section>
+
+    <!-- ============ RIVAL INTRO ============ -->
+    <section id="screen-rival-intro" class="screen hidden" aria-live="assertive">
+      <div id="rival-card" class="rival-card">
+        <span id="rival-round">RIVAL CUP 1/3</span>
+        <strong id="rival-name">MAKO RUSH</strong>
+        <p id="rival-tagline">Fast flanker</p>
+        <blockquote id="rival-dialogue">“Try to keep up.”</blockquote>
       </div>
     </section>
 
@@ -354,6 +404,12 @@
       <div id="ink-roll-flash" class="hidden" aria-hidden="true"><span>INK ROLL</span></div>
       <div id="hit-flash"></div>
       <div id="respawn-banner" class="hidden">RESPAWNING…</div>
+      <div id="tutorial-card" class="tutorial-card hidden" aria-live="polite">
+        <span id="tutorial-progress">1/5</span>
+        <strong id="tutorial-title">MOVE</strong>
+        <p id="tutorial-instruction">Move away from the spawn point.</p>
+        <button id="btn-skip-tutorial" type="button">SKIP TRAINING</button>
+      </div>
     </section>
 
     <!-- ============ RESULT SCREEN ============ -->
@@ -384,6 +440,11 @@
           <span>未占有エリア: <b id="result-pct-neutral">0%</b></span>
         </div>
         <div id="result-objective" class="result-objective hidden"></div>
+        <div id="result-performance" class="result-performance">
+          <span id="result-loadout">LOADOUT: STREAM + INK BOMB</span>
+          <strong id="result-mvp">MVP: TURF CONTROL</strong>
+          <small id="result-bests"></small>
+        </div>
         <div class="result-ko">
           <span>撃破数 — YOU: <b id="result-ko-player">0</b> / CPU: <b id="result-ko-cpu">0</b></span>
         </div>
@@ -396,6 +457,12 @@
           <li class="result-stat-combo"><span>BEST COMBO</span><b id="result-stat-best-combos">0 / 0</b></li>
         </ul>
         <div id="result-rewards" class="result-rewards hidden"></div>
+        <div id="result-xp" class="result-xp hidden">
+          <div><strong id="result-level">LV 1 · ROOKIE</strong><span id="result-xp-gained">+0 XP</span></div>
+          <div class="profile-xp-track"><span id="result-xp-fill"></span></div>
+          <small id="result-level-up"></small>
+        </div>
+        <blockquote id="result-rival-dialogue" class="result-rival-dialogue hidden"></blockquote>
         <div id="cup-summary" class="cup-summary hidden"></div>
         <button id="btn-restart" class="btn-primary" type="button">もう一度戦う (R)</button>
       </div>

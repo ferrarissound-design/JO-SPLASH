@@ -5,6 +5,9 @@ export const REWARDS = Object.freeze({
   skyAce: Object.freeze({ id: 'skyAce', label: 'SKY ACE TITLE', slot: 'title' }),
   comboGlow: Object.freeze({ id: 'comboGlow', label: 'COMBO GLOW', slot: 'effect' }),
   goldChampion: Object.freeze({ id: 'goldChampion', label: 'GOLD CHAMPION', slot: 'theme' }),
+  neonCyan: Object.freeze({ id: 'neonCyan', label: 'NEON CYAN', slot: 'theme' }),
+  streetLegend: Object.freeze({ id: 'streetLegend', label: 'STREET LEGEND', slot: 'title' }),
+  rankPulse: Object.freeze({ id: 'rankPulse', label: 'RANK PULSE', slot: 'effect' }),
 });
 
 export const CHALLENGES = Object.freeze([
@@ -18,15 +21,19 @@ function load() {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
     const unlocked = Array.isArray(parsed.unlocked) ? parsed.unlocked.filter((id) => CHALLENGES.some((c) => c.id === id)) : [];
+    const rewardIds = new Set(Array.isArray(parsed.rewardIds) ? parsed.rewardIds.filter((id) => REWARDS[id]) : []);
+    for (const challengeId of unlocked) {
+      const challenge = CHALLENGES.find((candidate) => candidate.id === challengeId);
+      if (challenge?.rewardId) rewardIds.add(challenge.rewardId);
+    }
     const equipped = {};
     for (const [slot, rewardId] of Object.entries(parsed.equipped ?? {})) {
       const reward = REWARDS[rewardId];
-      const challenge = CHALLENGES.find((candidate) => candidate.rewardId === rewardId);
-      if (reward?.slot === slot && unlocked.includes(challenge?.id)) equipped[slot] = rewardId;
+      if (reward?.slot === slot && rewardIds.has(rewardId)) equipped[slot] = rewardId;
     }
-    return { unlocked, equipped };
+    return { unlocked, rewardIds: [...rewardIds], equipped };
   } catch {
-    return { unlocked: [], equipped: {} };
+    return { unlocked: [], rewardIds: [], equipped: {} };
   }
 }
 
@@ -43,13 +50,29 @@ export class Progression {
     return { ...this.values.equipped };
   }
 
+  get availableRewards() {
+    return new Set(this.values.rewardIds);
+  }
+
   equip(rewardId) {
     const reward = REWARDS[rewardId];
-    const challenge = CHALLENGES.find((candidate) => candidate.rewardId === rewardId);
-    if (!reward || !this.values.unlocked.includes(challenge?.id)) return false;
+    if (!reward || !this.values.rewardIds.includes(rewardId)) return false;
     this.values.equipped[reward.slot] = rewardId;
     this._save();
     return true;
+  }
+
+  unlockRewards(rewardIds = []) {
+    const earned = [];
+    for (const rewardId of rewardIds) {
+      const reward = REWARDS[rewardId];
+      if (!reward || this.values.rewardIds.includes(rewardId)) continue;
+      this.values.rewardIds.push(rewardId);
+      if (!this.values.equipped[reward.slot]) this.values.equipped[reward.slot] = reward.id;
+      earned.push(reward);
+    }
+    if (earned.length) this._save();
+    return earned;
   }
 
   evaluate({ playerPct = 0, skySplashes = 0, bestCombo = 0, cupChampion = false } = {}) {
@@ -64,6 +87,7 @@ export class Progression {
       if (!checks[challenge.id] || this.values.unlocked.includes(challenge.id)) continue;
       this.values.unlocked.push(challenge.id);
       const reward = REWARDS[challenge.rewardId];
+      if (reward && !this.values.rewardIds.includes(reward.id)) this.values.rewardIds.push(reward.id);
       if (reward && !this.values.equipped[reward.slot]) this.values.equipped[reward.slot] = reward.id;
       earned.push(challenge);
     }

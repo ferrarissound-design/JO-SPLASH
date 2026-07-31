@@ -48,6 +48,7 @@ export class Player extends Character {
     // symmetric YOU/CPU stat line (see Game._endMatch).
     this.specialsUsed = 0;
     this.bombsThrown = 0;
+    this.shotsFired = 0;
     this.climbsCompleted = 0;
     this._fireWasHeld = false;
     this._debugClimbHold = false;
@@ -522,6 +523,7 @@ export class Player extends Character {
           particleManager,
         );
         if (fired) {
+          this.shotsFired++;
           void this.input.pulseGamepad?.({
             duration: 100,
             weakMagnitude: 0.48,
@@ -540,6 +542,7 @@ export class Player extends Character {
     this._prepareShot();
 
     if (this.weapon.fire(this, _fireOrigin, _aimDir, projectileManager, audioManager, particleManager)) {
+      this.shotsFired++;
       void this.input.pulseGamepad?.({
         duration: 36,
         weakMagnitude: 0.22,
