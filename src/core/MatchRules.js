@@ -2,12 +2,12 @@ import { TEAM } from '../config.js';
 
 export const MATCH_RULES = Object.freeze({
   turf: Object.freeze({ id: 'turf', label: 'TURF WAR', description: 'Paint more ground than the rival.' }),
-  zone: Object.freeze({ id: 'zone', label: 'ZONE HOLD', description: 'Control the center zone for 20 seconds.' }),
-  ko: Object.freeze({ id: 'ko', label: 'KO RUSH', description: 'First to 5 KOs, or most KOs at time up.' }),
+  zone: Object.freeze({ id: 'zone', label: 'ZONE HOLD', description: 'Control the center zone for 18 seconds.' }),
+  ko: Object.freeze({ id: 'ko', label: 'KO RUSH', description: 'First to 4 KOs, or most KOs at time up.' }),
 });
 
-export const ZONE_TARGET_SECONDS = 20;
-export const KO_TARGET = 5;
+export const ZONE_TARGET_SECONDS = 18;
+export const KO_TARGET = 4;
 
 export function getZoneOwner(ownerGrid, resolution, radiusCells = Math.max(2, Math.round(resolution * 0.13))) {
   if (!ownerGrid?.length || !Number.isInteger(resolution) || resolution <= 0) return null;

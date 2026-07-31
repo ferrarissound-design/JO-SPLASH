@@ -24,4 +24,13 @@ describe('Progression', () => {
     expect(progression.evaluate({ cupChampion: false })).toEqual([]);
     expect(progression.evaluate({ cupChampion: true })[0].id).toBe('champion');
   });
+
+  it('only equips unlocked rewards and persists the selected loadout', () => {
+    const progression = new Progression();
+    expect(progression.equip('goldChampion')).toBe(false);
+    progression.evaluate({ bestCombo: 5 });
+    expect(progression.equip('comboGlow')).toBe(true);
+    expect(progression.equipped.effect).toBe('comboGlow');
+    expect(new Progression().equipped.effect).toBe('comboGlow');
+  });
 });

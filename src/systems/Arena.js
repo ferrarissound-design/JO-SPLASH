@@ -29,7 +29,11 @@ export const STAGES = Object.freeze({
     label: 'NEON HARBOR',
     rampOffsetX: ARENA.rampOffsetX,
     playerSpawn: [-13, 0, 12.5],
-    cpuSpawn: [13.5, 0, -13],
+    cpuSpawn: [13, 0, -12.5],
+    jumpPads: Object.freeze([
+      Object.freeze({ x: -12, z: 8, targetX: -2.4, targetZ: 1.6 }),
+      Object.freeze({ x: 12, z: -8, targetX: 2.4, targetZ: -1.6 }),
+    ]),
   }),
   vertical: Object.freeze({
     id: 'vertical',
@@ -37,8 +41,19 @@ export const STAGES = Object.freeze({
     rampOffsetX: -ARENA.rampOffsetX,
     playerSpawn: [-14, 0, -13],
     cpuSpawn: [14, 0, 13],
+    jumpPads: Object.freeze([
+      Object.freeze({ x: -14, z: -9, targetX: -2.5, targetZ: -1 }),
+      Object.freeze({ x: 14, z: 9, targetX: 2.5, targetZ: 1 }),
+    ]),
   }),
 });
+
+export function getStageSpawnDistanceDelta(stage) {
+  if (!stage) return Infinity;
+  const player = Math.hypot(stage.playerSpawn[0], stage.playerSpawn[2]);
+  const cpu = Math.hypot(stage.cpuSpawn[0], stage.cpuSpawn[2]);
+  return Math.abs(player - cpu);
+}
 
 export class Arena {
   constructor(stageId = 'harbor') {

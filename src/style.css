@@ -1443,13 +1443,24 @@ details[open] > .key-list-toggle::before { transform: rotate(90deg); }
 .setup-option strong,.setup-option small{display:block;overflow:hidden;text-overflow:ellipsis}
 .setup-option strong{font-size:.69rem}.setup-option small{font-size:.56rem;opacity:.7;margin-top:.14rem}
 .setup-option.selected{border-color:#2fb8ff;background:rgba(47,184,255,.18);box-shadow:0 0 14px rgba(47,184,255,.24)}
+.stage-mini{display:block;height:28px;margin:0 0 .3rem;border-radius:5px;border:1px solid rgba(159,234,255,.2);background-color:#0b1730}
+.stage-mini-harbor{background:linear-gradient(135deg,transparent 34%,#2fb8ff 35% 39%,transparent 40%),linear-gradient(45deg,transparent 58%,#ff7a2f 59% 63%,transparent 64%),#0b1730}
+.stage-mini-vertical{background:linear-gradient(90deg,transparent 16%,#26345a 17% 33%,transparent 34% 64%,#26345a 65% 81%,transparent 82%),linear-gradient(0deg,transparent 42%,#2fb8ff 43% 49%,transparent 50%),#0b1730}
 .challenge-board{margin:.6rem 0;padding:.62rem;border-left:3px solid #fff27a;background:rgba(255,242,122,.07);font-size:.7rem;line-height:1.5}
 .challenge-board b{color:#fff27a}.challenge-board .done{color:#7dffbd}
+.reward-loadout,.cup-progress{margin:.6rem 0;padding:.58rem;border:1px solid rgba(255,255,255,.15);border-radius:9px;background:rgba(7,13,30,.68);font-size:.68rem}
+.reward-loadout>strong{color:#9feaff;letter-spacing:.12em}.reward-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.3rem;margin-top:.42rem}
+.reward-grid button{padding:.4rem;border:1px solid rgba(255,255,255,.14);border-radius:6px;background:#111b35;color:#dceeff;font-size:.6rem;font-weight:900}
+.reward-grid button:disabled{opacity:.35}.reward-grid button.equipped{border-color:#fff27a;color:#fff27a;box-shadow:0 0 10px rgba(255,242,122,.2)}
+.cup-progress{border-color:rgba(255,122,47,.4);color:#ffd5bd;line-height:1.5}.cup-progress strong{color:#fff}
 .result-objective,.result-rewards{margin:.65rem 0;padding:.55rem;border:1px solid rgba(159,234,255,.35);background:rgba(47,184,255,.08);font-size:.78rem}
+.cup-summary{margin:.65rem 0;padding:.7rem;border:1px solid rgba(255,213,90,.55);background:rgba(255,213,90,.08);color:#ffe58e;font-size:.75rem;line-height:1.55}
 .objective-status{grid-column:1/-1;text-align:center;color:#fff27a;font-size:.64rem;font-weight:900;letter-spacing:.12em}
 .result-rewards{border-color:rgba(255,242,122,.5);color:#fff27a}
 body[data-reward-gold="true"] .game-logo{filter:drop-shadow(0 0 12px #ffd65a)}
 body[data-reward-combo="true"] .crosshair{filter:drop-shadow(0 0 8px #fff27a)}
+body[data-reward-trail="true"] .ink-fill{box-shadow:0 0 12px #2ff4f1}
+body[data-reward-title="true"] .player-character-chip::after{content:"SKY ACE";margin-left:.35rem;color:#9ffff5;font-size:.5rem;letter-spacing:.08em}
 @media(max-width:700px){.battle-options{grid-template-columns:1fr}.option-picker{padding:.4rem}.setup-option{padding:.38rem .22rem}}
 @media (min-width:721px){ .match-strip{width:min(68vw,520px)} }
 

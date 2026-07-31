@@ -46,6 +46,7 @@ export class TouchControls {
     this._bind();
     this._weaponType = null;
     this.setWeaponType('stream');
+    this.setSubWeaponType('bomb');
   }
 
   _bind() {
@@ -211,6 +212,16 @@ export class TouchControls {
       const selected = button.dataset.weaponType === type;
       button.classList.toggle('selected', selected);
       button.setAttribute('aria-pressed', String(selected));
+    }
+  }
+
+  setSubWeaponType(type) {
+    const labels = { bomb: 'BOMB', mine: 'MINE', wall: 'WALL' };
+    const label = labels[type] ?? labels.bomb;
+    if (this.el.bombBtn) {
+      this.el.bombBtn.textContent = label;
+      this.el.bombBtn.setAttribute('aria-label', `USE ${label}`);
+      this.el.bombBtn.dataset.subWeaponType = type;
     }
   }
 
