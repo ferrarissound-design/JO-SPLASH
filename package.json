@@ -5,6 +5,7 @@
   "description": "Three.js 製、ブラウザで動作する 1 対 1 のインク陣取り FPS ゲームです。床をインクで塗り合い、制限時間(90秒)終了時により広い面積を塗っていた側が勝利します。",
   "type": "module",
   "scripts": {
+    "dev": "vite --config vitest.config.js",
     "test": "vitest run"
   },
   "repository": {
@@ -16,6 +17,7 @@
   "license": "ISC",
   "devDependencies": {
     "jsdom": "^29.1.1",
+    "vite": "^8.1.5",
     "vitest": "^4.1.10"
   }
 }

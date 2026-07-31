@@ -80,6 +80,7 @@ export class Game {
     this.selectedBattleMode = 'single';
     this.cupController = new CupController();
     this.cupSessionActive = false;
+    this.settingsOpen = false;
 
     this._setupRenderer();
     this._setupScene();
@@ -200,7 +201,8 @@ export class Game {
     this._applyVisualSettings();
     this.input.onLockLost = () => this._pauseFromLockLoss();
 
-    this.clock = new THREE.Clock();
+    this.timer = new THREE.Timer();
+    this.timer.connect(document);
     this._animate = this._animate.bind(this);
     requestAnimationFrame(this._animate);
 
@@ -348,6 +350,7 @@ export class Game {
   }
 
   _beginSelectedMode() {
+    if (this.state !== STATE.TITLE || this.settingsOpen) return;
     if (!this.playerProfile.tutorialComplete) {
       this._startTutorial();
       return;
@@ -363,6 +366,7 @@ export class Game {
   }
 
   _startTutorialFromSettings() {
+    this.settingsOpen = false;
     this.ui.hideSettings();
     this._startTutorial();
   }
@@ -482,11 +486,23 @@ export class Game {
   }
 
   _disposeObjectTree(root) {
+    const geometries = new Set();
+    const materials = new Set();
+    const textures = new Set();
     root?.traverse((obj) => {
-      obj.geometry?.dispose?.();
-      if (Array.isArray(obj.material)) obj.material.forEach((material) => material?.dispose?.());
-      else obj.material?.dispose?.();
+      if (obj.geometry) geometries.add(obj.geometry);
+      const objectMaterials = Array.isArray(obj.material) ? obj.material : [obj.material];
+      for (const material of objectMaterials) {
+        if (!material) continue;
+        materials.add(material);
+        for (const value of Object.values(material)) {
+          if (value?.isTexture) textures.add(value);
+        }
+      }
     });
+    for (const texture of textures) texture.dispose();
+    for (const material of materials) material.dispose();
+    for (const geometry of geometries) geometry.dispose();
   }
 
   _rebuildArena(stageId) {
@@ -501,6 +517,7 @@ export class Game {
     if (this.arena?.group) {
       this.scene.remove(this.arena.group);
       this._disposeObjectTree(this.arena.group);
+      this.arena.dispose();
     }
 
     this.arena = new Arena(stageId);
@@ -582,6 +599,8 @@ export class Game {
   }
 
   _openSettings() {
+    if (this.state !== STATE.TITLE) return;
+    this.settingsOpen = true;
     this.ui.setSettingsValues(this.settings.values);
     this.ui.updateKeybindLabels(this.settings.values.keyBindings);
     this.ui.hideTitle();
@@ -597,6 +616,7 @@ export class Game {
       this.ui.updateKeybindLabels(this.settings.values.keyBindings);
       this._activeKeybindButton = null;
     }
+    this.settingsOpen = false;
     this.ui.hideSettings();
     this.ui.showTitle();
   }
@@ -1126,9 +1146,10 @@ export class Game {
   }
 
   // ------------------------------------------------------------ main loop
-  _animate() {
+  _animate(timestamp) {
     requestAnimationFrame(this._animate);
-    const rawDt = this.clock.getDelta();
+    this.timer.update(timestamp);
+    const rawDt = this.timer.getDelta();
     if (document.hidden) return;
 
     const dt = Math.min(rawDt, PERF.maxDeltaSec);
@@ -1247,10 +1268,13 @@ export class Game {
 
     switch (this.state) {
       case STATE.TITLE:
-        if (this.input.wasJustPressed('Space')) {
-          this._startMatch();
+        // Consume the edge even while settings are open so it cannot start a
+        // match later, immediately after the settings overlay is closed.
+        if (!this.settingsOpen && this._consumeConfirmPress()) {
+          this._beginSelectedMode();
           break;
         }
+        if (this.settingsOpen) this._consumeConfirmPress();
         this._updateIdleCamera(dt);
         break;
       case STATE.RIVAL_INTRO:
@@ -1264,7 +1288,7 @@ export class Game {
         break;
       case STATE.PAUSED:
         // Frozen: no timers/physics/AI advance until resumed or quit.
-        if (this.input.wasJustPressed('Escape') || this.input.wasJustPressed('Space')) {
+        if (this.input.wasJustPressed('Escape') || this._consumeConfirmPress()) {
           this._resumeFromPause();
         }
         break;
@@ -1288,6 +1312,20 @@ export class Game {
     this.player.syncMesh(this.elapsedTime);
     this.cpu.syncMesh(this.elapsedTime);
     this.characterPreview?.update(this.elapsedTime);
+  }
+
+  _consumeConfirmPress() {
+    // Read both edges before combining them. Standard pads map their bottom
+    // face button to both jump (Space) and menu confirm, so short-circuiting
+    // here would leave one edge armed for a later screen.
+    const keyboardOrJumpButton = this.input.wasJustPressed('Space');
+    const gamepadConfirm = this.input.wasJustPressed('GamepadConfirm');
+    // On Nintendo pads the same physical A button is also the in-match bomb
+    // action. Do not let the title/pause/result press leak into gameplay.
+    if (gamepadConfirm && this.input.gamepadLayout === 'nintendo') {
+      this.input.wasJustPressed('KeyE');
+    }
+    return keyboardOrJumpButton || gamepadConfirm;
   }
 
   _updateRivalIntro(dt) {
@@ -1519,7 +1557,7 @@ export class Game {
     this.player.syncMesh(this.elapsedTime);
     this.cpu.syncMesh(this.elapsedTime);
 
-    if (this.input.wasJustPressed('KeyR') || this.input.wasJustPressed('Space')) this._continueFromResult();
+    if (this.input.wasJustPressed('KeyR') || this._consumeConfirmPress()) this._continueFromResult();
   }
 
   _updateSurfFeedback(dt, active, rolling = false) {
