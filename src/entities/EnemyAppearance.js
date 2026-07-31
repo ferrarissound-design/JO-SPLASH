@@ -50,10 +50,10 @@ export const enemyPalettes = {
 // by randomizeEnemyAppearance(typeIndex). Order defines the cycle sequence:
 // Speed -> Street -> Heavy -> Technical -> Speed.
 export const enemyAppearancePresets = [
-  { id: 'speed', name: 'SPEED PUNK', bodyScale: [0.9, 1.05, 0.9], hairType: 'long', outfitType: 'light', accessoryType: 'goggles' },
-  { id: 'street', name: 'STREET SHARK', bodyScale: [1.0, 1.0, 1.0], hairType: 'medium', outfitType: 'hoodie', accessoryType: 'cap' },
-  { id: 'heavy', name: 'HEAVY BEAT', bodyScale: [1.15, 1.1, 1.15], hairType: 'thick', outfitType: 'armor', accessoryType: 'helmet' },
-  { id: 'technical', name: 'TECH GLITCH', bodyScale: [0.95, 1.0, 0.95], hairType: 'asymmetry', outfitType: 'tech', accessoryType: 'visor' },
+  { id: 'speed', name: 'SPEED PUNK', nameJa: 'スピードパンク', typeJa: '高速型', bodyScale: [0.9, 1.05, 0.9], hairType: 'long', outfitType: 'light', accessoryType: 'goggles' },
+  { id: 'street', name: 'STREET SHARK', nameJa: 'ストリートシャーク', typeJa: '万能型', bodyScale: [1.0, 1.0, 1.0], hairType: 'medium', outfitType: 'hoodie', accessoryType: 'cap' },
+  { id: 'heavy', name: 'HEAVY BEAT', nameJa: 'ヘビービート', typeJa: '重量型', bodyScale: [1.15, 1.1, 1.15], hairType: 'thick', outfitType: 'armor', accessoryType: 'helmet' },
+  { id: 'technical', name: 'TECH GLITCH', nameJa: 'テックグリッチ', typeJa: '技巧型', bodyScale: [0.95, 1.0, 0.95], hairType: 'asymmetry', outfitType: 'tech', accessoryType: 'visor' },
 ];
 
 const SKIN_TONES = ['#F1C9A5', '#E7B48C', '#C98A5A', '#9C6B3F', '#7A4A2B', '#B7E3C9', '#C9BEF2'];
@@ -119,6 +119,8 @@ export function randomizeEnemyAppearance(typeIndex) {
   return {
     id: preset.id,
     name: preset.name,
+    nameJa: preset.nameJa,
+    typeJa: preset.typeJa,
     bodyScale: preset.bodyScale.slice(),
     outfitType: preset.outfitType,
     accessoryType: preset.accessoryType,

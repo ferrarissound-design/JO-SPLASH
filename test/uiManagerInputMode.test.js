@@ -31,7 +31,7 @@ describe('UIManager input help modes', () => {
     expect(ui.el.howtoGamepadPause.classList.contains('hidden')).toBe(false);
     expect(ui.el.gamepadStatus.classList.contains('hidden')).toBe(false);
     expect(ui.el.gamepadStatus.title).toBe('Test Pad');
-    expect(ui.el.weaponSwitchHint.textContent).toBe('X / D-PAD');
+    expect(ui.el.weaponSwitchHint.textContent).toBe('X / 十字キー');
 
     ui.setGamepadMode(false);
     expect(ui.el.howtoDesktop.classList.contains('hidden')).toBe(false);
@@ -48,6 +48,6 @@ describe('UIManager input help modes', () => {
     expect(ui.el.howtoTouch.classList.contains('hidden')).toBe(false);
     expect(ui.el.howtoTouchPause.classList.contains('hidden')).toBe(false);
     expect(ui.el.howtoDesktop.classList.contains('hidden')).toBe(true);
-    expect(ui.el.weaponSwitchHint.textContent).toBe('SELECT');
+    expect(ui.el.weaponSwitchHint.textContent).toBe('選択');
   });
 });

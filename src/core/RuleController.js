@@ -42,15 +42,15 @@ export class RuleController {
 
   getObjectiveText({ koPlayer = 0, koCpu = 0 } = {}) {
     if (this.ruleId === 'zone') {
-      return `ZONE HOLD · YOU ${this.zone.player.toFixed(1)} / CPU ${this.zone.cpu.toFixed(1)} · ${ZONE_TARGET_SECONDS}s`;
+      return `ゾーンキープ · あなた ${this.zone.player.toFixed(1)}秒 / CPU ${this.zone.cpu.toFixed(1)}秒 · 目標 ${ZONE_TARGET_SECONDS}秒`;
     }
-    if (this.ruleId === 'ko') return `KO RUSH · YOU ${koPlayer} / CPU ${koCpu} · FIRST TO ${KO_TARGET}`;
-    return MATCH_RULES.turf.label;
+    if (this.ruleId === 'ko') return `KOラッシュ · あなた ${koPlayer} / CPU ${koCpu} · 先に${KO_TARGET}回`;
+    return MATCH_RULES.turf.labelJa;
   }
 
   getResultSummary({ koPlayer = 0, koCpu = 0, stageLabel = '' } = {}) {
-    if (this.ruleId === 'zone') return `YOU ${this.zone.player.toFixed(1)}s / CPU ${this.zone.cpu.toFixed(1)}s`;
-    if (this.ruleId === 'ko') return `YOU ${koPlayer} KO / CPU ${koCpu} KO`;
+    if (this.ruleId === 'zone') return `あなた ${this.zone.player.toFixed(1)}秒 / CPU ${this.zone.cpu.toFixed(1)}秒`;
+    if (this.ruleId === 'ko') return `あなた ${koPlayer}回 / CPU ${koCpu}回`;
     return stageLabel;
   }
 

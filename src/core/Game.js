@@ -411,7 +411,7 @@ export class Game {
       jumpPadAirborne: this.player.jumpPadAirborne,
     });
     if (result.completed) {
-      this.ui.showStatusMessage('TRAINING COMPLETE!', 1.2);
+      this.ui.showStatusMessage('練習完了！', 1.2);
       this._finishTutorial();
       return;
     }
@@ -577,7 +577,7 @@ export class Game {
     const preset = AI_DIFFICULTY[difficultyId] ?? AI_DIFFICULTY.standard;
     this.selectedDifficulty = preset.id;
     this.cpu.setDifficulty(preset);
-    this.ui.setDifficulty(preset.id, preset.label);
+    this.ui.setDifficulty(preset.id, preset.labelJa ?? preset.label);
     this.settings.setDifficultyId(preset.id);
   }
 
@@ -620,7 +620,11 @@ export class Game {
   _cycleEnemyAppearance() {
     this.cpu.cycleEnemyAppearance();
     this.cpu.consumeIntroBanner(); // shown directly below; avoid a duplicate next frame
-    this.ui.showEnemyIntro(this.cpu.appearanceName, this.cpu.appearanceId, this.cpu.appearance.main);
+    this.ui.showEnemyIntro(
+      this.cpu.appearanceNameJa ?? this.cpu.appearanceName,
+      this.cpu.appearanceTypeJa,
+      this.cpu.appearance.main,
+    );
   }
 
   _bindWindow() {
@@ -750,7 +754,7 @@ export class Game {
     this.ui.updateEnemySpecialWarning({ visible: false });
     this.ui.resetFinale();
     this.ui.setSuddenDeathActive(false);
-    this.ui.setObjectiveStatus(MATCH_RULES[this.selectedRuleId].label);
+    this.ui.setObjectiveStatus(MATCH_RULES[this.selectedRuleId].labelJa ?? MATCH_RULES[this.selectedRuleId].label);
     this.ui.setCupSummary({ visible: false });
     this.ui.resetInkRollFeedback();
     this.ui.hideDamageDirection();
@@ -848,7 +852,7 @@ export class Game {
     this.ui.updateEnemySpecialWarning({ visible: false });
     this.ui.resetInkRollFeedback();
     this.ui.hideDamageDirection();
-    this.ui.showTimeUp(this.inSuddenDeath ? 'DECIDED!' : 'TIME UP!');
+    this.ui.showTimeUp(this.inSuddenDeath ? '決着！' : 'タイムアップ！');
   }
 
   /**
@@ -877,7 +881,7 @@ export class Game {
     // closing seconds instead of staying suppressed from regulation.
     this._lastFinalSecond = null;
     this.ui.setSuddenDeathActive(true);
-    this.ui.showStatusMessage('SUDDEN DEATH! 先に突き放した方が勝利', 2.8);
+    this.ui.showStatusMessage('サドンデス！ 先に突き放した方が勝利', 2.8);
   }
 
   _endMatch() {
@@ -967,27 +971,20 @@ export class Game {
       rank,
       suddenDeath: this.inSuddenDeath,
     });
-    const bestLabels = {
-      playerPct: 'TURF',
-      koPlayer: 'KOs',
-      zoneHoldSec: 'ZONE TIME',
-      bestCombo: 'COMBO',
-      battleScore: 'BATTLE SCORE',
-    };
     const mvp = this.selectedRuleId === 'zone' && this.ruleController.zone.player >= 9
-      ? 'ZONE CONTROL'
+      ? 'zone'
       : this.player.koScored >= 3
-        ? 'KO PRESSURE'
+        ? 'ko'
         : cov.playerPct >= 55
-          ? 'TURF CONTROL'
+          ? 'turf'
           : this.player.bestHitCombo >= 5
-            ? 'COMBO ATTACK'
-            : 'ALL-ROUND PLAY';
+            ? 'combo'
+            : 'allRound';
     this.ui.setResultPerformance({
       weaponName: this.player.weapon.displayName,
       subWeaponName: this.player.subWeapon.profile.label,
       mvp,
-      bestLabels: profileResult.newBests.map((key) => bestLabels[key] ?? key),
+      bestLabels: profileResult.newBests,
     });
     this.ui.setResultXp({
       visible: !this.practiceMode,
@@ -1000,23 +997,29 @@ export class Game {
     });
     const rival = this.cupActive ? this.cupController.currentRival : null;
     this.ui.setResultRivalDialogue(
-      rival ? (outcome === 'win' ? rival.winLine : outcome === 'lose' ? rival.loseLine : 'A draw only delays the answer.') : '',
+      rival
+        ? (outcome === 'win'
+            ? (rival.winLineJa ?? rival.winLine)
+            : outcome === 'lose'
+              ? (rival.loseLineJa ?? rival.loseLine)
+              : '引き分けでは、答えが少し先送りになるだけだ。')
+        : '',
     );
     const objective = this.ruleController.getResultSummary({
       koPlayer: this.player.koScored,
       koCpu: this.cpu.koScored,
-      stageLabel: STAGES[this.selectedStageId].label,
+      stageLabel: STAGES[this.selectedStageId].labelJa ?? STAGES[this.selectedStageId].label,
     });
     const cup = this.cupActive
-      ? `RIVAL CUP ${this.cupRound}/3 · ${this.cupController.currentRival.name} · ${this.cupWins} WIN${this.cupWins === 1 ? '' : 'S'}${this.cupController.isFinalRound ? (cupChampion ? ' · CHAMPION' : ' · CUP COMPLETE') : ''}`
+      ? `ライバルカップ ${this.cupRound}/3 · ${this.cupController.currentRival.nameJa ?? this.cupController.currentRival.name} · ${this.cupWins}勝${this.cupController.isFinalRound ? (cupChampion ? ' · 王者' : ' · カップ完走') : ''}`
       : '';
     this.ui.setResultMeta({
-      ruleLabel: MATCH_RULES[this.selectedRuleId].label,
+      ruleLabel: MATCH_RULES[this.selectedRuleId].labelJa ?? MATCH_RULES[this.selectedRuleId].label,
       objective,
       cup,
       rewards: [
-        ...earned.map((challenge) => challenge.reward),
-        ...rankRewards.map((reward) => reward.label),
+        ...earned.map((challenge) => challenge.rewardJa ?? challenge.reward),
+        ...rankRewards.map((reward) => reward.labelJa ?? reward.label),
       ],
     });
     this.ui.setCupSummary({
@@ -1028,7 +1031,7 @@ export class Game {
     this._updateCupProgressUI();
     this.ui.setRestartLabel(
       this.cupActive
-        ? (!this.cupController.isFinalRound ? `NEXT RIVAL (${this.cupRound + 1}/3)` : 'RETURN TO TITLE')
+        ? (!this.cupController.isFinalRound ? `次のライバル (${this.cupRound + 1}/3)` : 'タイトルに戻る')
         : 'もう一度戦う (R)',
     );
   }
@@ -1105,7 +1108,7 @@ export class Game {
       shooter.special?.addCharge(paintedCells * chargeMult);
       this.particleManager.spawnKOExplosion(hitPoint, color);
       this.audioManager.playKO();
-      this.ui.showStatusMessage(targetTeam === TEAM.PLAYER ? 'YOU WERE SPLATTED!' : 'CPU DEFEATED!', 1.8);
+      this.ui.showStatusMessage(targetTeam === TEAM.PLAYER ? 'やられた！' : 'CPUを撃破！', 1.8);
       if (targetTeam === TEAM.PLAYER) {
         this.ui.resetHitCombo();
         this.ui.showRespawnBanner();
@@ -1313,12 +1316,12 @@ export class Game {
     if (remaining > MATCH.startFlashSec) {
       label = String(Math.ceil(remaining - MATCH.startFlashSec));
     } else {
-      label = 'START';
+      label = 'スタート';
     }
     if (label !== this._lastCountdownDigit) {
       this._lastCountdownDigit = label;
       this.ui.setCountdownText(label);
-      if (label === 'START') this.audioManager.playStart();
+      if (label === 'スタート') this.audioManager.playStart();
       else this.audioManager.playCountdownBeep();
     }
 
@@ -1399,7 +1402,11 @@ export class Game {
     // Show the archetype name banner when the enemy (re)appears.
     if (this.cpu.consumeIntroBanner()) {
       const rival = this.cupActive ? this.cupController.currentRival : null;
-      this.ui.showEnemyIntro(rival?.name ?? this.cpu.appearanceName, this.cpu.appearanceId, this.cpu.appearance.main);
+      this.ui.showEnemyIntro(
+        rival?.nameJa ?? rival?.name ?? this.cpu.appearanceNameJa ?? this.cpu.appearanceName,
+        this.cpu.appearanceTypeJa,
+        this.cpu.appearance.main,
+      );
     }
 
     this.projectileManager.update(dt, [this.player, this.cpu]);

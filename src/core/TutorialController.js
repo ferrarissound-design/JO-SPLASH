@@ -1,28 +1,28 @@
 export const TUTORIAL_STEPS = Object.freeze([
   Object.freeze({
     id: 'move',
-    title: 'MOVE',
-    instruction: 'Use WASD or the left stick and move away from the spawn point.',
+    title: '移動',
+    instruction: 'WASDか左スティックで、スタート地点から移動しよう。',
   }),
   Object.freeze({
     id: 'fire',
-    title: 'FIRE',
-    instruction: 'Aim at the floor and fire your main weapon.',
+    title: 'インク発射',
+    instruction: '床を狙ってメインウェポンを撃とう。',
   }),
   Object.freeze({
     id: 'jump',
-    title: 'JUMP',
-    instruction: 'Press Space, A, or JUMP to leap.',
+    title: 'ジャンプ',
+    instruction: 'Space、A、またはジャンプボタンで跳ぼう。',
   }),
   Object.freeze({
     id: 'sub',
-    title: 'SUB WEAPON',
-    instruction: 'Press E, B, or the SUB button to deploy your selected sub weapon.',
+    title: 'サブウェポン',
+    instruction: 'E、B、またはボムボタンでサブウェポンを使おう。',
   }),
   Object.freeze({
     id: 'jumpPad',
-    title: 'JUMP PAD',
-    instruction: 'Step onto a glowing launch pad to complete training.',
+    title: 'ジャンプ台',
+    instruction: '光っているジャンプ台に乗れば練習完了。',
   }),
 ]);
 

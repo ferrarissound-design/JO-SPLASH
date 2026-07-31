@@ -1,5 +1,14 @@
 import { ARENA } from '../config.js';
 import { DEFAULT_KEY_BINDINGS } from '../core/InputManager.js';
+import {
+  UI_TEXT_JA,
+  getComboLabel,
+  toJapaneseBattleRankTitle,
+  toJapaneseBestLabel,
+  toJapaneseEquipmentName,
+  toJapaneseMvpLabel,
+  toJapaneseRankName,
+} from './UiText.js';
 
 const KEY_LABEL_OVERRIDES = {
   Space: 'Space',
@@ -34,15 +43,6 @@ const MAP_COLORS = {
   player: [47, 184, 255, 255],
   cpu: [255, 122, 47, 255],
 };
-
-const RANK_NAME_JA = Object.freeze({
-  ROOKIE: 'ルーキー',
-  SPLASHER: 'スプラッシャー',
-  'INK RIDER': 'インクライダー',
-  'ZONE ACE': 'ゾーンエース',
-  'RIVAL HUNTER': 'ライバルハンター',
-  'CHROMA LEGEND': 'クロマレジェンド',
-});
 
 // ============================================================================
 // UIManager — all DOM reads/writes live here. Game.js calls plain methods
@@ -412,7 +412,7 @@ export class UIManager {
   setBattleMode(id) { this._setOptionSelection(this.el.battleModeButtons, 'battleMode', id); }
 
   setPlayerProfile({ level = 1, rankName = 'ROOKIE', current = 0, required = 100 } = {}) {
-    if (this.el.profileRank) this.el.profileRank.textContent = RANK_NAME_JA[rankName] ?? rankName;
+    if (this.el.profileRank) this.el.profileRank.textContent = toJapaneseRankName(rankName);
     if (this.el.profileLevel) this.el.profileLevel.textContent = String(level);
     if (this.el.profileXpFill) {
       this.el.profileXpFill.style.width = `${required > 0 ? Math.min(100, current / required * 100) : 100}%`;
@@ -435,7 +435,7 @@ export class UIManager {
       this.el.resultObjective.classList.toggle('hidden', !text);
     }
     if (this.el.resultRewards) {
-      this.el.resultRewards.textContent = rewards.length ? `UNLOCKED: ${rewards.join(' / ')}` : '';
+      this.el.resultRewards.textContent = rewards.length ? `解放した報酬: ${rewards.join(' / ')}` : '';
       this.el.resultRewards.classList.toggle('hidden', rewards.length === 0);
     }
   }
@@ -473,7 +473,7 @@ export class UIManager {
   setCupProgress({ visible = false, round = 0, wins = 0, rival = null, resumeAvailable = false } = {}) {
     if (this.el.cupProgress) {
       this.el.cupProgress.innerHTML = visible && rival
-        ? `<strong>ライバルカップ ${round}/3 — ${rival.name}</strong><br>${rival.taglineJa ?? rival.tagline}<br>現在 ${wins}勝`
+        ? `<strong>ライバルカップ ${round}/3 — ${rival.nameJa ?? rival.name}</strong><br>${rival.taglineJa ?? rival.tagline}<br>現在 ${wins}勝`
         : '';
       this.el.cupProgress.classList.toggle('hidden', !visible || !rival);
     }
@@ -483,7 +483,7 @@ export class UIManager {
   setCupSummary({ visible = false, results = [], wins = 0, champion = false } = {}) {
     if (!this.el.cupSummary) return;
     this.el.cupSummary.innerHTML = visible
-      ? `<strong>${champion ? 'RIVAL CUP CHAMPION' : 'RIVAL CUP COMPLETE'}</strong><br>${results.map((result, index) => `R${index + 1}: ${result.toUpperCase()}`).join(' · ')}<br>TOTAL: ${wins} WINS${champion ? '<br>THE CHROMA CROWN IS YOURS.' : ''}`
+      ? `<strong>${champion ? 'ライバルカップ王者' : 'ライバルカップ完走'}</strong><br>${results.map((result, index) => `第${index + 1}戦: ${UI_TEXT_JA.cupResult[result] ?? result}`).join(' · ')}<br>合計 ${wins}勝${champion ? '<br>クロマクラウンを獲得！' : ''}`
       : '';
     this.el.cupSummary.classList.toggle('hidden', !visible);
     this.el.cupSummary.classList.toggle('champion', visible && champion);
@@ -491,10 +491,10 @@ export class UIManager {
 
   showRivalCard({ rival, round = 1, final = false } = {}) {
     if (!rival || !this.el.rivalIntro) return;
-    this.el.rivalRound.textContent = final ? `FINAL RIVAL · ${round}/3` : `RIVAL CUP ${round}/3`;
-    this.el.rivalName.textContent = rival.name;
-    this.el.rivalTagline.textContent = rival.tagline;
-    this.el.rivalDialogue.textContent = `“${rival.introLine ?? 'Let the colors decide.'}”`;
+    this.el.rivalRound.textContent = final ? `最終ライバル · ${round}/3` : `ライバルカップ ${round}/3`;
+    this.el.rivalName.textContent = rival.nameJa ?? rival.name;
+    this.el.rivalTagline.textContent = rival.taglineJa ?? rival.tagline;
+    this.el.rivalDialogue.textContent = `“${rival.introLineJa ?? rival.introLine ?? 'インクで決着をつけよう。'}”`;
     this.el.rivalCard.style.setProperty('--rival-color', rival.color ?? '#2fb8ff');
     this.el.rivalCard.classList.toggle('final', final);
     this.el.rivalIntro.classList.remove('hidden');
@@ -519,10 +519,14 @@ export class UIManager {
   setResultPerformance({
     weaponName = '', subWeaponName = '', mvp = '', bestLabels = [],
   } = {}) {
-    if (this.el.resultLoadout) this.el.resultLoadout.textContent = `LOADOUT: ${weaponName} + ${subWeaponName}`;
-    if (this.el.resultMvp) this.el.resultMvp.textContent = `MVP: ${mvp || 'ALL-ROUND PLAY'}`;
+    if (this.el.resultLoadout) {
+      this.el.resultLoadout.textContent = `装備: ${toJapaneseEquipmentName(weaponName)} + ${toJapaneseEquipmentName(subWeaponName)}`;
+    }
+    if (this.el.resultMvp) this.el.resultMvp.textContent = `最優秀: ${toJapaneseMvpLabel(mvp)}`;
     if (this.el.resultBests) {
-      this.el.resultBests.textContent = bestLabels.length ? `NEW BEST: ${bestLabels.join(' / ')}` : '';
+      this.el.resultBests.textContent = bestLabels.length
+        ? `自己ベスト更新: ${bestLabels.map(toJapaneseBestLabel).join(' / ')}`
+        : '';
     }
   }
 
@@ -533,10 +537,10 @@ export class UIManager {
     if (!this.el.resultXp) return;
     this.el.resultXp.classList.toggle('hidden', !visible);
     if (!visible) return;
-    this.el.resultLevel.textContent = `LV ${level} · ${rankName}`;
-    this.el.resultXpGained.textContent = `+${xpGained} XP`;
+    this.el.resultLevel.textContent = `レベル ${level} · ${toJapaneseRankName(rankName)}`;
+    this.el.resultXpGained.textContent = `経験値 +${xpGained}`;
     this.el.resultXpFill.style.width = `${required > 0 ? Math.min(100, current / required * 100) : 100}%`;
-    this.el.resultLevelUp.textContent = leveledUp ? `LEVEL UP! Welcome to ${rankName}.` : '';
+    this.el.resultLevelUp.textContent = leveledUp ? `レベルアップ！ ${toJapaneseRankName(rankName)}に昇格。` : '';
   }
 
   setResultRivalDialogue(text = '') {
@@ -568,11 +572,11 @@ export class UIManager {
   }
 
   /** Flashes the enemy archetype name (e.g. "SPEED PUNK") on (re)appearance; CSS fades it out. */
-  showEnemyIntro(name, id, color = '#ffffff') {
+  showEnemyIntro(name, typeLabel, color = '#ffffff') {
     const el = this.el.enemyIntro;
     if (!el) return;
     this.el.enemyIntroName.textContent = name || '';
-    this.el.enemyIntroType.textContent = id ? id.toUpperCase() : '';
+    this.el.enemyIntroType.textContent = typeLabel || '';
     el.style.setProperty('--intro-color', color);
     el.classList.remove('hidden', 'play');
     void el.offsetWidth; // restart the animation even on back-to-back calls
@@ -606,7 +610,7 @@ export class UIManager {
     this.el.howtoDesktopPause?.classList.toggle('hidden', useGamepad || useTouch);
     this.el.howtoTouchPause?.classList.toggle('hidden', useGamepad || !useTouch);
     this.el.howtoGamepadPause?.classList.toggle('hidden', !useGamepad);
-    this.el.weaponSwitchHint.textContent = useGamepad ? 'X / D-PAD' : (useTouch ? 'SELECT' : '1 / 2 / 3');
+    this.el.weaponSwitchHint.textContent = useGamepad ? 'X / 十字キー' : (useTouch ? '選択' : '1 / 2 / 3');
   }
 
   showTitle() { this.el.title.classList.remove('hidden'); }
@@ -675,12 +679,12 @@ export class UIManager {
     this.el.specialFill.style.width = `${specialPct}%`;
     this.el.specialRow.classList.toggle('special-ready', specialReady);
     this.el.specialRow.classList.toggle('special-active', specialActive);
-    this.el.specialValue.textContent = specialActive ? 'NOW' : specialReady ? 'Q!' : `${Math.floor(specialPct)}%`;
-    this.el.weaponName.textContent = weaponName;
-    if (this.el.subWeaponName) this.el.subWeaponName.textContent = subWeaponName;
+    this.el.specialValue.textContent = specialActive ? '発動中' : specialReady ? 'Q!' : `${Math.floor(specialPct)}%`;
+    this.el.weaponName.textContent = toJapaneseEquipmentName(weaponName);
+    if (this.el.subWeaponName) this.el.subWeaponName.textContent = toJapaneseEquipmentName(subWeaponName);
     if (this.el.subWeaponStatus) {
       const lowInk = ink < subWeaponCost;
-      this.el.subWeaponStatus.textContent = subWeaponCooldown > 0 ? `${subWeaponCooldown.toFixed(1)}s` : lowInk ? 'LOW INK' : 'READY';
+      this.el.subWeaponStatus.textContent = subWeaponCooldown > 0 ? `${subWeaponCooldown.toFixed(1)}秒` : lowInk ? 'インク不足' : '使用可能';
       this.el.subWeaponStatus.classList.toggle('cooldown', subWeaponCooldown > 0);
       this.el.subWeaponStatus.classList.toggle('low-ink', lowInk);
     }
@@ -697,8 +701,8 @@ export class UIManager {
     }
     if (this.el.chargeValue) {
       this.el.chargeValue.textContent = weaponChargeStored
-        ? `HOLD ${weaponChargeStoreTimer.toFixed(1)}`
-        : weaponChargeReady ? 'FULL' : `${Math.floor(chargePct * 100)}%`;
+        ? `キープ ${weaponChargeStoreTimer.toFixed(1)}`
+        : weaponChargeReady ? '最大' : `${Math.floor(chargePct * 100)}%`;
     }
 
     if (koPlayer !== this._lastKoPlayer) {
@@ -741,7 +745,7 @@ export class UIManager {
   }
 
   showSkySplash(count) {
-    this.el.statusMsg.textContent = `SKY SPLASH ×${count}`;
+    this.el.statusMsg.textContent = `空中命中 ×${count}`;
     this.el.statusMsg.classList.add('show', 'sky-splash');
     this._statusMsgTimer = 1;
   }
@@ -749,13 +753,7 @@ export class UIManager {
   showHitCombo(count, { skySplash = false } = {}) {
     if (!this.el.hitCombo || count < 2) return;
 
-    const label = count >= 8
-      ? 'INK FRENZY'
-      : count >= 5
-        ? 'INK RUSH'
-        : count >= 3
-          ? 'TRIPLE SPLASH'
-          : 'HIT COMBO';
+    const label = getComboLabel(count);
     this.el.hitComboCount.textContent = `${count}×`;
     this.el.hitComboLabel.textContent = label;
     this.el.hitCombo.classList.remove('hidden', 'pop', 'combo-sky');
@@ -848,7 +846,7 @@ export class UIManager {
     el.classList.toggle('hidden', !visible);
     el.classList.toggle('active', visible && active);
     if (this.el.enemySpecialWarningLabel) {
-      this.el.enemySpecialWarningLabel.textContent = active ? 'CPU INK BURST' : 'CPU BURST CHARGING';
+      this.el.enemySpecialWarningLabel.textContent = active ? 'CPUがインクバースト発動' : 'CPUがバースト準備中';
     }
   }
 
@@ -866,7 +864,7 @@ export class UIManager {
     this.el.finalCountdown?.classList.add('hidden');
   }
 
-  showTimeUp(title = 'TIME UP!') {
+  showTimeUp(title = 'タイムアップ！') {
     this.hideFinalCountdown();
     const el = this.el.timeUpOverlay;
     if (!el) return;
@@ -977,7 +975,7 @@ export class UIManager {
     if (this.el.turfMapStatus) {
       const enemyStatus = cpuVisible ? 'CPU表示中' : 'CPU潜伏または撃破中';
       this.el.turfMapStatus.textContent =
-        `塗装マップ: YOU ${playerPct.toFixed(0)}%、CPU ${cpuPct.toFixed(0)}%、${enemyStatus}`;
+        `塗装マップ: あなた ${playerPct.toFixed(0)}%、CPU ${cpuPct.toFixed(0)}%、${enemyStatus}`;
     }
   }
 
@@ -1049,12 +1047,14 @@ export class UIManager {
     const rankClass = rank.practice ? 'rank-practice' : `rank-${String(rank.grade).toLowerCase()}`;
     this.el.resultRank.classList.remove('rank-s', 'rank-a', 'rank-b', 'rank-c', 'rank-practice', 'pop');
     this.el.resultRank.classList.add(rankClass);
-    if (this.el.resultRankGrade) this.el.resultRankGrade.textContent = rank.practice ? 'PRACTICE' : rank.grade;
-    if (this.el.resultRankTitle) this.el.resultRankTitle.textContent = rank.title;
+    if (this.el.resultRankGrade) this.el.resultRankGrade.textContent = rank.practice ? '練習' : rank.grade;
+    if (this.el.resultRankTitle) {
+      this.el.resultRankTitle.textContent = rank.titleJa ?? toJapaneseBattleRankTitle(rank.title);
+    }
     if (this.el.resultRankScore) {
       this.el.resultRankScore.textContent = rank.practice
-        ? 'NO SCORE — TRAINING MODE'
-        : `BATTLE SCORE ${rank.score}`;
+        ? 'スコアなし — 練習モード'
+        : `バトルスコア ${rank.score}`;
     }
 
     // Restart the reveal animation when playing consecutive matches.
@@ -1064,7 +1064,7 @@ export class UIManager {
 
   /** Animates the result percentages counting up from 0 to their final values. */
   showResult({ playerPct, cpuPct, koPlayer, koCpu, outcome, stats = null, rank = null, suddenDeath = false }) {
-    this.el.resultTitle.textContent = outcome === 'win' ? 'VICTORY' : outcome === 'lose' ? 'DEFEAT' : 'DRAW';
+    this.el.resultTitle.textContent = UI_TEXT_JA.outcome[outcome] ?? UI_TEXT_JA.outcome.draw;
     this.el.resultTitle.classList.remove('win', 'lose', 'draw');
     this.el.resultTitle.classList.add(outcome === 'win' ? 'win' : outcome === 'lose' ? 'lose' : 'draw');
     this.showBattleRank(rank);

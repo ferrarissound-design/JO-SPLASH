@@ -9,7 +9,7 @@ describe('RuleController', () => {
     ownerGrid.fill(2);
     const winner = controller.update(18.1, { paintSystem: { ownerGrid, gridRes: 9 } });
     expect(winner).toBe(TEAM.CPU);
-    expect(controller.getObjectiveText()).toContain('18s');
+    expect(controller.getObjectiveText()).toContain('18秒');
   });
 
   it('declares the first side to four KOs', () => {

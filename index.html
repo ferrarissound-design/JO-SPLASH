@@ -45,7 +45,7 @@
               <li><kbd>Shift</kbd><span>自分のインクに潜って高速移動</span></li>
               <li><kbd>方向</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd><span>潜伏中にインクロール</span></li>
               <li><kbd>Q</kbd><span>満タン時にインクバースト</span></li>
-              <li><kbd>PRECISION長押し+Shift</kbd><span>フルチャージを潜伏中キープ</span></li>
+              <li><kbd>精密を長押し+Shift</kbd><span>フルチャージを潜伏中キープ</span></li>
               <li><kbd>Esc</kbd><span>ポーズ / マウスロック解除</span></li>
             </ul>
           </details>
@@ -58,17 +58,17 @@
             <li><kbd>左スティック</kbd><span>移動</span></li>
             <li><kbd>右側ドラッグ</kbd><span>カメラ / 照準</span></li>
             <li><kbd>◎ボタン</kbd><span>インク発射</span></li>
-            <li><kbd>JUMP</kbd><span>ジャンプ</span></li>
+            <li><kbd>ジャンプ</kbd><span>ジャンプ</span></li>
           </ul>
           <details class="key-list-more">
             <summary class="key-list-toggle">詳しい操作を見る</summary>
             <ul class="key-list">
-              <li><kbd>MAIN</kbd><span>STREAM / SPREAD / PRECISION 切替</span></li>
-              <li><kbd>BOMB</kbd><span>広範囲インク弾</span></li>
-              <li><kbd>前進+JUMP</kbd><span>自分色の壁パネルをよじ登る</span></li>
-              <li><kbd>DIVE</kbd><span>自分のインクに潜って移動</span></li>
-              <li><kbd>方向</kbd>+<kbd>DIVE</kbd>+<kbd>JUMP</kbd><span>潜伏中にインクロール</span></li>
-              <li><kbd>BURST</kbd><span>満タン時に広範囲を塗装</span></li>
+              <li><kbd>メイン</kbd><span>連射 / 拡散 / 精密 切替</span></li>
+              <li><kbd>ボム</kbd><span>広範囲インク弾</span></li>
+              <li><kbd>前進+ジャンプ</kbd><span>自分色の壁パネルをよじ登る</span></li>
+              <li><kbd>潜伏</kbd><span>自分のインクに潜って移動</span></li>
+              <li><kbd>方向</kbd>+<kbd>潜伏</kbd>+<kbd>ジャンプ</kbd><span>潜伏中にインクロール</span></li>
+              <li><kbd>バースト</kbd><span>満タン時に広範囲を塗装</span></li>
               <li><kbd>II ボタン</kbd><span>ポーズ</span></li>
             </ul>
           </details>
@@ -175,7 +175,7 @@
           <small id="start-character-name">クロマライダー</small>
         </button>
         <button id="btn-open-settings" class="btn-link" type="button">⚙ 設定</button>
-        <p class="rule-hint" id="rule-hint">TURF WAR — Paint more ground than the rival.</p>
+        <p class="rule-hint" id="rule-hint">ナワバリバトル — 相手より広く床を塗ろう。</p>
       </div>
     </section>
 
@@ -203,33 +203,33 @@
           <input type="checkbox" id="setting-invert-y" />
         </div>
         <div class="settings-row">
-          <label for="setting-quality">GRAPHICS QUALITY</label>
+          <label for="setting-quality">画質</label>
           <select id="setting-quality">
-            <option value="auto">AUTO</option>
-            <option value="low">LOW</option>
-            <option value="high">HIGH</option>
+            <option value="auto">自動</option>
+            <option value="low">低</option>
+            <option value="high">高</option>
           </select>
         </div>
         <div class="settings-row">
-          <label for="setting-color-mode">COLOR SUPPORT</label>
+          <label for="setting-color-mode">色の見やすさ</label>
           <select id="setting-color-mode">
-            <option value="standard">STANDARD</option>
-            <option value="deuteranopia">DEUTERANOPIA</option>
-            <option value="tritanopia">TRITANOPIA</option>
-            <option value="highContrast">HIGH CONTRAST</option>
+            <option value="standard">標準</option>
+            <option value="deuteranopia">赤緑を見分けやすく</option>
+            <option value="tritanopia">青黄を見分けやすく</option>
+            <option value="highContrast">高コントラスト</option>
           </select>
         </div>
         <div class="settings-row">
-          <label for="setting-crosshair-scale">CROSSHAIR SIZE</label>
+          <label for="setting-crosshair-scale">照準の大きさ</label>
           <input type="range" id="setting-crosshair-scale" min="0.7" max="1.6" step="0.1" value="1" />
           <span id="setting-crosshair-scale-value" class="settings-value">100%</span>
         </div>
         <div class="settings-row">
-          <label for="setting-touch-layout">TOUCH LAYOUT</label>
+          <label for="setting-touch-layout">タッチ配置</label>
           <select id="setting-touch-layout">
-            <option value="standard">STANDARD</option>
-            <option value="compact">COMPACT</option>
-            <option value="leftHanded">LEFT HANDED</option>
+            <option value="standard">標準</option>
+            <option value="compact">コンパクト</option>
+            <option value="leftHanded">左利き</option>
           </select>
         </div>
 
@@ -243,13 +243,13 @@
           <li class="keybind-row" data-action="inkSurf"><span>潜伏</span><button type="button" class="keybind-btn" data-action="inkSurf">Shift</button></li>
           <li class="keybind-row" data-action="special"><span>スペシャル</span><button type="button" class="keybind-btn" data-action="special">Q</button></li>
           <li class="keybind-row" data-action="bomb"><span>インクボム</span><button type="button" class="keybind-btn" data-action="bomb">E</button></li>
-          <li class="keybind-row" data-action="weapon1"><span>武器: STREAM</span><button type="button" class="keybind-btn" data-action="weapon1">1</button></li>
-          <li class="keybind-row" data-action="weapon2"><span>武器: SPREAD</span><button type="button" class="keybind-btn" data-action="weapon2">2</button></li>
-          <li class="keybind-row" data-action="weapon3"><span>武器: PRECISION</span><button type="button" class="keybind-btn" data-action="weapon3">3</button></li>
+          <li class="keybind-row" data-action="weapon1"><span>武器: 連射</span><button type="button" class="keybind-btn" data-action="weapon1">1</button></li>
+          <li class="keybind-row" data-action="weapon2"><span>武器: 拡散</span><button type="button" class="keybind-btn" data-action="weapon2">2</button></li>
+          <li class="keybind-row" data-action="weapon3"><span>武器: 精密</span><button type="button" class="keybind-btn" data-action="weapon3">3</button></li>
         </ul>
         <button id="btn-reset-keybinds" class="btn-link" type="button">キー設定を初期値に戻す</button>
 
-        <button id="btn-replay-tutorial" class="btn-secondary" type="button">REPLAY FIRST BATTLE TUTORIAL</button>
+        <button id="btn-replay-tutorial" class="btn-secondary" type="button">最初のバトル練習をもう一度</button>
         <button id="btn-close-settings" class="btn-primary" type="button">戻る</button>
       </div>
     </section>
@@ -257,17 +257,17 @@
     <!-- ============ RIVAL INTRO ============ -->
     <section id="screen-rival-intro" class="screen hidden" aria-live="assertive">
       <div id="rival-card" class="rival-card">
-        <span id="rival-round">RIVAL CUP 1/3</span>
-        <strong id="rival-name">MAKO RUSH</strong>
-        <p id="rival-tagline">Fast flanker</p>
-        <blockquote id="rival-dialogue">“Try to keep up.”</blockquote>
+        <span id="rival-round">ライバルカップ 1/3</span>
+        <strong id="rival-name">マコ・ラッシュ</strong>
+        <p id="rival-tagline">高速で攻め続けるアタッカー</p>
+        <blockquote id="rival-dialogue">“ついてこられる？”</blockquote>
       </div>
     </section>
 
     <!-- ============ PAUSE OVERLAY (shown when pointer lock is lost mid-match, or via the HUD pause button) ============ -->
     <section id="screen-pause" class="screen hidden">
       <div class="title-card">
-        <h2 class="pause-title">PAUSED</h2>
+        <h2 class="pause-title">ポーズ中</h2>
         <button id="btn-resume" class="btn-primary" type="button">再開する</button>
         <button id="btn-quit" class="btn-secondary" type="button">タイトルに戻る</button>
 
@@ -284,7 +284,7 @@
             <li><kbd>Shift</kbd><span>自分のインクに潜って高速移動</span></li>
             <li><kbd>方向</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd><span>潜伏中にインクロール</span></li>
             <li><kbd>Q</kbd><span>満タン時にインクバースト</span></li>
-            <li><kbd>PRECISION長押し+Shift</kbd><span>フルチャージを潜伏中キープ</span></li>
+            <li><kbd>精密を長押し+Shift</kbd><span>フルチャージを潜伏中キープ</span></li>
           </ul>
         </div>
 
@@ -294,12 +294,12 @@
             <li><kbd>左スティック</kbd><span>移動</span></li>
             <li><kbd>右側ドラッグ</kbd><span>カメラ / 照準</span></li>
             <li><kbd>◎ボタン</kbd><span>インク発射</span></li>
-            <li><kbd>BOMB</kbd><span>広範囲インク弾</span></li>
-            <li><kbd>JUMP</kbd><span>ジャンプ</span></li>
-            <li><kbd>前進+JUMP</kbd><span>自分色の壁パネルをよじ登る</span></li>
-            <li><kbd>DIVE</kbd><span>自分のインクに潜って移動</span></li>
-            <li><kbd>方向</kbd>+<kbd>DIVE</kbd>+<kbd>JUMP</kbd><span>潜伏中にインクロール</span></li>
-            <li><kbd>BURST</kbd><span>満タン時に広範囲を塗装</span></li>
+            <li><kbd>ボム</kbd><span>広範囲インク弾</span></li>
+            <li><kbd>ジャンプ</kbd><span>ジャンプ</span></li>
+            <li><kbd>前進+ジャンプ</kbd><span>自分色の壁パネルをよじ登る</span></li>
+            <li><kbd>潜伏</kbd><span>自分のインクに潜って移動</span></li>
+            <li><kbd>方向</kbd>+<kbd>潜伏</kbd>+<kbd>ジャンプ</kbd><span>潜伏中にインクロール</span></li>
+            <li><kbd>バースト</kbd><span>満タン時に広範囲を塗装</span></li>
           </ul>
         </div>
 
@@ -329,10 +329,10 @@
       <button id="btn-pause" class="hud-pause-btn" type="button" aria-label="ポーズ">II</button>
       <div class="hud-top">
         <div class="match-strip" aria-label="試合状況">
-          <div class="match-side match-player"><span class="side-tag side-player">YOU</span><span id="coverage-player-pct">0%</span></div>
+          <div class="match-side match-player"><span class="side-tag side-player">あなた</span><span id="coverage-player-pct">0%</span></div>
           <div id="timer">01:30</div>
-          <div class="match-side match-cpu"><span class="side-tag side-cpu" id="cpu-level-label">CPU · STANDARD</span><span id="coverage-cpu-pct">0%</span></div>
-          <div id="objective-status" class="objective-status">TURF WAR</div>
+          <div class="match-side match-cpu"><span class="side-tag side-cpu" id="cpu-level-label">CPU · スタンダード</span><span id="coverage-cpu-pct">0%</span></div>
+          <div id="objective-status" class="objective-status">ナワバリバトル</div>
           <div class="coverage-bar" aria-hidden="true">
             <div id="coverage-bar-player" class="coverage-fill fill-player"></div>
             <div id="coverage-bar-cpu" class="coverage-fill fill-cpu"></div>
@@ -350,7 +350,7 @@
               <span id="hp-value" class="gauge-value">100</span>
             </div>
             <div class="gauge-row" id="ink-row">
-              <span class="gauge-icon ink-icon">INK</span>
+              <span class="gauge-icon ink-icon">インク</span>
               <div class="gauge-track"><div id="ink-fill" class="gauge-fill ink-fill"></div></div>
               <span id="ink-value" class="gauge-value">100</span>
             </div>
@@ -360,11 +360,11 @@
               <span id="special-value" class="gauge-value">0%</span>
             </div>
           </div>
-          <div class="player-character-chip"><span>PLAYER</span><strong id="player-character-name">CHROMA RIDER</strong></div>
-          <div class="weapon-strip"><span>MAIN</span><strong id="weapon-name">STREAM</strong><small id="weapon-switch-hint">1 / 2 / 3</small></div>
-          <div class="weapon-strip sub-weapon-strip"><span>SUB</span><strong id="sub-weapon-name">INK BOMB</strong><small id="sub-weapon-status">READY</small></div>
-          <div id="charge-meter" class="charge-meter hidden" aria-label="PRECISION charge">
-            <span>CHARGE</span>
+          <div class="player-character-chip"><span>プレイヤー</span><strong id="player-character-name">クロマライダー</strong></div>
+          <div class="weapon-strip"><span>メイン</span><strong id="weapon-name">連射</strong><small id="weapon-switch-hint">1 / 2 / 3</small></div>
+          <div class="weapon-strip sub-weapon-strip"><span>サブ</span><strong id="sub-weapon-name">インクボム</strong><small id="sub-weapon-status">使用可能</small></div>
+          <div id="charge-meter" class="charge-meter hidden" aria-label="精密ウェポンのチャージ">
+            <span>チャージ</span>
             <div class="charge-track"><div id="charge-fill" class="charge-fill"></div></div>
             <strong id="charge-value">0%</strong>
           </div>
@@ -373,10 +373,10 @@
       </div>
 
       <aside id="turf-map" class="turf-map" aria-label="ライブ塗装マップ">
-        <div class="turf-map-heading"><strong>TURF MAP</strong><span>N</span></div>
+        <div class="turf-map-heading"><strong>塗装マップ</strong><span>北</span></div>
         <canvas id="turf-map-canvas" width="128" height="128" aria-hidden="true"></canvas>
         <div class="turf-map-legend" aria-hidden="true">
-          <span class="map-you">YOU</span><span class="map-cpu">CPU</span>
+          <span class="map-you">あなた</span><span class="map-cpu">CPU</span>
         </div>
         <span id="turf-map-status" class="sr-only">塗装マップを準備中</span>
       </aside>
@@ -390,43 +390,43 @@
       </div>
       <div id="hit-combo" class="hit-combo hidden" aria-live="polite">
         <strong id="hit-combo-count">2×</strong>
-        <span id="hit-combo-label">HIT COMBO</span>
+        <span id="hit-combo-label">ヒットコンボ</span>
       </div>
       <div id="damage-direction" class="hidden" aria-hidden="true">
         <span class="damage-direction-arrow"></span>
       </div>
 
-      <div id="enemy-marker" class="hidden"><div class="enemy-name">J0-BOT</div><div class="enemy-hp-track"><div id="enemy-hp-fill"></div></div></div>
+      <div id="enemy-marker" class="hidden"><div class="enemy-name">ジョーボット</div><div class="enemy-hp-track"><div id="enemy-hp-fill"></div></div></div>
       <div id="enemy-intro" class="hidden"><span class="ei-type" id="enemy-intro-type"></span><span class="ei-name" id="enemy-intro-name"></span></div>
-      <div id="enemy-special-warning" class="hidden"><span>WARNING</span><strong id="enemy-special-warning-label">CPU BURST CHARGING</strong></div>
-      <div id="final-countdown" class="hidden" aria-live="polite"><span>FINAL</span><strong id="final-countdown-value">10</strong></div>
-      <div id="time-up-overlay" class="hidden" aria-live="assertive"><strong id="time-up-title">TIME UP!</strong><span>CALCULATING TURF…</span></div>
-      <div id="ink-roll-flash" class="hidden" aria-hidden="true"><span>INK ROLL</span></div>
+      <div id="enemy-special-warning" class="hidden"><span>警告</span><strong id="enemy-special-warning-label">CPUがバースト準備中</strong></div>
+      <div id="final-countdown" class="hidden" aria-live="polite"><span>残り</span><strong id="final-countdown-value">10</strong></div>
+      <div id="time-up-overlay" class="hidden" aria-live="assertive"><strong id="time-up-title">タイムアップ！</strong><span>塗装を集計中…</span></div>
+      <div id="ink-roll-flash" class="hidden" aria-hidden="true"><span>インクロール</span></div>
       <div id="hit-flash"></div>
-      <div id="respawn-banner" class="hidden">RESPAWNING…</div>
+      <div id="respawn-banner" class="hidden">復活待ち…</div>
       <div id="tutorial-card" class="tutorial-card hidden" aria-live="polite">
         <span id="tutorial-progress">1/5</span>
-        <strong id="tutorial-title">MOVE</strong>
-        <p id="tutorial-instruction">Move away from the spawn point.</p>
-        <button id="btn-skip-tutorial" type="button">SKIP TRAINING</button>
+        <strong id="tutorial-title">移動</strong>
+        <p id="tutorial-instruction">スタート地点から移動しよう。</p>
+        <button id="btn-skip-tutorial" type="button">練習をスキップ</button>
       </div>
     </section>
 
     <!-- ============ RESULT SCREEN ============ -->
     <section id="screen-result" class="screen hidden">
       <div class="result-card">
-        <h2 id="result-title">DRAW</h2>
+        <h2 id="result-title">引き分け</h2>
         <div id="result-rank" class="result-rank rank-b" aria-label="バトル評価">
           <span id="result-rank-grade" class="result-rank-grade">B</span>
           <div class="result-rank-copy">
-            <strong id="result-rank-title">SPLASH FIGHTER</strong>
-            <small id="result-rank-score">BATTLE SCORE 50</small>
+            <strong id="result-rank-title">スプラッシュファイター</strong>
+            <small id="result-rank-score">バトルスコア 50</small>
           </div>
         </div>
         <div id="result-margin" class="result-margin hidden"></div>
         <div class="result-bars">
           <div class="result-row">
-            <span class="side-tag side-player">YOU</span>
+            <span class="side-tag side-player">あなた</span>
             <div class="result-track"><div id="result-bar-player" class="result-fill fill-player"></div></div>
             <span id="result-pct-player">0%</span>
           </div>
@@ -441,24 +441,24 @@
         </div>
         <div id="result-objective" class="result-objective hidden"></div>
         <div id="result-performance" class="result-performance">
-          <span id="result-loadout">LOADOUT: STREAM + INK BOMB</span>
-          <strong id="result-mvp">MVP: TURF CONTROL</strong>
+          <span id="result-loadout">装備: 連射 + インクボム</span>
+          <strong id="result-mvp">最優秀: ナワバリ制圧</strong>
           <small id="result-bests"></small>
         </div>
         <div class="result-ko">
-          <span>撃破数 — YOU: <b id="result-ko-player">0</b> / CPU: <b id="result-ko-cpu">0</b></span>
+          <span>撃破数 — あなた: <b id="result-ko-player">0</b> / CPU: <b id="result-ko-cpu">0</b></span>
         </div>
         <ul id="result-stats" class="result-stats">
           <li><span>スペシャル発動</span><b id="result-stat-specials">0 / 0</b></li>
           <li><span>インクボム</span><b id="result-stat-bombs">0 / 0</b></li>
           <li><span>壁登り成功</span><b id="result-stat-climbs">0 / 0</b></li>
           <li><span>インクロール</span><b id="result-stat-rolls">0</b></li>
-          <li class="result-stat-highlight"><span>SKY SPLASH</span><b id="result-stat-sky-splashes">0 / 0</b></li>
-          <li class="result-stat-combo"><span>BEST COMBO</span><b id="result-stat-best-combos">0 / 0</b></li>
+          <li class="result-stat-highlight"><span>空中命中</span><b id="result-stat-sky-splashes">0 / 0</b></li>
+          <li class="result-stat-combo"><span>最大コンボ</span><b id="result-stat-best-combos">0 / 0</b></li>
         </ul>
         <div id="result-rewards" class="result-rewards hidden"></div>
         <div id="result-xp" class="result-xp hidden">
-          <div><strong id="result-level">LV 1 · ROOKIE</strong><span id="result-xp-gained">+0 XP</span></div>
+          <div><strong id="result-level">レベル 1 · ルーキー</strong><span id="result-xp-gained">経験値 +0</span></div>
           <div class="profile-xp-track"><span id="result-xp-fill"></span></div>
           <small id="result-level-up"></small>
         </div>
@@ -483,16 +483,16 @@
       </div>
       <div class="touch-look-zone"></div>
       <div class="touch-weapon-switcher" role="group" aria-label="メイン武器切替">
-        <button type="button" class="touch-weapon-btn selected" data-weapon-key="Digit1" data-weapon-type="stream" aria-label="STREAMに切替" aria-pressed="true"><span>1</span><small>STREAM</small></button>
-        <button type="button" class="touch-weapon-btn" data-weapon-key="Digit2" data-weapon-type="spread" aria-label="SPREADに切替" aria-pressed="false"><span>2</span><small>SPREAD</small></button>
-        <button type="button" class="touch-weapon-btn" data-weapon-key="Digit3" data-weapon-type="precision" aria-label="PRECISIONに切替" aria-pressed="false"><span>3</span><small>PRECISION</small></button>
+        <button type="button" class="touch-weapon-btn selected" data-weapon-key="Digit1" data-weapon-type="stream" aria-label="連射に切替" aria-pressed="true"><span>1</span><small>連射</small></button>
+        <button type="button" class="touch-weapon-btn" data-weapon-key="Digit2" data-weapon-type="spread" aria-label="拡散に切替" aria-pressed="false"><span>2</span><small>拡散</small></button>
+        <button type="button" class="touch-weapon-btn" data-weapon-key="Digit3" data-weapon-type="precision" aria-label="精密に切替" aria-pressed="false"><span>3</span><small>精密</small></button>
       </div>
       <div class="touch-buttons">
-        <button type="button" class="touch-btn touch-btn-surf" aria-label="DIVE 自分のインクに潜って移動"><span>DIVE</span><small>潜って加速</small></button>
-        <button type="button" class="touch-btn touch-btn-jump">JUMP</button>
-        <button type="button" class="touch-btn touch-btn-special">BURST</button>
-        <button type="button" class="touch-btn touch-btn-bomb">BOMB</button>
-        <button type="button" class="touch-btn touch-btn-fire">FIRE</button>
+        <button type="button" class="touch-btn touch-btn-surf" aria-label="自分のインクに潜って移動"><span>潜伏</span><small>潜って加速</small></button>
+        <button type="button" class="touch-btn touch-btn-jump">ジャンプ</button>
+        <button type="button" class="touch-btn touch-btn-special">バースト</button>
+        <button type="button" class="touch-btn touch-btn-bomb">ボム</button>
+        <button type="button" class="touch-btn touch-btn-fire">発射</button>
       </div>
     </section>
 

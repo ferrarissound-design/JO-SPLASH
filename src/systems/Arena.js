@@ -27,6 +27,7 @@ export const STAGES = Object.freeze({
   harbor: Object.freeze({
     id: 'harbor',
     label: 'NEON HARBOR',
+    labelJa: 'ネオンハーバー',
     rampOffsetX: ARENA.rampOffsetX,
     playerSpawn: [-13, 0, 12.5],
     cpuSpawn: [13, 0, -12.5],
@@ -38,6 +39,7 @@ export const STAGES = Object.freeze({
   vertical: Object.freeze({
     id: 'vertical',
     label: 'VERTICAL YARD',
+    labelJa: 'バーティカルヤード',
     rampOffsetX: -ARENA.rampOffsetX,
     playerSpawn: [-14, 0, -13],
     cpuSpawn: [14, 0, 13],

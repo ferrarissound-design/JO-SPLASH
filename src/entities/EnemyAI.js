@@ -161,6 +161,8 @@ export class EnemyAI extends Character {
     this.appearance = cfg;
     this.appearanceId = cfg.id;
     this.appearanceName = cfg.name;
+    this.appearanceNameJa = cfg.nameJa ?? cfg.name;
+    this.appearanceTypeJa = cfg.typeJa ?? cfg.id.toUpperCase();
     // Archetype traits ride on top of whatever difficulty is selected, so
     // re-derive the effective difficulty every time the look (re)rolls.
     this._recomputeEffectiveDifficulty();
