@@ -17,22 +17,64 @@ export const DEFAULT_KEY_BINDINGS = Object.freeze({
   weapon3: 'Digit3',
 });
 
+/**
+ * Builds a one-to-one physical-key map. Assigning a key that is already in
+ * use swaps the two actions instead of silently disabling whichever action
+ * was registered first.
+ */
+export function resolveKeyBindings(overrides = {}) {
+  const actions = Object.keys(DEFAULT_KEY_BINDINGS);
+  const effective = { ...DEFAULT_KEY_BINDINGS };
+  if (!overrides || typeof overrides !== 'object') return effective;
+
+  for (const action of actions) {
+    const code = overrides[action];
+    if (typeof code !== 'string' || !code || code === effective[action]) continue;
+
+    const previousCode = effective[action];
+    const conflict = actions.find(
+      (candidate) => candidate !== action && effective[candidate] === code,
+    );
+    effective[action] = code;
+    if (conflict) effective[conflict] = previousCode;
+  }
+  return effective;
+}
+
 export const GAMEPAD = Object.freeze({
   deadzone: 0.22,
   moveThreshold: 0.28,
   lookSpeedPixelsPerSecond: 900,
 });
 
+/**
+ * The standard Gamepad mapping is based on physical button positions, not the
+ * letters printed on them. Nintendo therefore reports B/A/Y/X at the same
+ * indices an Xbox pad presents as A/B/X/Y.
+ */
+export function detectGamepadLayout(id = '') {
+  const normalized = String(id).toLowerCase();
+  return (
+    normalized.includes('nintendo')
+    || normalized.includes('switch')
+    || normalized.includes('joy-con')
+    || normalized.includes('joy con')
+    || normalized.includes('vendor: 057e')
+    || normalized.includes('057e-2009')
+    || normalized.includes('pro controller')
+  ) ? 'nintendo' : 'standard';
+}
+
 // Standard Gamepad mapping. Values are the same canonical actions consumed by
 // Player/Game, so gamepad play does not need a parallel movement/combat path.
 const GAMEPAD_BUTTON_ACTIONS = Object.freeze([
-  [0, 'Space'],             // A / Cross: jump
-  [1, 'KeyE'],              // B / Circle: bomb
-  [2, 'GamepadNextWeapon'], // X / Square: cycle main weapon
-  [3, 'KeyQ'],              // Y / Triangle: special
-  [4, 'ShiftLeft'],         // LB: ink surf
-  [6, 'ShiftLeft'],         // LT: ink surf
-  [9, 'Escape'],            // Menu / Options: pause
+  [0, 'Space'],             // Bottom face button: Xbox A / Switch B / Cross
+  [1, 'KeyE'],              // Right face button: Xbox B / Switch A / Circle
+  [2, 'GamepadNextWeapon'], // Left face button: Xbox X / Switch Y / Square
+  [3, 'KeyQ'],              // Top face button: Xbox Y / Switch X / Triangle
+  [4, 'ShiftLeft'],         // LB / L: ink surf
+  [6, 'ShiftLeft'],         // LT / ZL: ink surf
+  [9, 'Escape'],            // Menu / Options / Plus: pause
   [10, 'ShiftLeft'],        // L3: ink surf
   [12, 'Digit2'],           // D-pad up: spread
   [14, 'Digit1'],           // D-pad left: stream
@@ -71,6 +113,7 @@ export class InputManager {
     this.pointerLocked = false;
     this.gamepadConnected = false;
     this.gamepadName = '';
+    this.gamepadLayout = 'standard';
     this._gamepadIndex = null;
     this._lastGamepadPulseAt = -Infinity;
     /** Set by Game/UI to update input hints when a pad connects or disconnects. */
@@ -221,6 +264,12 @@ export class InputManager {
     for (const [buttonIndex, action] of GAMEPAD_BUTTON_ACTIONS) {
       this._setGamepadKey(action, pressed(buttonIndex));
     }
+    // Nintendo's menu confirm button is the right face button (A). Other
+    // standard layouts confirm with the bottom face button (A / Cross).
+    this._setGamepadKey(
+      'GamepadConfirm',
+      pressed(this.gamepadLayout === 'nintendo' ? 1 : 0),
+    );
 
     const axis = (index) => {
       const value = Number(pad.axes?.[index]) || 0;
@@ -307,6 +356,7 @@ export class InputManager {
     this._gamepadIndex = nextIndex;
     this.gamepadConnected = !!pad;
     this.gamepadName = nextName;
+    this.gamepadLayout = pad ? detectGamepadLayout(nextName) : 'standard';
     if (!pad) this._releaseGamepadState();
     if (changed) this.onGamepadConnectionChange?.(this.gamepadConnected, this.gamepadName);
   }
@@ -323,10 +373,10 @@ export class InputManager {
 
   /** Merges action->physicalCode overrides onto the defaults and rebuilds the reverse lookup. */
   setKeyBindings(overrides = {}) {
-    this.keyBindings = { ...DEFAULT_KEY_BINDINGS, ...overrides };
+    this.keyBindings = resolveKeyBindings(overrides);
     this._physicalToCanonical = new Map();
     for (const action of Object.keys(DEFAULT_KEY_BINDINGS)) {
-      const physical = this.keyBindings[action] ?? DEFAULT_KEY_BINDINGS[action];
+      const physical = this.keyBindings[action];
       const canonical = DEFAULT_KEY_BINDINGS[action];
       this._physicalToCanonical.set(physical, canonical);
     }

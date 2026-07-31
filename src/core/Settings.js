@@ -1,5 +1,5 @@
 import { CAMERA } from '../config.js';
-import { DEFAULT_KEY_BINDINGS } from './InputManager.js';
+import { DEFAULT_KEY_BINDINGS, resolveKeyBindings } from './InputManager.js';
 
 // Captured once at module load, before Settings ever mutates CAMERA.sensitivity,
 // so the multiplier always scales from the game's tuned default rather than
@@ -27,14 +27,17 @@ function clampNumber(value, min, max, fallback) {
   return Math.max(min, Math.min(max, n));
 }
 
-/** Keeps only known action keys with a non-empty string physical code, discarding anything else. */
-function sanitizeKeyBindings(raw) {
-  if (!raw || typeof raw !== 'object') return {};
+function toOverrides(effective) {
   const result = {};
   for (const action of Object.keys(DEFAULT_KEY_BINDINGS)) {
-    if (typeof raw[action] === 'string' && raw[action]) result[action] = raw[action];
+    if (effective[action] !== DEFAULT_KEY_BINDINGS[action]) result[action] = effective[action];
   }
   return result;
+}
+
+/** Keeps known actions, repairs duplicate keys by swapping, and stores only non-default bindings. */
+function sanitizeKeyBindings(raw) {
+  return toOverrides(resolveKeyBindings(raw));
 }
 
 function enumValue(value, allowed, fallback) {
@@ -154,7 +157,8 @@ export class Settings {
 
   setKeyBinding(action, code) {
     if (!(action in DEFAULT_KEY_BINDINGS) || typeof code !== 'string' || !code) return;
-    this.values.keyBindings = { ...this.values.keyBindings, [action]: code };
+    const effective = resolveKeyBindings(this.values.keyBindings);
+    this.values.keyBindings = toOverrides(resolveKeyBindings({ ...effective, [action]: code }));
     this.apply();
     this._save();
   }

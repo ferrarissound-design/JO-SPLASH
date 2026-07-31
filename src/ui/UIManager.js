@@ -1,5 +1,5 @@
 import { ARENA } from '../config.js';
-import { DEFAULT_KEY_BINDINGS } from '../core/InputManager.js';
+import { DEFAULT_KEY_BINDINGS, detectGamepadLayout } from '../core/InputManager.js';
 import {
   UI_TEXT_JA,
   getComboLabel,
@@ -44,6 +44,35 @@ const MAP_COLORS = {
   cpu: [255, 122, 47, 255],
 };
 
+const GAMEPAD_LABELS = Object.freeze({
+  standard: Object.freeze({
+    heading: 'ゲームパッド操作',
+    status: '● ゲームパッド接続中',
+    fire: 'RT / RB',
+    jump: 'A',
+    surf: 'LB / LT',
+    bomb: 'B',
+    weapon: 'X',
+    weaponWithDpad: 'X / D-PAD',
+    special: 'Y',
+    pause: 'MENU / OPTIONS',
+    weaponHint: 'X / 十字キー',
+  }),
+  nintendo: Object.freeze({
+    heading: 'Switch Proコントローラー操作',
+    status: '● Switch Proコントローラー接続中',
+    fire: 'ZR / R',
+    jump: 'B',
+    surf: 'ZL / L',
+    bomb: 'A',
+    weapon: 'Y',
+    weaponWithDpad: 'Y / 十字キー',
+    special: 'X',
+    pause: '＋',
+    weaponHint: 'Y / 十字キー',
+  }),
+});
+
 // ============================================================================
 // UIManager — all DOM reads/writes live here. Game.js calls plain methods
 // with already-computed numbers; this class never touches gameplay state
@@ -73,6 +102,8 @@ export class UIManager {
       howtoDesktopPause: document.getElementById('howto-desktop-pause'),
       howtoTouchPause: document.getElementById('howto-touch-pause'),
       howtoGamepadPause: document.getElementById('howto-gamepad-pause'),
+      gamepadHeadings: Array.from(document.querySelectorAll('[data-gamepad-heading]')),
+      gamepadLabels: Array.from(document.querySelectorAll('[data-gamepad-control]')),
       settings: document.getElementById('screen-settings'),
       btnOpenSettings: document.getElementById('btn-open-settings'),
       btnCloseSettings: document.getElementById('btn-close-settings'),
@@ -593,10 +624,16 @@ export class UIManager {
   /** Shows gamepad-specific controls whenever a standard-mapped pad is active. */
   setGamepadMode(connected, name = '') {
     this._gamepadConnected = connected;
+    this._gamepadLayout = connected ? detectGamepadLayout(name) : 'standard';
+    const labels = GAMEPAD_LABELS[this._gamepadLayout];
     this.el.gamepadStatus?.classList.toggle('hidden', !connected);
     if (this.el.gamepadStatus) {
       this.el.gamepadStatus.title = name || '';
-      this.el.gamepadStatus.textContent = connected ? '● ゲームパッド接続中' : '';
+      this.el.gamepadStatus.textContent = connected ? labels.status : '';
+    }
+    for (const heading of this.el.gamepadHeadings || []) heading.textContent = labels.heading;
+    for (const label of this.el.gamepadLabels || []) {
+      label.textContent = labels[label.dataset.gamepadControl] || label.textContent;
     }
     this._updateInputHelp();
   }
@@ -610,7 +647,8 @@ export class UIManager {
     this.el.howtoDesktopPause?.classList.toggle('hidden', useGamepad || useTouch);
     this.el.howtoTouchPause?.classList.toggle('hidden', useGamepad || !useTouch);
     this.el.howtoGamepadPause?.classList.toggle('hidden', !useGamepad);
-    this.el.weaponSwitchHint.textContent = useGamepad ? 'X / 十字キー' : (useTouch ? '選択' : '1 / 2 / 3');
+    const gamepadLabels = GAMEPAD_LABELS[this._gamepadLayout || 'standard'];
+    this.el.weaponSwitchHint.textContent = useGamepad ? gamepadLabels.weaponHint : (useTouch ? '選択' : '1 / 2 / 3');
   }
 
   showTitle() { this.el.title.classList.remove('hidden'); }

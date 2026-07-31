@@ -53,6 +53,20 @@ describe('Settings defaults and persistence', () => {
     expect(b.values.keyBindings).toEqual({ jump: 'ArrowUp' });
   });
 
+  it('persists duplicate-key assignments as a swap so no action is lost', async () => {
+    const { Settings } = await import('../src/core/Settings.js?fresh11');
+    const settings = new Settings();
+    settings.setKeyBinding('jump', 'KeyW');
+
+    expect(settings.values.keyBindings).toEqual({
+      moveForward: 'Space',
+      jump: 'KeyW',
+    });
+
+    const reloaded = new Settings();
+    expect(reloaded.values.keyBindings).toEqual(settings.values.keyBindings);
+  });
+
   it('resetKeyBindings clears all customizations', async () => {
     const { Settings } = await import('../src/core/Settings.js?fresh8');
     const settings = new Settings();

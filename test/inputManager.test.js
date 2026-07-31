@@ -1,6 +1,11 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest';
-import { InputManager, DEFAULT_KEY_BINDINGS } from '../src/core/InputManager.js';
+import {
+  InputManager,
+  DEFAULT_KEY_BINDINGS,
+  detectGamepadLayout,
+  resolveKeyBindings,
+} from '../src/core/InputManager.js';
 
 function press(code) {
   window.dispatchEvent(new KeyboardEvent('keydown', { code }));
@@ -40,6 +45,22 @@ describe('InputManager default bindings', () => {
 });
 
 describe('InputManager.setKeyBindings (rebinding)', () => {
+  it('swaps actions when a physical key is assigned twice', () => {
+    const resolved = resolveKeyBindings({ jump: 'KeyW' });
+    expect(resolved.jump).toBe('KeyW');
+    expect(resolved.moveForward).toBe('Space');
+
+    const input = makeInput();
+    input.setKeyBindings({ jump: 'KeyW' });
+    press('KeyW');
+    expect(input.isDown('Space')).toBe(true);
+    expect(input.isDown('KeyW')).toBe(false);
+    release('KeyW');
+    press('Space');
+    expect(input.isDown('KeyW')).toBe(true);
+    input.dispose();
+  });
+
   it('a rebound physical key triggers the canonical action code', () => {
     const input = makeInput();
     input.setKeyBindings({ jump: 'ArrowUp' });
@@ -121,6 +142,34 @@ function createGamepad() {
 }
 
 describe('InputManager gamepad support', () => {
+  it('recognizes Nintendo Switch Pro controller IDs', () => {
+    expect(detectGamepadLayout('Nintendo Switch Pro Controller')).toBe('nintendo');
+    expect(detectGamepadLayout('Pro Controller (STANDARD GAMEPAD Vendor: 057e Product: 2009)')).toBe('nintendo');
+    expect(detectGamepadLayout('Xbox Wireless Controller')).toBe('standard');
+  });
+
+  it('uses the Nintendo face-button labels while preserving physical positions', () => {
+    const pad = createGamepad();
+    pad.id = 'Nintendo Switch Pro Controller';
+    Object.defineProperty(navigator, 'getGamepads', {
+      configurable: true,
+      value: () => [pad],
+    });
+    const input = makeInput();
+
+    pad.buttons[1] = { pressed: true, value: 1 }; // Nintendo A (right)
+    input.updateGamepad(1 / 60);
+    expect(input.gamepadLayout).toBe('nintendo');
+    expect(input.isDown('KeyE')).toBe(true);
+    expect(input.wasJustPressed('GamepadConfirm')).toBe(true);
+
+    pad.buttons[1] = { pressed: false, value: 0 };
+    pad.buttons[0] = { pressed: true, value: 1 }; // Nintendo B (bottom)
+    input.updateGamepad(1 / 60);
+    expect(input.wasJustPressed('Space')).toBe(true);
+    input.dispose();
+  });
+
   it('maps sticks, jump, fire, and camera look into the shared input state', () => {
     const pad = createGamepad();
     Object.defineProperty(navigator, 'getGamepads', {

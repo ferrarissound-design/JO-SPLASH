@@ -35,6 +35,7 @@ export class TouchControls {
     this._joystickCenter = { x: 0, y: 0 };
     this._lookTouchId = null;
     this._lookLast = { x: 0, y: 0 };
+    this._buttonCleanups = [];
 
     this._onJoystickStart = this._onJoystickStart.bind(this);
     this._onJoystickMove = this._onJoystickMove.bind(this);
@@ -98,10 +99,21 @@ export class TouchControls {
       el.addEventListener('pointerup', release, { passive: false });
       el.addEventListener('pointercancel', release, { passive: false });
       el.addEventListener('lostpointercapture', release, { passive: false });
+      this._buttonCleanups.push(() => {
+        el.removeEventListener('pointerdown', press);
+        el.removeEventListener('pointerup', release);
+        el.removeEventListener('pointercancel', release);
+        el.removeEventListener('lostpointercapture', release);
+      });
     } else {
       el.addEventListener('touchstart', press, { passive: false });
       el.addEventListener('touchend', release, { passive: false });
       el.addEventListener('touchcancel', release, { passive: false });
+      this._buttonCleanups.push(() => {
+        el.removeEventListener('touchstart', press);
+        el.removeEventListener('touchend', release);
+        el.removeEventListener('touchcancel', release);
+      });
     }
   }
 
@@ -254,6 +266,7 @@ export class TouchControls {
   }
 
   dispose() {
+    this.hide();
     const jz = this.el.joystickZone;
     jz.removeEventListener('touchstart', this._onJoystickStart);
     jz.removeEventListener('touchmove', this._onJoystickMove);
@@ -265,5 +278,6 @@ export class TouchControls {
     lz.removeEventListener('touchmove', this._onLookMove);
     lz.removeEventListener('touchend', this._onLookEnd);
     lz.removeEventListener('touchcancel', this._onLookEnd);
+    for (const cleanup of this._buttonCleanups.splice(0)) cleanup();
   }
 }

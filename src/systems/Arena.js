@@ -743,4 +743,19 @@ export class Arena {
     const hd = this.halfDepth - margin;
     return [THREE.MathUtils.clamp(x, -hw, hw), THREE.MathUtils.clamp(z, -hd, hd)];
   }
+
+  /** Releases textures owned directly by the arena but not necessarily reachable from a mesh material. */
+  dispose() {
+    for (const panel of this.wallPanels) panel.paint.dispose();
+    for (const texture of [
+      this._texMetal,
+      this._texPanelCyan,
+      this._texPanelPurple,
+      this._texPanelYellow,
+      this._texHazard,
+      this._texSign,
+    ]) {
+      texture?.dispose();
+    }
+  }
 }
