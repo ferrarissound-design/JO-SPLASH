@@ -12,6 +12,7 @@ describe('CupController', () => {
   });
 
   it('persists and resumes the current rival round', () => {
+    expect(RIVALS.every((rival) => rival.taglineJa)).toBe(true);
     const cup = new CupController();
     expect(cup.start().id).toBe(RIVALS[0].id);
     cup.recordResult('win');

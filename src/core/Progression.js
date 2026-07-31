@@ -1,20 +1,20 @@
 const STORAGE_KEY = 'chromaDuel.progression.v1';
 
 export const REWARDS = Object.freeze({
-  aquaTrail: Object.freeze({ id: 'aquaTrail', label: 'AQUA TRAIL', slot: 'trail' }),
-  skyAce: Object.freeze({ id: 'skyAce', label: 'SKY ACE TITLE', slot: 'title' }),
-  comboGlow: Object.freeze({ id: 'comboGlow', label: 'COMBO GLOW', slot: 'effect' }),
-  goldChampion: Object.freeze({ id: 'goldChampion', label: 'GOLD CHAMPION', slot: 'theme' }),
-  neonCyan: Object.freeze({ id: 'neonCyan', label: 'NEON CYAN', slot: 'theme' }),
-  streetLegend: Object.freeze({ id: 'streetLegend', label: 'STREET LEGEND', slot: 'title' }),
-  rankPulse: Object.freeze({ id: 'rankPulse', label: 'RANK PULSE', slot: 'effect' }),
+  aquaTrail: Object.freeze({ id: 'aquaTrail', label: 'AQUA TRAIL', labelJa: 'アクアトレイル', slot: 'trail' }),
+  skyAce: Object.freeze({ id: 'skyAce', label: 'SKY ACE TITLE', labelJa: 'スカイエース称号', slot: 'title' }),
+  comboGlow: Object.freeze({ id: 'comboGlow', label: 'COMBO GLOW', labelJa: 'コンボグロウ', slot: 'effect' }),
+  goldChampion: Object.freeze({ id: 'goldChampion', label: 'GOLD CHAMPION', labelJa: 'ゴールドチャンピオン', slot: 'theme' }),
+  neonCyan: Object.freeze({ id: 'neonCyan', label: 'NEON CYAN', labelJa: 'ネオンシアン', slot: 'theme' }),
+  streetLegend: Object.freeze({ id: 'streetLegend', label: 'STREET LEGEND', labelJa: 'ストリートレジェンド', slot: 'title' }),
+  rankPulse: Object.freeze({ id: 'rankPulse', label: 'RANK PULSE', labelJa: 'ランクパルス', slot: 'effect' }),
 });
 
 export const CHALLENGES = Object.freeze([
-  Object.freeze({ id: 'painter', label: 'TURF ARTIST', description: 'Reach 60% turf coverage.', reward: 'AQUA TRAIL', rewardId: 'aquaTrail' }),
-  Object.freeze({ id: 'aerial', label: 'SKY HUNTER', description: 'Land 3 SKY SPLASH hits.', reward: 'SKY ACE TITLE', rewardId: 'skyAce' }),
-  Object.freeze({ id: 'combo', label: 'COMBO MAKER', description: 'Reach a 5-hit combo.', reward: 'COMBO GLOW', rewardId: 'comboGlow' }),
-  Object.freeze({ id: 'champion', label: 'CUP CHAMPION', description: 'Win a Rival Cup.', reward: 'GOLD CHAMPION', rewardId: 'goldChampion' }),
+  Object.freeze({ id: 'painter', label: 'TURF ARTIST', labelJa: 'ナワバリアーティスト', description: 'Reach 60% turf coverage.', reward: 'AQUA TRAIL', rewardJa: 'アクアトレイル', rewardId: 'aquaTrail' }),
+  Object.freeze({ id: 'aerial', label: 'SKY HUNTER', labelJa: 'スカイハンター', description: 'Land 3 SKY SPLASH hits.', reward: 'SKY ACE TITLE', rewardJa: 'スカイエース称号', rewardId: 'skyAce' }),
+  Object.freeze({ id: 'combo', label: 'COMBO MAKER', labelJa: 'コンボマスター', description: 'Reach a 5-hit combo.', reward: 'COMBO GLOW', rewardJa: 'コンボグロウ', rewardId: 'comboGlow' }),
+  Object.freeze({ id: 'champion', label: 'CUP CHAMPION', labelJa: 'カップチャンピオン', description: 'Win a Rival Cup.', reward: 'GOLD CHAMPION', rewardJa: 'ゴールドチャンピオン', rewardId: 'goldChampion' }),
 ]);
 
 function load() {

@@ -1,9 +1,27 @@
 import { TEAM } from '../config.js';
 
 export const MATCH_RULES = Object.freeze({
-  turf: Object.freeze({ id: 'turf', label: 'TURF WAR', description: 'Paint more ground than the rival.' }),
-  zone: Object.freeze({ id: 'zone', label: 'ZONE HOLD', description: 'Control the center zone for 18 seconds.' }),
-  ko: Object.freeze({ id: 'ko', label: 'KO RUSH', description: 'First to 4 KOs, or most KOs at time up.' }),
+  turf: Object.freeze({
+    id: 'turf',
+    label: 'TURF WAR',
+    description: 'Paint more ground than the rival.',
+    labelJa: 'ナワバリバトル',
+    descriptionJa: '相手より広く床を塗ろう。',
+  }),
+  zone: Object.freeze({
+    id: 'zone',
+    label: 'ZONE HOLD',
+    description: 'Control the center zone for 18 seconds.',
+    labelJa: 'ゾーンキープ',
+    descriptionJa: '中央エリアを合計18秒確保しよう。',
+  }),
+  ko: Object.freeze({
+    id: 'ko',
+    label: 'KO RUSH',
+    description: 'First to 4 KOs, or most KOs at time up.',
+    labelJa: 'KOラッシュ',
+    descriptionJa: '先に相手を4回倒すと勝利。',
+  }),
 });
 
 export const ZONE_TARGET_SECONDS = 18;

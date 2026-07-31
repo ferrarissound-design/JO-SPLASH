@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TEAM } from '../src/config.js';
 import {
+  MATCH_RULES,
   getZoneOwner,
   resolveRuleOutcome,
 } from '../src/core/MatchRules.js';
@@ -20,6 +21,11 @@ describe('getZoneOwner', () => {
 });
 
 describe('resolveRuleOutcome', () => {
+  it('provides Japanese labels for the title screen', () => {
+    expect(MATCH_RULES.turf.labelJa).toBe('ナワバリバトル');
+    expect(MATCH_RULES.zone.descriptionJa).toContain('18秒');
+  });
+
   it('uses coverage for turf war', () => {
     expect(resolveRuleOutcome('turf', { coverage: { playerCells: 12, cpuCells: 8 } })).toBe('win');
   });

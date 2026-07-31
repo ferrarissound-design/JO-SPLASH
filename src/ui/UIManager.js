@@ -35,6 +35,15 @@ const MAP_COLORS = {
   cpu: [255, 122, 47, 255],
 };
 
+const RANK_NAME_JA = Object.freeze({
+  ROOKIE: 'ルーキー',
+  SPLASHER: 'スプラッシャー',
+  'INK RIDER': 'インクライダー',
+  'ZONE ACE': 'ゾーンエース',
+  'RIVAL HUNTER': 'ライバルハンター',
+  'CHROMA LEGEND': 'クロマレジェンド',
+});
+
 // ============================================================================
 // UIManager — all DOM reads/writes live here. Game.js calls plain methods
 // with already-computed numbers; this class never touches gameplay state
@@ -403,19 +412,19 @@ export class UIManager {
   setBattleMode(id) { this._setOptionSelection(this.el.battleModeButtons, 'battleMode', id); }
 
   setPlayerProfile({ level = 1, rankName = 'ROOKIE', current = 0, required = 100 } = {}) {
-    if (this.el.profileRank) this.el.profileRank.textContent = rankName;
+    if (this.el.profileRank) this.el.profileRank.textContent = RANK_NAME_JA[rankName] ?? rankName;
     if (this.el.profileLevel) this.el.profileLevel.textContent = String(level);
     if (this.el.profileXpFill) {
       this.el.profileXpFill.style.width = `${required > 0 ? Math.min(100, current / required * 100) : 100}%`;
     }
-    if (this.el.profileXpLabel) this.el.profileXpLabel.textContent = `${current} / ${required} XP`;
+    if (this.el.profileXpLabel) this.el.profileXpLabel.textContent = `経験値 ${current} / ${required}`;
   }
 
   setChallengeBoard(challenges, unlocked) {
     if (!this.el.challengeBoard) return;
     const done = unlocked instanceof Set ? unlocked : new Set(unlocked ?? []);
-    this.el.challengeBoard.innerHTML = `<b>CHALLENGES</b><br>${challenges.map((challenge) => (
-      `<span class="${done.has(challenge.id) ? 'done' : ''}">${done.has(challenge.id) ? '✓' : '○'} ${challenge.label} — ${challenge.reward}</span>`
+    this.el.challengeBoard.innerHTML = `<b>チャレンジ</b><br>${challenges.map((challenge) => (
+      `<span class="${done.has(challenge.id) ? 'done' : ''}">${done.has(challenge.id) ? '✓' : '○'} ${challenge.labelJa ?? challenge.label} — 報酬: ${challenge.rewardJa ?? challenge.reward}</span>`
     )).join('<br>')}`;
   }
 
@@ -440,7 +449,9 @@ export class UIManager {
   }
 
   setRuleHint(rule) {
-    if (this.el.ruleHint) this.el.ruleHint.textContent = `${rule.label} — ${rule.description}`;
+    if (this.el.ruleHint) {
+      this.el.ruleHint.textContent = `${rule.labelJa ?? rule.label} — ${rule.descriptionJa ?? rule.description}`;
+    }
   }
 
   setRewardLoadout(availableRewards, equipped = {}) {
@@ -453,14 +464,16 @@ export class UIManager {
       button.disabled = !available;
       button.classList.toggle('equipped', isEquipped);
       button.setAttribute('aria-pressed', String(isEquipped));
-      button.title = available ? (isEquipped ? 'Equipped' : 'Equip reward') : 'Complete its challenge to unlock';
+      button.title = available
+        ? (isEquipped ? '装備中' : 'クリックして装備')
+        : '対応するチャレンジを達成すると解放';
     }
   }
 
   setCupProgress({ visible = false, round = 0, wins = 0, rival = null, resumeAvailable = false } = {}) {
     if (this.el.cupProgress) {
       this.el.cupProgress.innerHTML = visible && rival
-        ? `<strong>RIVAL CUP ${round}/3 — ${rival.name}</strong><br>${rival.tagline}<br>${wins} win${wins === 1 ? '' : 's'}`
+        ? `<strong>ライバルカップ ${round}/3 — ${rival.name}</strong><br>${rival.taglineJa ?? rival.tagline}<br>現在 ${wins}勝`
         : '';
       this.el.cupProgress.classList.toggle('hidden', !visible || !rival);
     }
@@ -579,7 +592,7 @@ export class UIManager {
     this.el.gamepadStatus?.classList.toggle('hidden', !connected);
     if (this.el.gamepadStatus) {
       this.el.gamepadStatus.title = name || '';
-      this.el.gamepadStatus.textContent = connected ? '● GAMEPAD CONNECTED' : '';
+      this.el.gamepadStatus.textContent = connected ? '● ゲームパッド接続中' : '';
     }
     this._updateInputHelp();
   }

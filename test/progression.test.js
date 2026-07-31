@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Progression } from '../src/core/Progression.js';
+import { CHALLENGES, Progression, REWARDS } from '../src/core/Progression.js';
 
 describe('Progression', () => {
   beforeEach(() => {
@@ -9,6 +9,11 @@ describe('Progression', () => {
       setItem: (key, value) => values.set(key, String(value)),
       clear: () => values.clear(),
     });
+  });
+
+  it('provides Japanese challenge and reward labels', () => {
+    expect(CHALLENGES.every((challenge) => challenge.labelJa && challenge.rewardJa)).toBe(true);
+    expect(REWARDS.neonCyan.labelJa).toBe('ネオンシアン');
   });
 
   it('unlocks earned challenges once and persists them', () => {
