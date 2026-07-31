@@ -14,6 +14,10 @@ const DEFAULTS = Object.freeze({
   musicVolume: 1,
   difficultyId: 'standard',
   invertY: false,
+  quality: 'auto',
+  colorMode: 'standard',
+  crosshairScale: 1,
+  touchLayout: 'standard',
   keyBindings: Object.freeze({}), // only customized actions are stored; everything else uses DEFAULT_KEY_BINDINGS
 });
 
@@ -33,6 +37,10 @@ function sanitizeKeyBindings(raw) {
   return result;
 }
 
+function enumValue(value, allowed, fallback) {
+  return allowed.includes(value) ? value : fallback;
+}
+
 function load() {
   let parsed = null;
   try {
@@ -49,6 +57,14 @@ function load() {
     musicVolume: clampNumber(parsed.musicVolume, 0, 1, DEFAULTS.musicVolume),
     difficultyId: typeof parsed.difficultyId === 'string' ? parsed.difficultyId : DEFAULTS.difficultyId,
     invertY: typeof parsed.invertY === 'boolean' ? parsed.invertY : DEFAULTS.invertY,
+    quality: enumValue(parsed.quality, ['auto', 'low', 'high'], DEFAULTS.quality),
+    colorMode: enumValue(
+      parsed.colorMode,
+      ['standard', 'deuteranopia', 'tritanopia', 'highContrast'],
+      DEFAULTS.colorMode,
+    ),
+    crosshairScale: clampNumber(parsed.crosshairScale, 0.7, 1.6, DEFAULTS.crosshairScale),
+    touchLayout: enumValue(parsed.touchLayout, ['standard', 'compact', 'leftHanded'], DEFAULTS.touchLayout),
     keyBindings: sanitizeKeyBindings(parsed.keyBindings),
   };
 }
@@ -109,6 +125,30 @@ export class Settings {
   setInvertY(v) {
     this.values.invertY = Boolean(v);
     this.apply();
+    this._save();
+  }
+
+  setQuality(value) {
+    this.values.quality = enumValue(value, ['auto', 'low', 'high'], DEFAULTS.quality);
+    this._save();
+  }
+
+  setColorMode(value) {
+    this.values.colorMode = enumValue(
+      value,
+      ['standard', 'deuteranopia', 'tritanopia', 'highContrast'],
+      DEFAULTS.colorMode,
+    );
+    this._save();
+  }
+
+  setCrosshairScale(value) {
+    this.values.crosshairScale = clampNumber(value, 0.7, 1.6, DEFAULTS.crosshairScale);
+    this._save();
+  }
+
+  setTouchLayout(value) {
+    this.values.touchLayout = enumValue(value, ['standard', 'compact', 'leftHanded'], DEFAULTS.touchLayout);
     this._save();
   }
 

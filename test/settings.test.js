@@ -33,6 +33,10 @@ describe('Settings defaults and persistence', () => {
       musicVolume: 1,
       difficultyId: 'standard',
       invertY: false,
+      quality: 'auto',
+      colorMode: 'standard',
+      crosshairScale: 1,
+      touchLayout: 'standard',
       keyBindings: {},
     });
   });
@@ -121,5 +125,27 @@ describe('Settings defaults and persistence', () => {
 
     settings.setSensitivityMult(0.5);
     expect(CAMERA.sensitivity).toBeCloseTo(BASE_SENSITIVITY * 0.5);
+  });
+
+  it('persists and sanitizes accessibility and display settings', async () => {
+    const { Settings } = await import('../src/core/Settings.js?fresh10');
+    const a = new Settings();
+    a.setQuality('low');
+    a.setColorMode('highContrast');
+    a.setCrosshairScale(1.5);
+    a.setTouchLayout('leftHanded');
+
+    const b = new Settings();
+    expect(b.values).toMatchObject({
+      quality: 'low',
+      colorMode: 'highContrast',
+      crosshairScale: 1.5,
+      touchLayout: 'leftHanded',
+    });
+
+    b.setQuality('impossible');
+    b.setCrosshairScale(99);
+    expect(b.values.quality).toBe('auto');
+    expect(b.values.crosshairScale).toBe(1.6);
   });
 });

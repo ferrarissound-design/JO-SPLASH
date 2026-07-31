@@ -9,6 +9,7 @@
   --clr-text: #eef3f8;
   --clr-text-dim: #9aa7b8;
   --touch-controls-height: 176px;
+  --crosshair-scale: 1;
   font-family: 'Segoe UI', 'Hiragino Sans', 'Yu Gothic', system-ui, sans-serif;
 }
 
@@ -1468,3 +1469,47 @@ body[data-reward-title="true"] .player-character-chip::after{content:"SKY ACE";m
 #hit-flash.flash { opacity:1; transition:opacity .05s ease; }
 #hit-flash.flash-fade { opacity:0; transition:opacity .5s ease; }
 #respawn-banner { position:absolute; top:42%; left:50%; transform:translate(-50%,-50%); font-size:1.6rem; font-weight:800; letter-spacing:.1em; color:#fff; text-shadow:0 0 20px rgba(0,0,0,.8); }
+
+/* Progression, training and accessibility additions */
+.player-profile{margin:.55rem 0 .9rem;padding:.58rem .72rem;border:1px solid rgba(117,220,255,.28);border-radius:.65rem;background:rgba(8,18,36,.64)}
+.player-profile>div:first-child,.result-xp>div:first-child{display:flex;justify-content:space-between;align-items:center;gap:.8rem}
+.player-profile span,.result-xp strong{color:#fff27a;font-weight:900;letter-spacing:.08em}
+.player-profile small,.result-xp small{color:var(--clr-text-dim);font-size:.68rem}
+.profile-xp-track{height:6px;margin:.38rem 0 .28rem;overflow:hidden;border-radius:999px;background:rgba(255,255,255,.12)}
+.profile-xp-track>span{display:block;width:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--clr-player),#fff27a);transition:width .45s ease}
+.settings-row select{min-width:9.5rem;padding:.42rem .55rem;border:1px solid rgba(255,255,255,.24);border-radius:.42rem;color:var(--clr-text);background:#111b2f;font:inherit;font-size:.72rem;font-weight:800}
+.rival-card{--rival-color:#2fb8ff;width:min(520px,calc(100vw - 2rem));padding:2rem 2.3rem;border:2px solid var(--rival-color);border-radius:1rem;background:linear-gradient(145deg,rgba(6,12,25,.96),rgba(17,28,52,.94));box-shadow:0 0 45px color-mix(in srgb,var(--rival-color) 38%,transparent);text-align:center;animation:rival-card-in .46s cubic-bezier(.2,.8,.2,1) both}
+.rival-card.final{border-width:3px;background:linear-gradient(145deg,#251534,#07182a)}
+.rival-card span{display:block;color:var(--rival-color);font-size:.72rem;font-weight:900;letter-spacing:.18em}
+.rival-card strong{display:block;margin:.4rem 0;color:#fff;font-size:clamp(2rem,8vw,4rem);letter-spacing:.05em;text-shadow:0 0 22px var(--rival-color)}
+.rival-card p{color:var(--clr-text-dim)}
+.rival-card blockquote,.result-rival-dialogue{margin:.9rem 0 0;color:#fff27a;font-size:.92rem;font-weight:800;font-style:italic}
+@keyframes rival-card-in{from{opacity:0;transform:scale(.78) rotate(-2deg)}to{opacity:1;transform:none}}
+.tutorial-card{position:absolute;left:50%;bottom:max(1rem,env(safe-area-inset-bottom));width:min(520px,calc(100vw - 2rem));transform:translateX(-50%);padding:.85rem 1rem;border:1px solid rgba(159,245,255,.65);border-radius:.8rem;background:rgba(4,13,26,.9);box-shadow:0 0 26px rgba(47,184,255,.25);text-align:center;pointer-events:auto}
+.tutorial-card span{color:var(--clr-player);font-size:.62rem;font-weight:900;letter-spacing:.12em}
+.tutorial-card strong{display:block;margin:.18rem 0;color:#fff;font-size:1.08rem;letter-spacing:.1em}
+.tutorial-card p{margin:.12rem 0 .55rem;color:var(--clr-text-dim);font-size:.78rem}
+.tutorial-card button{border:0;color:rgba(255,255,255,.72);background:transparent;font-size:.62rem;font-weight:800;cursor:pointer}
+.result-performance,.result-xp{display:flex;flex-direction:column;gap:.28rem;margin:.58rem 0;padding:.58rem .68rem;border:1px solid rgba(255,255,255,.15);border-radius:.55rem;background:rgba(255,255,255,.045);font-size:.72rem}
+.result-performance strong{color:#9ffff5}.result-performance small{min-height:.85rem;color:#fff27a;font-weight:800}
+.result-xp>div:first-child span{color:#fff27a;font-weight:900}
+.result-rival-dialogue{padding:.55rem;border-left:3px solid var(--clr-cpu);background:rgba(255,122,47,.08)}
+.cup-summary.champion{border-color:#fff27a;box-shadow:0 0 24px rgba(255,242,122,.22)}
+
+#crosshair{scale:var(--crosshair-scale)}
+body[data-color-mode="deuteranopia"]{--clr-player:#2bc5ff;--clr-cpu:#ffd348}
+body[data-color-mode="deuteranopia"] #game-canvas{filter:hue-rotate(12deg) saturate(.95)}
+body[data-color-mode="tritanopia"]{--clr-player:#35dfa4;--clr-cpu:#ff5aa5}
+body[data-color-mode="tritanopia"] #game-canvas{filter:hue-rotate(-28deg) saturate(1.08)}
+body[data-color-mode="highContrast"]{--clr-player:#00d9ff;--clr-cpu:#ffea00}
+body[data-color-mode="highContrast"] #game-canvas{filter:contrast(1.28) saturate(1.22)}
+body[data-quality="low"] .stage-atmosphere,body[data-quality="low"] .decorative-particle{display:none!important}
+body[data-touch-layout="compact"] .touch-buttons,body[data-touch-layout="compact"] .touch-weapon-switcher{scale:.82;transform-origin:bottom right}
+body[data-touch-layout="leftHanded"] .touch-buttons{right:auto;left:max(.75rem,env(safe-area-inset-left))}
+body[data-touch-layout="leftHanded"] .touch-joystick-zone{left:auto;right:0}
+body[data-touch-layout="leftHanded"] .touch-weapon-switcher{right:auto;left:max(.75rem,env(safe-area-inset-left))}
+body[data-reward-gold="true"] .player-profile{border-color:rgba(255,242,122,.65)}
+body[data-reward-neon="true"]{--clr-player:#4af5ff}
+body[data-reward-rank-pulse="true"] .player-character-chip{animation:rank-pulse 1.2s ease-in-out infinite alternate}
+body[data-reward-street-title="true"] .player-character-chip strong::after{content:" · STREET LEGEND";color:#fff27a}
+@keyframes rank-pulse{to{box-shadow:0 0 18px rgba(255,242,122,.65)}}

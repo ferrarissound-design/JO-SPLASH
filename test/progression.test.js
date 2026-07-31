@@ -33,4 +33,12 @@ describe('Progression', () => {
     expect(progression.equipped.effect).toBe('comboGlow');
     expect(new Progression().equipped.effect).toBe('comboGlow');
   });
+
+  it('unlocks rank rewards independently from challenges', () => {
+    const progression = new Progression();
+    expect(progression.unlockRewards(['neonCyan']).map((reward) => reward.id)).toEqual(['neonCyan']);
+    expect(progression.availableRewards.has('neonCyan')).toBe(true);
+    expect(progression.equip('neonCyan')).toBe(true);
+    expect(new Progression().equipped.theme).toBe('neonCyan');
+  });
 });
