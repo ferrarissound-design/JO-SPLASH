@@ -55,6 +55,11 @@ export class Character {
     this._healthRegenTimer = 0;
     this._normalOpacityApplied = false; // see syncMesh: skips redundant per-frame material writes
 
+    // Optional GEAR_POWERS entry (see config.js); only Player ever sets this
+    // (from the equipped 'gear' reward slot), so it stays null for the CPU
+    // and every read below is a safe no-op multiplier of 1 by default.
+    this.gearPower = null;
+
     const isPlayer = team === TEAM.PLAYER;
     const color = isPlayer ? COLORS.player : COLORS.cpu;
     const deep = isPlayer ? COLORS.playerDeep : COLORS.cpuDeep;
@@ -210,7 +215,7 @@ export class Character {
     this.resetHitCombo();
     this._healthRegenTimer = 0;
     this.deaths++;
-    this.respawnTimer = MATCH.respawnDelaySec;
+    this.respawnTimer = MATCH.respawnDelaySec * (this.gearPower?.respawnMult ?? 1);
     this.velocity.set(0, 0, 0);
   }
 
@@ -332,10 +337,11 @@ export class Character {
     this.inkSurfActive = canInkSurf;
 
     let speedMult = 1;
+    const inkRegenMult = this.gearPower?.inkRegenMult ?? 1;
 
     if (this.inkSurfActive) {
-      speedMult = MOVEMENT.inkSurfSpeedMult;
-      this.ink = Math.min(INK.max, this.ink + INK.regenSurf * dt);
+      speedMult = MOVEMENT.inkSurfSpeedMult * (this.gearPower?.surfSpeedMult ?? 1);
+      this.ink = Math.min(INK.max, this.ink + INK.regenSurf * inkRegenMult * dt);
     } else if (this.onEnemyFloor) {
       speedMult = MOVEMENT.enemyPaintSlowMult;
       this._enemyFloorDamageAccum += dt;
@@ -350,7 +356,7 @@ export class Character {
       }
       this.ink = Math.min(INK.max, this.ink + INK.regenEnemyFloor * dt);
     } else if (owner === this.team) {
-      this.ink = Math.min(INK.max, this.ink + INK.regenOwnFloor * dt);
+      this.ink = Math.min(INK.max, this.ink + INK.regenOwnFloor * inkRegenMult * dt);
     } else {
       this.ink = Math.min(INK.max, this.ink + INK.regenNeutral * dt);
     }

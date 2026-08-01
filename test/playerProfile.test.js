@@ -46,4 +46,22 @@ describe('PlayerProfile', () => {
     expect(levelFromXp(99)).toBe(1);
     expect(levelFromXp(100)).toBe(2);
   });
+
+  it('addXp grants flat bonus XP (e.g. daily challenges) outside the match formula, and persists it', () => {
+    const profile = new PlayerProfile();
+    const result = profile.addXp(100);
+    expect(result.xpGained).toBe(100);
+    expect(result.levelBefore).toBe(1);
+    expect(result.levelAfter).toBe(2);
+    expect(result.leveledUp).toBe(true);
+    expect(new PlayerProfile().values.xp).toBe(100);
+  });
+
+  it('addXp is a no-op for zero or invalid amounts', () => {
+    const profile = new PlayerProfile();
+    const result = profile.addXp(0);
+    expect(result.xpGained).toBe(0);
+    expect(result.leveledUp).toBe(false);
+    expect(profile.values.xp).toBe(0);
+  });
 });

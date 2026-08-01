@@ -46,4 +46,21 @@ describe('Progression', () => {
     expect(progression.equip('neonCyan')).toBe(true);
     expect(new Progression().equipped.theme).toBe('neonCyan');
   });
+
+  it('unlocks gear power rewards from their dedicated match conditions', () => {
+    const progression = new Progression();
+
+    expect(progression.evaluate({ outcome: 'win', deaths: 1 })).toEqual([]); // died once — not flawless, not a comeback
+    expect(progression.evaluate({ outcome: 'win', deaths: 0 })[0].id).toBe('survivor');
+    expect(progression.evaluate({ outcome: 'lose', deaths: 3 })).toEqual([]); // comeback requires a win
+    expect(progression.evaluate({ outcome: 'win', deaths: 3 })[0].id).toBe('comeback');
+    expect(progression.evaluate({ climbs: 4 })).toEqual([]);
+    expect(progression.evaluate({ climbs: 5 })[0].id).toBe('climber');
+
+    expect(progression.availableRewards.has('aquaRevival')).toBe(true);
+    expect(progression.availableRewards.has('quickRespawn')).toBe(true);
+    expect(progression.availableRewards.has('surfBoost')).toBe(true);
+    expect(progression.equip('aquaRevival')).toBe(true);
+    expect(new Progression().equipped.gear).toBe('aquaRevival');
+  });
 });

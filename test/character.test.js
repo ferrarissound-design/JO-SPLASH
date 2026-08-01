@@ -1,10 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import { Character } from '../src/entities/Character.js';
-import { TEAM, HEALTH, MATCH, HIT_COMBO } from '../src/config.js';
+import {
+  TEAM, HEALTH, MATCH, HIT_COMBO, INK, MOVEMENT, GEAR_POWERS,
+} from '../src/config.js';
 
 function makeCharacter() {
   return new Character(TEAM.PLAYER, new THREE.Vector3(0, 0, 0));
+}
+
+/** Minimal PaintSystem stand-in: reports the floor at the character's position as owned by `owner`. */
+function makePaintSystem(owner) {
+  return { getOwnerAt: () => owner };
 }
 
 describe('Character damage/respawn lifecycle', () => {
@@ -102,6 +109,57 @@ describe('Character.updateHealthRegen', () => {
     c.updateHealthRegen(HEALTH.regenDelaySec);
     c.updateHealthRegen(1000); // absurdly long tick
     expect(c.hp).toBe(HEALTH.max);
+  });
+});
+
+describe('Character gear powers (config.GEAR_POWERS, equipped via gearPower)', () => {
+  it('is a no-op by default: full respawn delay, unboosted ink regen and surf speed', () => {
+    const c = makeCharacter();
+    c.invincibleTimer = 0;
+    c.die();
+    expect(c.respawnTimer).toBeCloseTo(MATCH.respawnDelaySec);
+
+    const c2 = makeCharacter();
+    c2.ink = 0;
+    const speedMult = c2.updateFloorEffects(1, makePaintSystem(TEAM.PLAYER), false);
+    expect(speedMult).toBe(1);
+    expect(c2.ink).toBeCloseTo(INK.regenOwnFloor);
+  });
+
+  it('quickRespawn shortens the respawn delay', () => {
+    const c = makeCharacter();
+    c.gearPower = GEAR_POWERS.quickRespawn;
+    c.invincibleTimer = 0;
+    c.die();
+    expect(c.respawnTimer).toBeCloseTo(MATCH.respawnDelaySec * GEAR_POWERS.quickRespawn.respawnMult);
+  });
+
+  it('aquaRevival boosts own-floor and surf ink regen', () => {
+    const c = makeCharacter();
+    c.gearPower = GEAR_POWERS.aquaRevival;
+    c.ink = 0;
+    c.updateFloorEffects(1, makePaintSystem(TEAM.PLAYER), false);
+    expect(c.ink).toBeCloseTo(INK.regenOwnFloor * GEAR_POWERS.aquaRevival.inkRegenMult);
+
+    const c2 = makeCharacter();
+    c2.gearPower = GEAR_POWERS.aquaRevival;
+    c2.ink = 0;
+    c2.updateFloorEffects(1, makePaintSystem(TEAM.PLAYER), true); // wantsInkSurf, own floor -> surfing
+    expect(c2.inkSurfActive).toBe(true);
+    expect(c2.ink).toBeCloseTo(INK.regenSurf * GEAR_POWERS.aquaRevival.inkRegenMult);
+  });
+
+  it('surfBoost speeds up ink-surf movement only, not the base speed multiplier', () => {
+    const c = makeCharacter();
+    c.gearPower = GEAR_POWERS.surfBoost;
+    const speedMult = c.updateFloorEffects(1, makePaintSystem(TEAM.PLAYER), true);
+    expect(c.inkSurfActive).toBe(true);
+    expect(speedMult).toBeCloseTo(MOVEMENT.inkSurfSpeedMult * GEAR_POWERS.surfBoost.surfSpeedMult);
+
+    const c2 = makeCharacter();
+    c2.gearPower = GEAR_POWERS.surfBoost;
+    const groundedSpeedMult = c2.updateFloorEffects(1, makePaintSystem(TEAM.PLAYER), false);
+    expect(groundedSpeedMult).toBe(1); // not surfing -> surfBoost has nothing to apply to
   });
 });
 

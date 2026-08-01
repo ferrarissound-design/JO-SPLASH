@@ -148,6 +148,7 @@ export class UIManager {
       specialButtons: Array.from(document.querySelectorAll('[data-special]')),
       battleModeButtons: Array.from(document.querySelectorAll('[data-battle-mode]')),
       challengeBoard: document.getElementById('challenge-board'),
+      dailyChallengeBoard: document.getElementById('daily-challenge-board'),
       rewardButtons: Array.from(document.querySelectorAll('[data-reward]')),
       cupProgress: document.getElementById('cup-progress'),
       btnResumeCup: document.getElementById('btn-resume-cup'),
@@ -459,6 +460,14 @@ export class UIManager {
     const done = unlocked instanceof Set ? unlocked : new Set(unlocked ?? []);
     this.el.challengeBoard.innerHTML = `<b>チャレンジ</b><br>${challenges.map((challenge) => (
       `<span class="${done.has(challenge.id) ? 'done' : ''}">${done.has(challenge.id) ? '✓' : '○'} ${challenge.labelJa ?? challenge.label} — 報酬: ${challenge.rewardJa ?? challenge.reward}</span>`
+    )).join('<br>')}`;
+  }
+
+  setDailyChallengeBoard(challenges, completed) {
+    if (!this.el.dailyChallengeBoard) return;
+    const done = completed instanceof Set ? completed : new Set(completed ?? []);
+    this.el.dailyChallengeBoard.innerHTML = `<b>デイリーチャレンジ</b><br>${challenges.map((challenge) => (
+      `<span class="${done.has(challenge.id) ? 'done' : ''}">${done.has(challenge.id) ? '✓' : '○'} ${challenge.labelJa} — 経験値+${challenge.xp}</span>`
     )).join('<br>')}`;
   }
 

@@ -8,6 +8,12 @@ export const REWARDS = Object.freeze({
   neonCyan: Object.freeze({ id: 'neonCyan', label: 'NEON CYAN', labelJa: 'ネオンシアン', slot: 'theme' }),
   streetLegend: Object.freeze({ id: 'streetLegend', label: 'STREET LEGEND', labelJa: 'ストリートレジェンド', slot: 'title' }),
   rankPulse: Object.freeze({ id: 'rankPulse', label: 'RANK PULSE', labelJa: 'ランクパルス', slot: 'effect' }),
+  // Gear powers are the only rewards with real gameplay effects (see
+  // GEAR_POWERS in config.js) rather than purely cosmetic ones; only one can
+  // be equipped at a time, same as the other single-value slots above.
+  aquaRevival: Object.freeze({ id: 'aquaRevival', label: 'AQUA REVIVAL GEAR', labelJa: 'アクアリバイバル', slot: 'gear' }),
+  quickRespawn: Object.freeze({ id: 'quickRespawn', label: 'QUICK RESPAWN GEAR', labelJa: 'クイックリスポーン', slot: 'gear' }),
+  surfBoost: Object.freeze({ id: 'surfBoost', label: 'SURF BOOST GEAR', labelJa: 'サーフブースト', slot: 'gear' }),
 });
 
 export const CHALLENGES = Object.freeze([
@@ -15,6 +21,9 @@ export const CHALLENGES = Object.freeze([
   Object.freeze({ id: 'aerial', label: 'SKY HUNTER', labelJa: 'スカイハンター', description: 'Land 3 SKY SPLASH hits.', reward: 'SKY ACE TITLE', rewardJa: 'スカイエース称号', rewardId: 'skyAce' }),
   Object.freeze({ id: 'combo', label: 'COMBO MAKER', labelJa: 'コンボマスター', description: 'Reach a 5-hit combo.', reward: 'COMBO GLOW', rewardJa: 'コンボグロウ', rewardId: 'comboGlow' }),
   Object.freeze({ id: 'champion', label: 'CUP CHAMPION', labelJa: 'カップチャンピオン', description: 'Win a Rival Cup.', reward: 'GOLD CHAMPION', rewardJa: 'ゴールドチャンピオン', rewardId: 'goldChampion' }),
+  Object.freeze({ id: 'survivor', label: 'FLAWLESS VICTORY', labelJa: 'ノーデス勝利', description: 'Win a match without being KO\'d.', reward: 'AQUA REVIVAL GEAR', rewardJa: 'アクアリバイバル', rewardId: 'aquaRevival' }),
+  Object.freeze({ id: 'comeback', label: 'COMEBACK KING', labelJa: 'カムバック', description: 'Win a match after being KO\'d 3 or more times.', reward: 'QUICK RESPAWN GEAR', rewardJa: 'クイックリスポーン', rewardId: 'quickRespawn' }),
+  Object.freeze({ id: 'climber', label: 'WALL RUNNER', labelJa: 'ウォールランナー', description: 'Complete 5 wall climbs in one match.', reward: 'SURF BOOST GEAR', rewardJa: 'サーフブースト', rewardId: 'surfBoost' }),
 ]);
 
 function load() {
@@ -75,13 +84,19 @@ export class Progression {
     return earned;
   }
 
-  evaluate({ playerPct = 0, skySplashes = 0, bestCombo = 0, cupChampion = false } = {}) {
+  evaluate({
+    playerPct = 0, skySplashes = 0, bestCombo = 0, cupChampion = false,
+    outcome = null, deaths = 0, climbs = 0,
+  } = {}) {
     const earned = [];
     const checks = {
       painter: playerPct >= 60,
       aerial: skySplashes >= 3,
       combo: bestCombo >= 5,
       champion: cupChampion,
+      survivor: outcome === 'win' && deaths === 0,
+      comeback: outcome === 'win' && deaths >= 3,
+      climber: climbs >= 5,
     };
     for (const challenge of CHALLENGES) {
       if (!checks[challenge.id] || this.values.unlocked.includes(challenge.id)) continue;
