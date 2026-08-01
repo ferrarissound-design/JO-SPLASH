@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Character } from './Character.js';
 import { MOVEMENT, WEAPON, SUB_WEAPON, SPECIAL, AI, AI_APPEARANCE_TRAITS, TEAM } from '../config.js';
 import { InkBomb } from '../systems/SubWeapon.js';
-import { InkBurstSpecial } from '../systems/SpecialWeapon.js';
+import { Special } from '../systems/SpecialWeapon.js';
 import {
   createEnemyCharacter,
   populateEnemyRig,
@@ -114,7 +114,10 @@ export class EnemyAI extends Character {
     this._strafeSign = 1;
     this._strafeTimer = 0;
     this.subWeapon = new InkBomb();
-    this.special = new InkBurstSpecial(this.team);
+    // The CPU always fights with the burst special — its pursuit tactics in
+    // _actSpecialPressure are tuned specifically around burst's
+    // self-centered radius, so other types stay a player-only choice for now.
+    this.special = new Special(this.team, 'burst');
     this._weaponSwitchTimer = 0;
     this._debugWeaponLockTimer = 0;
     this._bombDecisionCooldown = 0;
@@ -683,7 +686,7 @@ export class EnemyAI extends Character {
 
     _toPlayer.normalize();
     _steerDir.copy(_toPlayer);
-    if (dist < SPECIAL.maxRadius * 0.55) {
+    if (dist < this.special.profile.maxRadius * 0.55) {
       _steerDir.set(-_toPlayer.z, 0, _toPlayer.x).multiplyScalar(this._strafeSign);
     }
     const paintAware = this._choosePaintAwareDirection(arena, paintSystem, _steerDir, 0.25);

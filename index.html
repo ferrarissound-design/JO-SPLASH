@@ -44,7 +44,7 @@
               <li><kbd>W</kbd>+<kbd>Space</kbd><span>自分色の壁パネルをよじ登る</span></li>
               <li><kbd>Shift</kbd><span>自分のインクに潜って高速移動</span></li>
               <li><kbd>方向</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd><span>潜伏中にインクロール</span></li>
-              <li><kbd>Q</kbd><span>満タン時にインクバースト</span></li>
+              <li><kbd>Q</kbd><span>満タン時にスペシャル発動</span></li>
               <li><kbd>精密を長押し+Shift</kbd><span>フルチャージを潜伏中キープ</span></li>
               <li><kbd>Esc</kbd><span>ポーズ / マウスロック解除</span></li>
             </ul>
@@ -68,7 +68,7 @@
               <li><kbd>前進+ジャンプ</kbd><span>自分色の壁パネルをよじ登る</span></li>
               <li><kbd>潜伏</kbd><span>自分のインクに潜って移動</span></li>
               <li><kbd>方向</kbd>+<kbd>潜伏</kbd>+<kbd>ジャンプ</kbd><span>潜伏中にインクロール</span></li>
-              <li><kbd>バースト</kbd><span>満タン時に広範囲を塗装</span></li>
+              <li><kbd>バースト</kbd><span>満タン時にスペシャル発動</span></li>
               <li><kbd>II ボタン</kbd><span>ポーズ</span></li>
             </ul>
           </details>
@@ -94,7 +94,7 @@
             <li><kbd data-gamepad-control="surf">LB / LT</kbd><span>インクに潜る</span></li>
             <li><kbd data-gamepad-control="bomb">B</kbd><span>決定 / インクボム</span></li>
             <li><kbd data-gamepad-control="weapon">X</kbd><span>メイン武器切替</span></li>
-            <li><kbd data-gamepad-control="special">Y</kbd><span>インクバースト</span></li>
+            <li><kbd data-gamepad-control="special">Y</kbd><span>スペシャル発動</span></li>
           </ul>
           <p class="mouse-hint">※ D-PAD左右・上で武器を直接選択。<span data-gamepad-control="pause">MENU / OPTIONS</span>でポーズ。対応パッドは発射・被弾時に振動します。</p>
         </div>
@@ -141,6 +141,12 @@
             <button type="button" class="setup-option selected" data-subweapon="bomb" aria-pressed="true"><strong>インクボム</strong><small>広範囲を一気に塗る</small></button>
             <button type="button" class="setup-option" data-subweapon="mine" aria-pressed="false"><strong>インクマイン</strong><small>近づくと爆発する罠</small></button>
             <button type="button" class="setup-option" data-subweapon="wall" aria-pressed="false"><strong>スプラッシュウォール</strong><small>5.5秒間攻撃を防ぐ</small></button>
+          </div>
+          <div class="option-picker" role="group" aria-label="スペシャル">
+            <span class="option-picker-title">スペシャル</span>
+            <button type="button" class="setup-option selected" data-special="burst" aria-pressed="true"><strong>インクバースト</strong><small>足元から広がる塗装波で反撃</small></button>
+            <button type="button" class="setup-option" data-special="rain" aria-pressed="false"><strong>インクレイン</strong><small>狙った地点にインクの雨を降らせる</small></button>
+            <button type="button" class="setup-option" data-special="shield" aria-pressed="false"><strong>カラーシールド</strong><small>被ダメージを抑え足元を塗り続ける</small></button>
           </div>
           <div class="option-picker" role="group" aria-label="対戦モード">
             <span class="option-picker-title">モード</span>
@@ -283,7 +289,7 @@
             <li><kbd>W</kbd>+<kbd>Space</kbd><span>自分色の壁パネルをよじ登る</span></li>
             <li><kbd>Shift</kbd><span>自分のインクに潜って高速移動</span></li>
             <li><kbd>方向</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd><span>潜伏中にインクロール</span></li>
-            <li><kbd>Q</kbd><span>満タン時にインクバースト</span></li>
+            <li><kbd>Q</kbd><span>満タン時にスペシャル発動</span></li>
             <li><kbd>精密を長押し+Shift</kbd><span>フルチャージを潜伏中キープ</span></li>
           </ul>
         </div>
@@ -299,7 +305,7 @@
             <li><kbd>前進+ジャンプ</kbd><span>自分色の壁パネルをよじ登る</span></li>
             <li><kbd>潜伏</kbd><span>自分のインクに潜って移動</span></li>
             <li><kbd>方向</kbd>+<kbd>潜伏</kbd>+<kbd>ジャンプ</kbd><span>潜伏中にインクロール</span></li>
-            <li><kbd>バースト</kbd><span>満タン時に広範囲を塗装</span></li>
+            <li><kbd>バースト</kbd><span>満タン時にスペシャル発動</span></li>
           </ul>
         </div>
 
@@ -313,7 +319,7 @@
             <li><kbd data-gamepad-control="surf">LB / LT</kbd><span>インクに潜る</span></li>
             <li><kbd data-gamepad-control="bomb">B</kbd><span>再開 / インクボム</span></li>
             <li><kbd data-gamepad-control="weaponWithDpad">X / D-PAD</kbd><span>メイン武器切替</span></li>
-            <li><kbd data-gamepad-control="special">Y</kbd><span>インクバースト</span></li>
+            <li><kbd data-gamepad-control="special">Y</kbd><span>スペシャル発動</span></li>
           </ul>
         </div>
       </div>
@@ -363,6 +369,7 @@
           <div class="player-character-chip"><span>プレイヤー</span><strong id="player-character-name">クロマライダー</strong></div>
           <div class="weapon-strip"><span>メイン</span><strong id="weapon-name">連射</strong><small id="weapon-switch-hint">1 / 2 / 3</small></div>
           <div class="weapon-strip sub-weapon-strip"><span>サブ</span><strong id="sub-weapon-name">インクボム</strong><small id="sub-weapon-status">使用可能</small></div>
+          <div class="weapon-strip special-weapon-strip"><span>スペシャル</span><strong id="special-weapon-name">インクバースト</strong></div>
           <div id="charge-meter" class="charge-meter hidden" aria-label="精密ウェポンのチャージ">
             <span>チャージ</span>
             <div class="charge-track"><div id="charge-fill" class="charge-fill"></div></div>

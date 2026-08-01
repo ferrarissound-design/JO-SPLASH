@@ -325,11 +325,51 @@ export const PARTICLES = {
 export const SPECIAL = {
   maxCharge: 100,
   cellsPerCharge: 95, // roughly 12-18 seconds of productive painting
-  durationSec: 1.15,
-  pulseIntervalSec: 0.16,
-  minRadius: 2.4,
-  maxRadius: 8.2,
-  damage: 36,
+  defaultType: 'burst',
+  profiles: {
+    // Self-centered comeback tool: expanding paint pulses from the
+    // character's own position, with a single damage tick against whichever
+    // pulse radius first reaches the opponent. Rewards standing your ground.
+    burst: {
+      id: 'burst',
+      name: 'INK BURST',
+      nameJa: 'インクバースト',
+      descriptionJa: '足元から広がる塗装波で反撃',
+      durationSec: 1.15,
+      pulseIntervalSec: 0.16,
+      minRadius: 2.4,
+      maxRadius: 8.2,
+      damage: 36,
+    },
+    // Ranged zone-denial tool: locks onto a point ahead of the character at
+    // activation and drops repeated paint pulses there, chipping anyone who
+    // stays inside. Lets the user contest a distant objective (e.g. ZONE
+    // HOLD's center) without exposing themselves the way burst does.
+    rain: {
+      id: 'rain',
+      name: 'INK RAIN',
+      nameJa: 'インクレイン',
+      descriptionJa: '狙った地点にインクの雨を降らせる',
+      durationSec: 2.4,
+      pulseIntervalSec: 0.3,
+      forwardDistance: 9, // how far ahead of the character the target point locks
+      radius: 3.2,
+      damagePerPulse: 8,
+    },
+    // Defensive tool: reduces incoming damage and keeps painting the floor
+    // under the character's feet for its duration. No opponent damage —
+    // trades offense for survivability and turf upkeep while pushing in.
+    shield: {
+      id: 'shield',
+      name: 'COLOR SHIELD',
+      nameJa: 'カラーシールド',
+      descriptionJa: '被ダメージを抑えながら足元を塗り続ける',
+      durationSec: 3.4,
+      damageReduction: 0.55,
+      tickIntervalSec: 0.3,
+      tickRadius: 1.5,
+    },
+  },
 };
 
 export const CAMERA = {

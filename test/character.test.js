@@ -49,6 +49,14 @@ describe('Character damage/respawn lifecycle', () => {
     expect(c.takeDamage(50)).toBe(false);
   });
 
+  it('applies an active special\'s damageMultiplier (e.g. COLOR SHIELD) to incoming hits', () => {
+    const c = makeCharacter();
+    c.invincibleTimer = 0;
+    c.special = { damageMultiplier: 0.5 };
+    c.takeDamage(40);
+    expect(c.hp).toBe(HEALTH.max - 20);
+  });
+
   it('respawn() fully restores HP/ink/invincibility and clears death state', () => {
     const c = makeCharacter();
     c.invincibleTimer = 0;

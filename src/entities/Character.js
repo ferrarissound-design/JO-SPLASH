@@ -170,7 +170,8 @@ export class Character {
   takeDamage(amount) {
     if (!this.alive || this.invincibleTimer > 0) return false;
     this._healthRegenTimer = HEALTH.regenDelaySec;
-    this.hp = Math.max(0, this.hp - amount);
+    const specialMult = this.special?.damageMultiplier ?? 1;
+    this.hp = Math.max(0, this.hp - amount * specialMult);
     if (this.hp <= 0) {
       this.die();
       return true;
