@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  MATCH, TEAM, COLORS, THEME, PERF, MOVEMENT, CAMERA, ARENA, PAINT, AI, AI_DIFFICULTY,
+  MATCH, TEAM, COLORS, THEME, PERF, MOVEMENT, CAMERA, ARENA, PAINT, AI, AI_DIFFICULTY, GEAR_POWERS,
 } from '../config.js';
 import { InputManager } from './InputManager.js';
 import { CameraController } from './CameraController.js';
@@ -11,6 +11,7 @@ import { calculateBattleRank } from './BattleRank.js';
 import { isSuddenDeathTie, getSuddenDeathLeader } from './SuddenDeath.js';
 import { MATCH_RULES } from './MatchRules.js';
 import { Progression, CHALLENGES } from './Progression.js';
+import { DailyChallenges } from './DailyChallenges.js';
 import { PlayerProfile } from './PlayerProfile.js';
 import { TutorialController } from './TutorialController.js';
 import { RuleController } from './RuleController.js';
@@ -68,6 +69,7 @@ export class Game {
     this.settings.apply();
     this.matchRecord = new MatchRecord();
     this.progression = new Progression();
+    this.dailyChallenges = new DailyChallenges();
     this.playerProfile = new PlayerProfile();
     this.tutorialController = new TutorialController();
     this.tutorialActive = false;
@@ -194,6 +196,7 @@ export class Game {
     this._bindWindow();
     this.ui.updateMatchRecord(this.matchRecord);
     this.ui.setChallengeBoard(CHALLENGES, this.progression.unlocked);
+    this.ui.setDailyChallengeBoard(this.dailyChallenges.todaysChallenges, this.dailyChallenges.completed);
     this.ui.setRewardLoadout(this.progression.availableRewards, this.progression.equipped);
     this.ui.setPlayerProfile(this.playerProfile.progress);
     this.ui.setRuleHint(MATCH_RULES[this.selectedRuleId]);
@@ -732,6 +735,7 @@ export class Game {
     this.touchControls?.setSubWeaponType(this.selectedSubWeaponId);
     this.player.special.setType(this.selectedSpecialId);
     this.touchControls?.setSpecialType(this.selectedSpecialId);
+    this.player.gearPower = GEAR_POWERS[this.progression.equipped.gear] ?? null;
 
     this.cpu.position.copy(this.arena.spawnPoints.cpu);
     this.cpu.velocity.set(0, 0, 0);
@@ -935,8 +939,12 @@ export class Game {
       skySplashes: this.player.skySplashHits,
       bestCombo: this.player.bestHitCombo,
       cupChampion,
+      outcome,
+      deaths: this.player.deaths,
+      climbs: this.player.climbsCompleted,
     });
     this.ui.setChallengeBoard(CHALLENGES, this.progression.unlocked);
+    this.ui.setDailyChallengeBoard(this.dailyChallenges.todaysChallenges, this.dailyChallenges.completed);
     this.ui.setRewardLoadout(this.progression.availableRewards, this.progression.equipped);
     this._applyRewardTheme();
 
@@ -974,7 +982,7 @@ export class Game {
       practiceMode: this.practiceMode,
       stats,
     });
-    const profileResult = this.playerProfile.recordMatch({
+    let profileResult = this.playerProfile.recordMatch({
       outcome,
       difficultyId: this.selectedDifficulty,
       practiceMode: this.practiceMode,
@@ -984,6 +992,35 @@ export class Game {
       bestCombo: this.player.bestHitCombo,
       battleScore: rank.score,
     });
+
+    // Daily challenges only grant bonus XP (never a reward), and — like the
+    // XP formula above — don't run in practice mode so it can't be farmed.
+    let dailyEarned = [];
+    if (!this.practiceMode) {
+      const dailyResult = this.dailyChallenges.evaluate({
+        outcome,
+        playerPct: cov.playerPct,
+        bestCombo: this.player.bestHitCombo,
+        koPlayer: this.player.koScored,
+        subWeaponsUsed: this.player.bombsThrown,
+        specialsUsed: this.player.specialsUsed,
+        climbs: this.player.climbsCompleted,
+        deaths: this.player.deaths,
+      });
+      dailyEarned = dailyResult.earned;
+      if (dailyResult.totalXp > 0) {
+        const bonus = this.playerProfile.addXp(dailyResult.totalXp);
+        profileResult = {
+          ...profileResult,
+          xpGained: profileResult.xpGained + dailyResult.totalXp,
+          levelAfter: bonus.levelAfter,
+          leveledUp: profileResult.leveledUp || bonus.leveledUp,
+          rankName: bonus.rankName,
+          progress: bonus.progress,
+        };
+      }
+      this.ui.setDailyChallengeBoard(this.dailyChallenges.todaysChallenges, this.dailyChallenges.completed);
+    }
     const rankRewards = this.progression.unlockRewards(profileResult.rewardIds);
     this.ui.setRewardLoadout(this.progression.availableRewards, this.progression.equipped);
     this.ui.setPlayerProfile(profileResult.progress);
@@ -1049,6 +1086,7 @@ export class Game {
       rewards: [
         ...earned.map((challenge) => challenge.rewardJa ?? challenge.reward),
         ...rankRewards.map((reward) => reward.labelJa ?? reward.label),
+        ...dailyEarned.map((challenge) => `${challenge.labelJa} +${challenge.xp}XP`),
       ],
     });
     this.ui.setCupSummary({

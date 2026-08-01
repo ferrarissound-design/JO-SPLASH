@@ -522,6 +522,27 @@ export const AI_DIFFICULTY = Object.freeze({
   }),
 });
 
+// Small, permanent player-loadout modifiers unlocked as one-time challenge
+// rewards (see Progression.js REWARDS/CHALLENGES, slot: 'gear'). At most one
+// is equipped at a time. Keyed by the same id as its REWARDS entry so
+// `GEAR_POWERS[equippedGearId]` resolves directly; Character.js reads these
+// as optional multipliers (default 1 when no gear is equipped, and CPU never
+// has one), so each field is independent and safe to omit.
+export const GEAR_POWERS = Object.freeze({
+  aquaRevival: Object.freeze({
+    id: 'aquaRevival',
+    inkRegenMult: 1.25, // +25% ink regen on own floor / while ink-surfing
+  }),
+  quickRespawn: Object.freeze({
+    id: 'quickRespawn',
+    respawnMult: 0.8, // -20% respawn delay after a KO
+  }),
+  surfBoost: Object.freeze({
+    id: 'surfBoost',
+    surfSpeedMult: 1.1, // +10% movement speed while ink-surfing
+  }),
+});
+
 export const DEBUG_DEFAULTS = {
   showFps: false,
   showAiState: false,

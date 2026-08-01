@@ -88,6 +88,29 @@ export class PlayerProfile {
     return true;
   }
 
+  /** Adds flat bonus XP (e.g. daily challenge rewards) outside the per-match formula in recordMatch. */
+  addXp(amount) {
+    const gain = Math.max(0, Math.floor(Number(amount) || 0));
+    const levelBefore = this.level;
+    if (gain <= 0) {
+      return {
+        xpGained: 0, levelBefore, levelAfter: levelBefore, leveledUp: false,
+        rankName: this.rankName, progress: this.progress,
+      };
+    }
+    this.values.xp += gain;
+    const levelAfter = this.level;
+    this._save();
+    return {
+      xpGained: gain,
+      levelBefore,
+      levelAfter,
+      leveledUp: levelAfter > levelBefore,
+      rankName: this.rankName,
+      progress: this.progress,
+    };
+  }
+
   recordMatch({
     outcome = 'draw',
     difficultyId = 'standard',

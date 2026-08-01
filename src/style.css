@@ -1449,6 +1449,8 @@ details[open] > .key-list-toggle::before { transform: rotate(90deg); }
 .stage-mini-vertical{background:linear-gradient(90deg,transparent 16%,#26345a 17% 33%,transparent 34% 64%,#26345a 65% 81%,transparent 82%),linear-gradient(0deg,transparent 42%,#2fb8ff 43% 49%,transparent 50%),#0b1730}
 .challenge-board{margin:.6rem 0;padding:.62rem;border-left:3px solid #fff27a;background:rgba(255,242,122,.07);font-size:.7rem;line-height:1.5}
 .challenge-board b{color:#fff27a}.challenge-board .done{color:#7dffbd}
+.daily-challenge-board{border-left-color:#35e6ff;background:rgba(53,230,255,.07)}
+.daily-challenge-board b{color:#35e6ff}
 .reward-loadout,.cup-progress{margin:.6rem 0;padding:.58rem;border:1px solid rgba(255,255,255,.15);border-radius:9px;background:rgba(7,13,30,.68);font-size:.68rem}
 .reward-loadout>strong{color:#9feaff;letter-spacing:.12em}.reward-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.3rem;margin-top:.42rem}
 .reward-grid button{padding:.4rem;border:1px solid rgba(255,255,255,.14);border-radius:6px;background:#111b35;color:#dceeff;font-size:.6rem;font-weight:900}
