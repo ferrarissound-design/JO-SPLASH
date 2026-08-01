@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Character } from './Character.js';
 import { MOVEMENT, TEAM, COLORS, CAMERA } from '../config.js';
-import { InkBurstSpecial } from '../systems/SpecialWeapon.js';
+import { Special } from '../systems/SpecialWeapon.js';
 import { InkBomb } from '../systems/SubWeapon.js';
 import { getCharacterConfig } from './PlayerAppearance.js';
 
@@ -37,7 +37,7 @@ export class Player extends Character {
     this.camera = cameraController;
     this.input = inputManager;
     this.appearanceParts = this.mesh.userData.appearanceParts;
-    this.special = new InkBurstSpecial(this.team);
+    this.special = new Special(this.team);
     this.subWeapon = new InkBomb();
     this.isInkRolling = false;
     this.inkRollTimer = 0;

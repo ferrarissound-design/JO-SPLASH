@@ -77,6 +77,7 @@ export class Game {
     this.ruleController = new RuleController('turf');
     this.selectedRuleId = this.ruleController.ruleId;
     this.selectedSubWeaponId = 'bomb';
+    this.selectedSpecialId = 'burst';
     this.selectedBattleMode = 'single';
     this.cupController = new CupController();
     this.cupSessionActive = false;
@@ -300,6 +301,11 @@ export class Game {
       this.selectedSubWeaponId = subWeaponId;
       this.player.subWeapon.setType(subWeaponId);
       this.touchControls?.setSubWeaponType(subWeaponId);
+    });
+    this.ui.bindSpecialSelection((specialId) => {
+      this.selectedSpecialId = specialId;
+      this.player.special.setType(specialId);
+      this.touchControls?.setSpecialType(specialId);
     });
     this.ui.bindBattleModeSelection((mode) => { this.selectedBattleMode = mode === 'cup' ? 'cup' : 'single'; });
     this.ui.bindResumeCup(() => this._resumeCup());
@@ -724,6 +730,8 @@ export class Game {
     this.player.subWeapon.cooldown = 0;
     this.player.subWeapon.setType(this.selectedSubWeaponId);
     this.touchControls?.setSubWeaponType(this.selectedSubWeaponId);
+    this.player.special.setType(this.selectedSpecialId);
+    this.touchControls?.setSpecialType(this.selectedSpecialId);
 
     this.cpu.position.copy(this.arena.spawnPoints.cpu);
     this.cpu.velocity.set(0, 0, 0);
@@ -1003,6 +1011,7 @@ export class Game {
     this.ui.setResultPerformance({
       weaponName: this.player.weapon.displayName,
       subWeaponName: this.player.subWeapon.profile.label,
+      specialName: this.player.special.displayName,
       mvp,
       bestLabels: profileResult.newBests,
     });
@@ -1518,6 +1527,7 @@ export class Game {
       subWeaponName: this.player.subWeapon.profile.label,
       subWeaponCooldown: this.player.subWeapon.cooldown,
       subWeaponCost: this.player.subWeapon.profile.cost,
+      specialName: this.player.special.displayName,
       koPlayer: this.player.koScored,
       koCpu: this.cpu.koScored,
       firing: this.input.fireHeld && this.player.alive && !this.player.inkSurfActive,

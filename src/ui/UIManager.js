@@ -145,6 +145,7 @@ export class UIManager {
       stageButtons: Array.from(document.querySelectorAll('[data-stage]')),
       ruleButtons: Array.from(document.querySelectorAll('[data-rule]')),
       subWeaponButtons: Array.from(document.querySelectorAll('[data-subweapon]')),
+      specialButtons: Array.from(document.querySelectorAll('[data-special]')),
       battleModeButtons: Array.from(document.querySelectorAll('[data-battle-mode]')),
       challengeBoard: document.getElementById('challenge-board'),
       rewardButtons: Array.from(document.querySelectorAll('[data-reward]')),
@@ -174,6 +175,7 @@ export class UIManager {
       specialValue: document.getElementById('special-value'),
       weaponName: document.getElementById('weapon-name'),
       subWeaponName: document.getElementById('sub-weapon-name'),
+      specialWeaponName: document.getElementById('special-weapon-name'),
       subWeaponStatus: document.getElementById('sub-weapon-status'),
       weaponSwitchHint: document.getElementById('weapon-switch-hint'),
       chargeMeter: document.getElementById('charge-meter'),
@@ -425,6 +427,7 @@ export class UIManager {
   bindStageSelection(cb) { this._bindOptionButtons(this.el.stageButtons, 'stage', cb); }
   bindRuleSelection(cb) { this._bindOptionButtons(this.el.ruleButtons, 'rule', cb); }
   bindSubWeaponSelection(cb) { this._bindOptionButtons(this.el.subWeaponButtons, 'subweapon', cb); }
+  bindSpecialSelection(cb) { this._bindOptionButtons(this.el.specialButtons, 'special', cb); }
   bindBattleModeSelection(cb) { this._bindOptionButtons(this.el.battleModeButtons, 'battleMode', cb); }
   bindResumeCup(cb) { this.el.btnResumeCup?.addEventListener('click', cb); }
   bindRewardSelection(cb) {
@@ -548,10 +551,14 @@ export class UIManager {
   }
 
   setResultPerformance({
-    weaponName = '', subWeaponName = '', mvp = '', bestLabels = [],
+    weaponName = '', subWeaponName = '', specialName = '', mvp = '', bestLabels = [],
   } = {}) {
     if (this.el.resultLoadout) {
-      this.el.resultLoadout.textContent = `装備: ${toJapaneseEquipmentName(weaponName)} + ${toJapaneseEquipmentName(subWeaponName)}`;
+      const loadout = [weaponName, subWeaponName, specialName]
+        .filter(Boolean)
+        .map(toJapaneseEquipmentName)
+        .join(' + ');
+      this.el.resultLoadout.textContent = `装備: ${loadout}`;
     }
     if (this.el.resultMvp) this.el.resultMvp.textContent = `最優秀: ${toJapaneseMvpLabel(mvp)}`;
     if (this.el.resultBests) {
@@ -690,6 +697,7 @@ export class UIManager {
     weaponChargeStored = false, weaponChargeStoreTimer = 0,
     weaponChargeStoreDuration = 0,
     subWeaponName = 'INK BOMB', subWeaponCooldown = 0, subWeaponCost = 0,
+    specialName = 'INK BURST',
     koPlayer, koCpu, firing,
     submerged = false, rolling = false, enemyFloor = false,
   }) {
@@ -720,6 +728,7 @@ export class UIManager {
     this.el.specialValue.textContent = specialActive ? '発動中' : specialReady ? 'Q!' : `${Math.floor(specialPct)}%`;
     this.el.weaponName.textContent = toJapaneseEquipmentName(weaponName);
     if (this.el.subWeaponName) this.el.subWeaponName.textContent = toJapaneseEquipmentName(subWeaponName);
+    if (this.el.specialWeaponName) this.el.specialWeaponName.textContent = toJapaneseEquipmentName(specialName);
     if (this.el.subWeaponStatus) {
       const lowInk = ink < subWeaponCost;
       this.el.subWeaponStatus.textContent = subWeaponCooldown > 0 ? `${subWeaponCooldown.toFixed(1)}秒` : lowInk ? 'インク不足' : '使用可能';

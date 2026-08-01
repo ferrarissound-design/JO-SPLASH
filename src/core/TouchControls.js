@@ -48,6 +48,7 @@ export class TouchControls {
     this._weaponType = null;
     this.setWeaponType('stream');
     this.setSubWeaponType('bomb');
+    this.setSpecialType('burst');
   }
 
   _bind() {
@@ -234,6 +235,16 @@ export class TouchControls {
       this.el.bombBtn.textContent = label;
       this.el.bombBtn.setAttribute('aria-label', `USE ${label}`);
       this.el.bombBtn.dataset.subWeaponType = type;
+    }
+  }
+
+  setSpecialType(type) {
+    const labels = { burst: 'BURST', rain: 'RAIN', shield: 'SHIELD' };
+    const label = labels[type] ?? labels.burst;
+    if (this.el.specialBtn) {
+      this.el.specialBtn.textContent = label;
+      this.el.specialBtn.setAttribute('aria-label', `USE ${label}`);
+      this.el.specialBtn.dataset.specialType = type;
     }
   }
 

@@ -31,6 +31,9 @@ export const UI_TEXT_JA = Object.freeze({
     'INK BOMB': 'インクボム',
     'INK MINE': 'インクマイン',
     'SPLASH WALL': 'スプラッシュウォール',
+    'INK BURST': 'インクバースト',
+    'INK RAIN': 'インクレイン',
+    'COLOR SHIELD': 'カラーシールド',
   }),
   best: Object.freeze({
     playerPct: '塗装率',
