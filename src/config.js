@@ -444,6 +444,55 @@ export const AI = {
 // spreadRangeMult/precisionRangeMult scale AI.spreadWeaponRange/
 // precisionWeaponRange, shifting how readily the type swaps into its
 // preferred weapon; fleeHpThresholdMult scales AI.fleeHpThreshold.
+// Per-special-type engagement rules for the CPU (see EnemyAI._shouldUseSpecial
+// and _actSpecialPressure). Each special pays off at a different range and for
+// a different reason, so reusing burst's close-range logic for all three would
+// have the CPU fire rain point-blank (where its locked target point lands
+// behind the player) and burn shield when nothing is threatening it.
+//
+// pursuit controls how the CPU moves while the special is active:
+//   orbit - close in, then strafe once the target is well inside the radius
+//   push  - keep closing; the damage reduction makes trading worthwhile
+//   free  - no bespoke movement, fall through to normal combat behavior
+export const AI_SPECIAL_USAGE = Object.freeze({
+  burst: Object.freeze({
+    minRange: 0,
+    maxRange: AI.specialEngageRange,
+    fireOnRangeAlone: false, // a self-centered nuke needs an actual reason
+    onTurfDeficit: true,
+    onPressure: true,
+    onLowHp: true,
+    pursuit: 'orbit',
+    pursuitSpeedMult: 0.65,
+  }),
+  rain: Object.freeze({
+    // Locks a point SPECIAL.profiles.rain.forwardDistance (9) ahead at
+    // activation, so it wants the player around that distance — not in its
+    // face, where the ink would fall past them.
+    minRange: 5,
+    maxRange: 15,
+    fireOnRangeAlone: true, // zone denial is always worth something in range
+    onTurfDeficit: true,
+    onPressure: false, // too slow to win a point-blank exchange
+    onLowHp: false,
+    pursuit: 'free',
+    pursuitSpeedMult: 1,
+  }),
+  shield: Object.freeze({
+    minRange: 0,
+    maxRange: 12,
+    fireOnRangeAlone: false,
+    onTurfDeficit: false, // paints far too little to close a coverage gap
+    onPressure: true,
+    onLowHp: true,
+    pursuit: 'push',
+    pursuitSpeedMult: 0.95,
+  }),
+});
+
+// specialType picks which SPECIAL.profiles entry the CPU fights with, so the
+// archetype the player sees on screen also predicts which ultimate is coming.
+// Cup rivals inherit it through their configured appearanceType (see RIVALS).
 export const AI_APPEARANCE_TRAITS = Object.freeze({
   speed: Object.freeze({
     // Hit-and-run: fast, erratic aim, bomb-happy, retreats early, lingers on
@@ -454,6 +503,7 @@ export const AI_APPEARANCE_TRAITS = Object.freeze({
     spreadRangeMult: 1.25,
     precisionRangeMult: 1.2,
     fleeHpThresholdMult: 1.2,
+    specialType: 'burst', // close-range harasser — a self-centered nuke suits it
   }),
   street: Object.freeze({
     // Baseline archetype — no trait deviates from the selected difficulty.
@@ -463,6 +513,7 @@ export const AI_APPEARANCE_TRAITS = Object.freeze({
     spreadRangeMult: 1,
     precisionRangeMult: 1,
     fleeHpThresholdMult: 1,
+    specialType: 'burst',
   }),
   heavy: Object.freeze({
     // Tank: slower, leans on brute-force SPREAD over utility bombs, and
@@ -473,6 +524,7 @@ export const AI_APPEARANCE_TRAITS = Object.freeze({
     spreadRangeMult: 1.3,
     precisionRangeMult: 1.15,
     fleeHpThresholdMult: 0.55,
+    specialType: 'shield', // already the type that refuses to disengage
   }),
   technical: Object.freeze({
     // Marksman: sharp aim, switches into PRECISION sooner and leans on it,
@@ -483,6 +535,7 @@ export const AI_APPEARANCE_TRAITS = Object.freeze({
     spreadRangeMult: 0.75,
     precisionRangeMult: 0.8,
     fleeHpThresholdMult: 1,
+    specialType: 'rain', // fights at range; rain denies ground from there
   }),
 });
 

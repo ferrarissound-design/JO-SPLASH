@@ -896,13 +896,15 @@ export class UIManager {
     this.el.enemyHpFill.style.width = `${Math.max(0, hp)}%`;
   }
 
-  updateEnemySpecialWarning({ visible, active = false }) {
+  updateEnemySpecialWarning({ visible, active = false, specialNameJa = 'インクバースト' }) {
     const el = this.el.enemySpecialWarning;
     if (!el) return;
     el.classList.toggle('hidden', !visible);
     el.classList.toggle('active', visible && active);
     if (this.el.enemySpecialWarningLabel) {
-      this.el.enemySpecialWarningLabel.textContent = active ? 'CPUがインクバースト発動' : 'CPUがバースト準備中';
+      this.el.enemySpecialWarningLabel.textContent = active
+        ? `CPUが${specialNameJa}発動`
+        : `CPUが${specialNameJa}準備中`;
     }
   }
 
