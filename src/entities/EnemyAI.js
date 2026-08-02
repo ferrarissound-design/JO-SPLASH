@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { Character } from './Character.js';
-import { MOVEMENT, WEAPON, SUB_WEAPON, SPECIAL, AI, AI_APPEARANCE_TRAITS, TEAM } from '../config.js';
+import {
+  MOVEMENT, WEAPON, SUB_WEAPON, SPECIAL, AI, AI_APPEARANCE_TRAITS, AI_SPECIAL_USAGE, TEAM,
+} from '../config.js';
 import { InkBomb } from '../systems/SubWeapon.js';
 import { Special } from '../systems/SpecialWeapon.js';
 import {
@@ -114,10 +116,11 @@ export class EnemyAI extends Character {
     this._strafeSign = 1;
     this._strafeTimer = 0;
     this.subWeapon = new InkBomb();
-    // The CPU always fights with the burst special — its pursuit tactics in
-    // _actSpecialPressure are tuned specifically around burst's
-    // self-centered radius, so other types stay a player-only choice for now.
-    this.special = new Special(this.team, 'burst');
+    // Which special the CPU fights with comes from its appearance archetype
+    // (see AI_APPEARANCE_TRAITS.specialType). The archetype is already resolved
+    // here because _createMesh ran during the base constructor;
+    // _applyAppearanceSpecial keeps the two in sync on every later re-roll.
+    this.special = new Special(this.team, this._appearanceSpecialType());
     this._weaponSwitchTimer = 0;
     this._debugWeaponLockTimer = 0;
     this._bombDecisionCooldown = 0;
@@ -169,6 +172,23 @@ export class EnemyAI extends Character {
     // Archetype traits ride on top of whatever difficulty is selected, so
     // re-derive the effective difficulty every time the look (re)rolls.
     this._recomputeEffectiveDifficulty();
+    this._applyAppearanceSpecial();
+  }
+
+  /** The special type this archetype fights with (see AI_APPEARANCE_TRAITS.specialType). */
+  _appearanceSpecialType() {
+    const traits = AI_APPEARANCE_TRAITS[this.appearanceId] ?? AI_APPEARANCE_TRAITS.street;
+    return SPECIAL.profiles[traits.specialType] ? traits.specialType : SPECIAL.defaultType;
+  }
+
+  /**
+   * Points this.special at the current archetype's type. Safe to call from
+   * _setAppearanceMeta during the base constructor, where this.special does
+   * not exist yet, and mid-match, where Special.setType declines to swap out
+   * from under an already-firing special.
+   */
+  _applyAppearanceSpecial() {
+    this.special?.setType(this._appearanceSpecialType());
   }
 
   /** Rebuild the rig in place with a new appearance type (randomized colours/details). */
@@ -548,7 +568,9 @@ export class EnemyAI extends Character {
   _act(dt, arena, paintSystem, projectileManager, particleManager, audioManager, player, ui) {
     this.debugTarget = this.targetPoint;
 
-    if (this.special.active) {
+    // Rain's target point is locked at activation, so there is nothing to
+    // chase — it keeps fighting normally while the ink falls.
+    if (this.specialOverridesMovement) {
       this._actSpecialPressure(dt, arena, paintSystem, player);
     } else if (this.state === STATE.SPECIAL) {
       this._actSpecialWindup(dt, arena, audioManager, player, ui);
@@ -631,14 +653,20 @@ export class EnemyAI extends Character {
     return true;
   }
 
+  /** Engagement window and triggers both depend on which special is equipped (see AI_SPECIAL_USAGE). */
   _shouldUseSpecial(paintSystem, player, dist) {
     if (!this.special.ready || this.special.active || this.isClimbing) return false;
-    if (this._specialDecisionCooldown > 0 || !player.alive || dist > AI.specialEngageRange) return false;
+    if (this._specialDecisionCooldown > 0 || !player.alive) return false;
+
+    const usage = AI_SPECIAL_USAGE[this.special.type] ?? AI_SPECIAL_USAGE.burst;
+    if (dist < usage.minRange || dist > usage.maxRange) return false;
+    if (usage.fireOnRangeAlone) return true;
 
     const coverage = paintSystem.getCoverage();
-    const losingTurf = coverage.playerPct - coverage.cpuPct >= AI.specialCoverageDeficitPct;
-    const pressured = dist <= AI.specialCloseRange;
-    const lowHp = this.hp <= AI.specialLowHpThreshold;
+    const losingTurf = usage.onTurfDeficit
+      && coverage.playerPct - coverage.cpuPct >= AI.specialCoverageDeficitPct;
+    const pressured = usage.onPressure && dist <= AI.specialCloseRange;
+    const lowHp = usage.onLowHp && this.hp <= AI.specialLowHpThreshold;
     return losingTurf || pressured || lowHp;
   }
 
@@ -668,9 +696,16 @@ export class EnemyAI extends Character {
     if (this.special.activate(this, audioManager, null)) {
       this.specialsUsed++;
       this._specialDecisionCooldown = AI.specialDecisionCooldownSec;
-      ui?.showStatusMessage('CPU INK BURST!', 1.2);
+      ui?.showStatusMessage(`CPU ${this.special.profile.nameJa}！`, 1.2);
     }
     this.state = STATE.ATTACK;
+  }
+
+  /** True while an active special wants bespoke movement instead of normal combat behavior. */
+  get specialOverridesMovement() {
+    if (!this.special.active) return false;
+    const usage = AI_SPECIAL_USAGE[this.special.type] ?? AI_SPECIAL_USAGE.burst;
+    return usage.pursuit !== 'free';
   }
 
   _actSpecialPressure(dt, arena, paintSystem, player) {
@@ -684,15 +719,19 @@ export class EnemyAI extends Character {
       return;
     }
 
+    const usage = AI_SPECIAL_USAGE[this.special.type] ?? AI_SPECIAL_USAGE.burst;
     _toPlayer.normalize();
     _steerDir.copy(_toPlayer);
-    if (dist < this.special.profile.maxRadius * 0.55) {
+    // Burst only: once the target is well inside the growing radius, stop
+    // closing and orbit so they stay in range for the remaining pulses.
+    // Shield instead keeps pushing — the damage reduction is what pays for it.
+    if (usage.pursuit === 'orbit' && dist < (this.special.profile.maxRadius ?? 0) * 0.55) {
       _steerDir.set(-_toPlayer.z, 0, _toPlayer.x).multiplyScalar(this._strafeSign);
     }
     const paintAware = this._choosePaintAwareDirection(arena, paintSystem, _steerDir, 0.25);
     const avoided = this._avoidObstacles(arena, paintAware);
     const speed = MOVEMENT.walkSpeed * (this._lastSpeedMult ?? 1)
-      * AI.moveSpeedMult * this.difficulty.moveSpeedMult * 0.65;
+      * AI.moveSpeedMult * this.difficulty.moveSpeedMult * usage.pursuitSpeedMult;
     this.velocity.x = avoided.x * speed;
     this.velocity.z = avoided.z * speed;
     this.yaw = yawFromDirection(_toPlayer.x, _toPlayer.z);

@@ -1477,6 +1477,7 @@ export class Game {
     this.ui.updateEnemySpecialWarning({
       visible: this.cpu.alive && (this.cpu.specialWindingUp || this.cpu.special.active),
       active: this.cpu.special.active,
+      specialNameJa: this.cpu.special.profile.nameJa,
     });
     if (!playerWasAlive && this.player.alive) {
       this._paintSpawnSafeZone(this.arena.spawnPoints.player, TEAM.PLAYER);
@@ -1704,7 +1705,7 @@ export class Game {
       `map cpu visible: ${this.cpu.alive && !this.cpu.isConcealed}`,
       `cpu weapon: ${this.cpu.weapon.displayName}  switches:${this.cpu.weaponSwitches}`,
       `cpu bombs: ${this.cpu.bombsThrown}  cd:${this.cpu.subWeapon.cooldown.toFixed(2)}  think:${this.cpu._bombDecisionCooldown.toFixed(2)}`,
-      `cpu special: ${this.cpu.special.charge.toFixed(1)}%  windup:${this.cpu.specialWindingUp}  active:${this.cpu.special.active}  used:${this.cpu.specialsUsed}`,
+      `cpu special: ${this.cpu.special.type}  ${this.cpu.special.charge.toFixed(1)}%  windup:${this.cpu.specialWindingUp}  active:${this.cpu.special.active}  used:${this.cpu.specialsUsed}`,
       `cpu hp/ink: ${this.cpu.hp.toFixed(0)}/${this.cpu.ink.toFixed(0)}`,
       `cpu target: ${this.cpu.debugTarget ? this.cpu.debugTarget.toArray().map((n) => n.toFixed(1)).join(',') : '-'}`,
       `player inv: ${this.player.invincibleTimer.toFixed(2)}  cpu inv: ${this.cpu.invincibleTimer.toFixed(2)}`,
