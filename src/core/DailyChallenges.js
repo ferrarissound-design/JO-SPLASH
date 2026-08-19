@@ -1,5 +1,6 @@
 const STORAGE_KEY = 'chromaDuel.dailyChallenges.v1';
 const PICK_COUNT = 3;
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 // Candidate pool for the rotating daily set. Each match's flat stats object
 // (see Game._endMatch) is checked against `check`; unlike the permanent
@@ -17,7 +18,9 @@ export const DAILY_CHALLENGE_POOL = Object.freeze([
 ]);
 
 export function todayKey(date = new Date()) {
-  return date.toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+  // JST has no daylight-saving transition, so shifting by its fixed UTC+9
+  // offset gives a stable YYYY-MM-DD key that rolls at local midnight.
+  return new Date(date.getTime() + JST_OFFSET_MS).toISOString().slice(0, 10);
 }
 
 function seedFromString(str) {
@@ -68,7 +71,7 @@ function load() {
 
 // ============================================================================
 // DailyChallenges — a rotating set of 3 challenges (see DAILY_CHALLENGE_POOL)
-// that resets every UTC day. Completing one grants bonus XP added directly
+// that resets every day at midnight JST. Completing one grants bonus XP added directly
 // via PlayerProfile.addXp; no reward is ever unlocked here (see Progression's
 // CHALLENGES for that). Only the completion state is persisted — today's set
 // itself is re-derived deterministically from the date on every access.

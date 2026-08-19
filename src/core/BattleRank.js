@@ -50,7 +50,7 @@ export function calculateBattleRank({
   const koDifference = clamp(safeNumber(koPlayer) - safeNumber(koCpu), -3, 3);
   const techniqueScore = (
     Math.min(playerCount(stats, 'specials'), 3) * 3
-    + Math.min(playerCount(stats, 'bombs'), 5) * 0.75
+    + Math.min(playerCount(stats, 'subWeapons'), 5) * 0.75
     + Math.min(playerCount(stats, 'climbs'), 4) * 1.5
     + Math.min(playerCount(stats, 'inkRolls'), 4) * 1.5
     + Math.min(playerCount(stats, 'skySplashes'), 4) * 2

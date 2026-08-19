@@ -16,7 +16,7 @@ describe('calculateBattleRank', () => {
         difficultyId: 'elite',
         stats: {
           specials: { player: 3 },
-          bombs: { player: 5 },
+          subWeapons: { player: 5 },
           climbs: { player: 4 },
           inkRolls: { player: 4 },
         },
@@ -47,7 +47,7 @@ describe('calculateBattleRank', () => {
       koPlayer: 999,
       stats: {
         specials: { player: 999 },
-        bombs: { player: 999 },
+        subWeapons: { player: 999 },
         climbs: { player: 999 },
         inkRolls: { player: 999 },
       },

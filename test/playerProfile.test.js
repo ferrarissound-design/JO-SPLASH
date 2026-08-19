@@ -54,7 +54,19 @@ describe('PlayerProfile', () => {
     expect(result.levelBefore).toBe(1);
     expect(result.levelAfter).toBe(2);
     expect(result.leveledUp).toBe(true);
+    expect(result.rewardIds).toContain('neonCyan');
     expect(new PlayerProfile().values.xp).toBe(100);
+  });
+
+  it('returns rank rewards when bonus XP alone crosses a level boundary', () => {
+    const profile = new PlayerProfile();
+    profile.values.xp = 90;
+
+    const result = profile.addXp(15);
+
+    expect(result.levelBefore).toBe(1);
+    expect(result.levelAfter).toBe(2);
+    expect(result.rewardIds).toEqual(['neonCyan']);
   });
 
   it('addXp is a no-op for zero or invalid amounts', () => {
@@ -62,6 +74,7 @@ describe('PlayerProfile', () => {
     const result = profile.addXp(0);
     expect(result.xpGained).toBe(0);
     expect(result.leveledUp).toBe(false);
+    expect(result.rewardIds).toEqual([]);
     expect(profile.values.xp).toBe(0);
   });
 });

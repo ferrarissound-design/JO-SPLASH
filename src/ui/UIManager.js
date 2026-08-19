@@ -225,7 +225,7 @@ export class UIManager {
       resultKoPlayer: document.getElementById('result-ko-player'),
       resultKoCpu: document.getElementById('result-ko-cpu'),
       resultStatSpecials: document.getElementById('result-stat-specials'),
-      resultStatBombs: document.getElementById('result-stat-bombs'),
+      resultStatSubWeapons: document.getElementById('result-stat-subweapons'),
       resultStatClimbs: document.getElementById('result-stat-climbs'),
       resultStatRolls: document.getElementById('result-stat-rolls'),
       resultStatSkySplashes: document.getElementById('result-stat-sky-splashes'),
@@ -466,7 +466,7 @@ export class UIManager {
   setDailyChallengeBoard(challenges, completed) {
     if (!this.el.dailyChallengeBoard) return;
     const done = completed instanceof Set ? completed : new Set(completed ?? []);
-    this.el.dailyChallengeBoard.innerHTML = `<b>デイリーチャレンジ</b><br>${challenges.map((challenge) => (
+    this.el.dailyChallengeBoard.innerHTML = `<b>デイリーチャレンジ（毎日0:00更新）</b><br>${challenges.map((challenge) => (
       `<span class="${done.has(challenge.id) ? 'done' : ''}">${done.has(challenge.id) ? '✓' : '○'} ${challenge.labelJa} — 経験値+${challenge.xp}</span>`
     )).join('<br>')}`;
   }
@@ -1152,7 +1152,9 @@ export class UIManager {
 
     if (stats) {
       if (this.el.resultStatSpecials) this.el.resultStatSpecials.textContent = `${stats.specials.player} / ${stats.specials.cpu}`;
-      if (this.el.resultStatBombs) this.el.resultStatBombs.textContent = `${stats.bombs.player} / ${stats.bombs.cpu}`;
+      if (this.el.resultStatSubWeapons) {
+        this.el.resultStatSubWeapons.textContent = `${stats.subWeapons.player} / ${stats.subWeapons.cpu}`;
+      }
       if (this.el.resultStatClimbs) this.el.resultStatClimbs.textContent = `${stats.climbs.player} / ${stats.climbs.cpu}`;
       // CPU never ink-rolls (player-only mechanic), so this line is YOU-only.
       if (this.el.resultStatRolls) this.el.resultStatRolls.textContent = String(stats.inkRolls.player);

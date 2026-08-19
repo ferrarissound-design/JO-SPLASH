@@ -47,7 +47,7 @@ export class Player extends Character {
     // Mirrors EnemyAI's equivalent counters so the result screen can show a
     // symmetric YOU/CPU stat line (see Game._endMatch).
     this.specialsUsed = 0;
-    this.bombsThrown = 0;
+    this.subWeaponsUsed = 0;
     this.shotsFired = 0;
     this.climbsCompleted = 0;
     this._fireWasHeld = false;
@@ -570,7 +570,7 @@ export class Player extends Character {
     if (!this.input.wasJustPressed('KeyE') || this.special.active || this.isInkRolling) return;
     this._prepareShot();
     if (this.subWeapon.fire(this, _fireOrigin, _aimDir, projectileManager, audioManager, particleManager)) {
-      this.bombsThrown++;
+      this.subWeaponsUsed++;
       void this.input.pulseGamepad?.({
         duration: 120,
         weakMagnitude: 0.3,

@@ -86,8 +86,9 @@ export class Progression {
 
   evaluate({
     playerPct = 0, skySplashes = 0, bestCombo = 0, cupChampion = false,
-    outcome = null, deaths = 0, climbs = 0,
+    outcome = null, deaths = 0, climbs = 0, practiceMode = false,
   } = {}) {
+    if (practiceMode) return [];
     const earned = [];
     const checks = {
       painter: playerPct >= 60,

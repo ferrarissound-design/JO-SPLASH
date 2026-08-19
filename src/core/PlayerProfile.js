@@ -35,6 +35,12 @@ export function levelFromXp(xp) {
   return level;
 }
 
+function rewardIdsBetweenLevels(levelBefore, levelAfter) {
+  return RANK_REWARDS
+    .filter(({ level }) => level > levelBefore && level <= levelAfter)
+    .map(({ rewardId }) => rewardId);
+}
+
 function safeMetric(value) {
   const number = Number(value);
   return Number.isFinite(number) ? Math.max(0, number) : 0;
@@ -95,7 +101,7 @@ export class PlayerProfile {
     if (gain <= 0) {
       return {
         xpGained: 0, levelBefore, levelAfter: levelBefore, leveledUp: false,
-        rankName: this.rankName, progress: this.progress,
+        rankName: this.rankName, rewardIds: [], progress: this.progress,
       };
     }
     this.values.xp += gain;
@@ -107,6 +113,7 @@ export class PlayerProfile {
       levelAfter,
       leveledUp: levelAfter > levelBefore,
       rankName: this.rankName,
+      rewardIds: rewardIdsBetweenLevels(levelBefore, levelAfter),
       progress: this.progress,
     };
   }
@@ -151,9 +158,7 @@ export class PlayerProfile {
       this.values.xp += xpGained;
     }
     const levelAfter = this.level;
-    const rewardIds = RANK_REWARDS
-      .filter(({ level }) => level > levelBefore && level <= levelAfter)
-      .map(({ rewardId }) => rewardId);
+    const rewardIds = rewardIdsBetweenLevels(levelBefore, levelAfter);
     this._save();
 
     return {

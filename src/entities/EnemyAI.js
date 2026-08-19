@@ -127,7 +127,7 @@ export class EnemyAI extends Character {
     this._bombPlanTimer = 0;
     this._bombTarget = spawnPoint.clone();
     this.weaponSwitches = 0;
-    this.bombsThrown = 0;
+    this.subWeaponsUsed = 0;
     this._specialWindupTimer = 0;
     this._specialDecisionCooldown = 0;
     this.specialsUsed = 0;
@@ -776,7 +776,7 @@ export class EnemyAI extends Character {
     _fireOrigin.addScaledVector(_aimVec, 0.45);
 
     if (this.subWeapon.fire(this, _fireOrigin, _aimVec, projectileManager, audioManager, particleManager)) {
-      this.bombsThrown++;
+      this.subWeaponsUsed++;
       this._bombDecisionCooldown = AI.bombDecisionCooldownSec;
       this.state = dist <= AI.attackRange ? STATE.ATTACK : STATE.EXPLORE;
       return;
@@ -1011,7 +1011,7 @@ export class EnemyAI extends Character {
       this.climbAttempts = 0;
       this.climbsCompleted = 0;
       this.weaponSwitches = 0;
-      this.bombsThrown = 0;
+      this.subWeaponsUsed = 0;
       this.specialsUsed = 0;
     }
   }

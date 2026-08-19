@@ -420,7 +420,7 @@ export class Game {
       movedDistance: this.player.position.distanceTo(this._tutorialStartPosition),
       shotsFired: this.player.shotsFired,
       airborne: this.player.position.y > 0.45,
-      subWeaponsUsed: this.player.bombsThrown,
+      subWeaponsUsed: this.player.subWeaponsUsed,
       jumpPadAirborne: this.player.jumpPadAirborne,
     });
     if (result.completed) {
@@ -721,7 +721,7 @@ export class Game {
     this.player.koScored = 0;
     this.player.deaths = 0;
     this.player.specialsUsed = 0;
-    this.player.bombsThrown = 0;
+    this.player.subWeaponsUsed = 0;
     this.player.shotsFired = 0;
     this.player.climbsCompleted = 0;
     this.player.skySplashHits = 0;
@@ -942,6 +942,7 @@ export class Game {
       outcome,
       deaths: this.player.deaths,
       climbs: this.player.climbsCompleted,
+      practiceMode: this.practiceMode,
     });
     this.ui.setChallengeBoard(CHALLENGES, this.progression.unlocked);
     this.ui.setDailyChallengeBoard(this.dailyChallenges.todaysChallenges, this.dailyChallenges.completed);
@@ -967,7 +968,7 @@ export class Game {
     const stats = {
       inkRolls: { player: this.player.inkRollsUsed, cpu: 0 }, // CPU never ink-rolls
       climbs: { player: this.player.climbsCompleted, cpu: this.cpu.climbsCompleted },
-      bombs: { player: this.player.bombsThrown, cpu: this.cpu.bombsThrown },
+      subWeapons: { player: this.player.subWeaponsUsed, cpu: this.cpu.subWeaponsUsed },
       specials: { player: this.player.specialsUsed, cpu: this.cpu.specialsUsed },
       skySplashes: { player: this.player.skySplashHits, cpu: this.cpu.skySplashHits },
       bestCombos: { player: this.player.bestHitCombo, cpu: this.cpu.bestHitCombo },
@@ -1002,7 +1003,7 @@ export class Game {
         playerPct: cov.playerPct,
         bestCombo: this.player.bestHitCombo,
         koPlayer: this.player.koScored,
-        subWeaponsUsed: this.player.bombsThrown,
+        subWeaponsUsed: this.player.subWeaponsUsed,
         specialsUsed: this.player.specialsUsed,
         climbs: this.player.climbsCompleted,
         deaths: this.player.deaths,
@@ -1016,6 +1017,7 @@ export class Game {
           levelAfter: bonus.levelAfter,
           leveledUp: profileResult.leveledUp || bonus.leveledUp,
           rankName: bonus.rankName,
+          rewardIds: [...new Set([...profileResult.rewardIds, ...bonus.rewardIds])],
           progress: bonus.progress,
         };
       }
@@ -1704,7 +1706,7 @@ export class Game {
       `cpu difficulty: ${this.cpu.difficulty.id}`,
       `map cpu visible: ${this.cpu.alive && !this.cpu.isConcealed}`,
       `cpu weapon: ${this.cpu.weapon.displayName}  switches:${this.cpu.weaponSwitches}`,
-      `cpu bombs: ${this.cpu.bombsThrown}  cd:${this.cpu.subWeapon.cooldown.toFixed(2)}  think:${this.cpu._bombDecisionCooldown.toFixed(2)}`,
+      `cpu sub weapons: ${this.cpu.subWeaponsUsed}  cd:${this.cpu.subWeapon.cooldown.toFixed(2)}  think:${this.cpu._bombDecisionCooldown.toFixed(2)}`,
       `cpu special: ${this.cpu.special.type}  ${this.cpu.special.charge.toFixed(1)}%  windup:${this.cpu.specialWindingUp}  active:${this.cpu.special.active}  used:${this.cpu.specialsUsed}`,
       `cpu hp/ink: ${this.cpu.hp.toFixed(0)}/${this.cpu.ink.toFixed(0)}`,
       `cpu target: ${this.cpu.debugTarget ? this.cpu.debugTarget.toArray().map((n) => n.toFixed(1)).join(',') : '-'}`,

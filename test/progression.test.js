@@ -63,4 +63,21 @@ describe('Progression', () => {
     expect(progression.equip('aquaRevival')).toBe(true);
     expect(new Progression().equipped.gear).toBe('aquaRevival');
   });
+
+  it('does not unlock permanent rewards in practice mode', () => {
+    const progression = new Progression();
+    const earned = progression.evaluate({
+      playerPct: 100,
+      skySplashes: 10,
+      bestCombo: 10,
+      outcome: 'win',
+      deaths: 0,
+      climbs: 10,
+      practiceMode: true,
+    });
+
+    expect(earned).toEqual([]);
+    expect(progression.unlocked.size).toBe(0);
+    expect(progression.availableRewards.size).toBe(0);
+  });
 });

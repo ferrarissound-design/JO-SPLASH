@@ -80,7 +80,9 @@ describe('DailyChallenges', () => {
     expect(daily.completed.size).toBe(0);
   });
 
-  it('todayKey formats the current date as YYYY-MM-DD', () => {
+  it('todayKey formats the current date as YYYY-MM-DD in JST', () => {
     expect(todayKey(new Date('2026-08-01T12:34:56Z'))).toBe('2026-08-01');
+    expect(todayKey(new Date('2026-07-31T14:59:59Z'))).toBe('2026-07-31');
+    expect(todayKey(new Date('2026-07-31T15:00:00Z'))).toBe('2026-08-01');
   });
 });
