@@ -14,6 +14,14 @@ try {
     if (message.type() === 'error') consoleErrors.push(message.text());
   });
 
+  const assertHealthy = async (label) => {
+    await page.waitForTimeout(100);
+    if (await page.locator('#screen-boot-error').isVisible()) {
+      const detail = await page.locator('#boot-error-message').innerText();
+      throw new Error(`${label} triggered the boot error screen:\n${detail}\npageErrors=${JSON.stringify(pageErrors)}\nconsoleErrors=${JSON.stringify(consoleErrors)}`);
+    }
+  };
+
   await page.addInitScript(() => {
     localStorage.setItem('chromaDuel.profile.v1', JSON.stringify({
       xp: 0,
@@ -25,12 +33,13 @@ try {
   await page.goto('http://127.0.0.1:4173/', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => Boolean(window.__game));
   await page.locator('#screen-title').waitFor({ state: 'visible' });
-  assert.equal(await page.locator('#screen-boot-error').isVisible(), false, 'boot error screen is visible');
+  await assertHealthy('initial boot');
   assert.match(await page.locator('#daily-challenge-board').innerText(), /毎日0:00更新/);
 
   // Choose a non-default setup so the smoke test also exercises arena rebuilds
   // and the persisted returning-player path.
   await page.locator('[data-stage="vertical"]').click();
+  await assertHealthy('stage selection');
   await page.locator('[data-rule="zone"]').click();
   await page.locator('[data-subweapon="mine"]').click();
   await page.locator('[data-special="rain"]').click();
@@ -46,6 +55,7 @@ try {
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => Boolean(window.__game));
   await page.locator('#screen-title').waitFor({ state: 'visible' });
+  await assertHealthy('setup restoration');
   await page.waitForFunction(() => (
     window.__game.selectedStageId === 'vertical'
     && window.__game.selectedRuleId === 'zone'
