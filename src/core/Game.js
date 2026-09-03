@@ -505,13 +505,19 @@ export class Game {
         if (!material) continue;
         materials.add(material);
         for (const value of Object.values(material)) {
-          if (value?.isTexture) textures.add(value);
+          if (value?.isTexture && typeof value.dispose === 'function') textures.add(value);
         }
       }
     });
-    for (const texture of textures) texture.dispose();
-    for (const material of materials) material.dispose();
-    for (const geometry of geometries) geometry.dispose();
+    for (const texture of textures) {
+      if (typeof texture?.dispose === 'function') texture.dispose();
+    }
+    for (const material of materials) {
+      if (typeof material?.dispose === 'function') material.dispose();
+    }
+    for (const geometry of geometries) {
+      if (typeof geometry?.dispose === 'function') geometry.dispose();
+    }
   }
 
   _rebuildArena(stageId) {

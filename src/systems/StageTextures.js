@@ -33,12 +33,24 @@ function finish(canvas, repeat = true) {
   return tex;
 }
 
+function makeTexturePair(map, emissiveMap) {
+  return {
+    map,
+    emissiveMap,
+    dispose() {
+      map.dispose();
+      emissiveMap.dispose();
+    },
+  };
+}
+
 /**
  * Sci-fi "hull panel" texture used for obstacles: navy base, a colored accent
  * stripe, bolt dots and a couple of vent slats. Returns { map, emissiveMap } —
  * emissiveMap is black except thin edge/accent lines, so a low-cost
  * MeshStandardMaterial({map, emissiveMap, emissive}) reads as neon-trimmed
- * without any extra dynamic lights.
+ * without any extra dynamic lights. The returned pair owns both textures and
+ * exposes dispose() so Arena can release the shared source textures safely.
  */
 export function createPanelTexture(accentHex, baseHex = 0x232f4d) {
   const size = 128;
@@ -98,7 +110,7 @@ export function createPanelTexture(accentHex, baseHex = 0x232f4d) {
   gctx.fillStyle = hex(accentHex);
   gctx.fillRect(0, size * 0.42, size, size * 0.14);
 
-  return { map: finish(mapCanvas), emissiveMap: finish(glowCanvas) };
+  return makeTexturePair(finish(mapCanvas), finish(glowCanvas));
 }
 
 /** Navy "hull metal" texture for platform sides / ramp / perimeter walls: subtle panel grid + rivets + glowing seam. */
@@ -133,7 +145,7 @@ export function createMetalTexture(baseHex, glowHex) {
   gctx.lineWidth = 2.4;
   gctx.strokeRect(1.2, 1.2, size - 2.4, size - 2.4);
 
-  return { map: finish(mapCanvas), emissiveMap: finish(glowCanvas) };
+  return makeTexturePair(finish(mapCanvas), finish(glowCanvas));
 }
 
 /** Yellow/black diagonal hazard stripes, used on ramp flanks. */
