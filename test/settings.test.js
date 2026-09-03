@@ -32,6 +32,10 @@ describe('Settings defaults and persistence', () => {
       masterVolume: 1,
       musicVolume: 1,
       difficultyId: 'standard',
+      stageId: 'harbor',
+      ruleId: 'turf',
+      subWeaponId: 'bomb',
+      specialId: 'burst',
       invertY: false,
       quality: 'auto',
       colorMode: 'standard',
@@ -106,6 +110,49 @@ describe('Settings defaults and persistence', () => {
     expect(b.values.masterVolume).toBeCloseTo(0.4);
     expect(b.values.sensitivityMult).toBeCloseTo(1.8);
     expect(b.values.difficultyId).toBe('elite');
+  });
+
+  it('persists the last title-screen battle setup', async () => {
+    const { Settings } = await import('../src/core/Settings.js?fresh12');
+    const a = new Settings();
+    a.setStageId('vertical');
+    a.setRuleId('zone');
+    a.setSubWeaponId('mine');
+    a.setSpecialId('rain');
+
+    const b = new Settings();
+    expect(b.values).toMatchObject({
+      stageId: 'vertical',
+      ruleId: 'zone',
+      subWeaponId: 'mine',
+      specialId: 'rain',
+    });
+  });
+
+  it('rejects empty/non-string setup IDs on load and through setters', async () => {
+    localStorage.setItem(
+      'chromaDuel.settings.v1',
+      JSON.stringify({ stageId: '', ruleId: 7, subWeaponId: null, specialId: false }),
+    );
+    const { Settings } = await import('../src/core/Settings.js?fresh13');
+    const settings = new Settings();
+    expect(settings.values).toMatchObject({
+      stageId: 'harbor',
+      ruleId: 'turf',
+      subWeaponId: 'bomb',
+      specialId: 'burst',
+    });
+
+    settings.setStageId('');
+    settings.setRuleId(null);
+    settings.setSubWeaponId(123);
+    settings.setSpecialId(undefined);
+    expect(settings.values).toMatchObject({
+      stageId: 'harbor',
+      ruleId: 'turf',
+      subWeaponId: 'bomb',
+      specialId: 'burst',
+    });
   });
 
   it('clamps out-of-range values on load instead of trusting stored JSON blindly', async () => {
