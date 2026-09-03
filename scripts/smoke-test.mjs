@@ -68,11 +68,21 @@ try {
   assert.equal(await page.locator('[data-special="rain"]').getAttribute('aria-pressed'), 'true');
 
   // Exercise the complete playable shell rather than stopping at boot:
-  // title -> live match -> pause/resume -> result -> rematch.
+  // title -> countdown -> live match -> pause/resume -> result -> rematch.
   await page.locator('#btn-start').click();
   await page.locator('#screen-title').waitFor({ state: 'hidden' });
   await page.locator('#hud').waitFor({ state: 'visible' });
-  await page.waitForFunction(() => window.__game.state === 'playing', null, { timeout: 10000 });
+  await page.waitForFunction(() => window.__game.state === 'countdown', null, { timeout: 5000 });
+
+  // Headless WebGL can render the countdown far slower than wall-clock time on
+  // shared CI runners. We only need to verify the transition here, not spend
+  // real seconds watching 3-2-1, so advance the production countdown handler
+  // deterministically once the real Start path has entered COUNTDOWN.
+  await page.evaluate(() => {
+    window.__game.countdownRemaining = 0;
+    window.__game._updateCountdown(0);
+  });
+  await page.waitForFunction(() => window.__game.state === 'playing', null, { timeout: 5000 });
   await page.waitForFunction(() => window.__game.player.subWeapon.type === 'mine');
   await page.waitForFunction(() => window.__game.player.special.type === 'rain');
 
