@@ -86,10 +86,13 @@ try {
   await page.waitForFunction(() => window.__game.player.subWeapon.type === 'mine');
   await page.waitForFunction(() => window.__game.player.special.type === 'rain');
 
-  await page.locator('#btn-pause').click();
+  // Desktop gameplay runs under Pointer Lock, so Escape is the real supported
+  // pause/resume path. Clicking the floating touch-friendly II control with a
+  // desktop pointer is intentionally not representative while the pointer is locked.
+  await page.keyboard.press('Escape');
   await page.waitForFunction(() => window.__game.state === 'paused');
   await page.locator('#screen-pause').waitFor({ state: 'visible' });
-  await page.locator('#btn-resume').click();
+  await page.keyboard.press('Escape');
   await page.waitForFunction(() => window.__game.state === 'playing');
   await page.locator('#screen-pause').waitFor({ state: 'hidden' });
 
