@@ -13,6 +13,10 @@ const DEFAULTS = Object.freeze({
   masterVolume: 1,
   musicVolume: 1,
   difficultyId: 'standard',
+  stageId: 'harbor',
+  ruleId: 'turf',
+  subWeaponId: 'bomb',
+  specialId: 'burst',
   invertY: false,
   quality: 'auto',
   colorMode: 'standard',
@@ -44,6 +48,10 @@ function enumValue(value, allowed, fallback) {
   return allowed.includes(value) ? value : fallback;
 }
 
+function stringValue(value, fallback) {
+  return typeof value === 'string' && value ? value : fallback;
+}
+
 function load() {
   let parsed = null;
   try {
@@ -58,7 +66,11 @@ function load() {
     sensitivityMult: clampNumber(parsed.sensitivityMult, 0.4, 2.2, DEFAULTS.sensitivityMult),
     masterVolume: clampNumber(parsed.masterVolume, 0, 1, DEFAULTS.masterVolume),
     musicVolume: clampNumber(parsed.musicVolume, 0, 1, DEFAULTS.musicVolume),
-    difficultyId: typeof parsed.difficultyId === 'string' ? parsed.difficultyId : DEFAULTS.difficultyId,
+    difficultyId: stringValue(parsed.difficultyId, DEFAULTS.difficultyId),
+    stageId: stringValue(parsed.stageId, DEFAULTS.stageId),
+    ruleId: stringValue(parsed.ruleId, DEFAULTS.ruleId),
+    subWeaponId: stringValue(parsed.subWeaponId, DEFAULTS.subWeaponId),
+    specialId: stringValue(parsed.specialId, DEFAULTS.specialId),
     invertY: typeof parsed.invertY === 'boolean' ? parsed.invertY : DEFAULTS.invertY,
     quality: enumValue(parsed.quality, ['auto', 'low', 'high'], DEFAULTS.quality),
     colorMode: enumValue(
@@ -73,10 +85,9 @@ function load() {
 }
 
 // ============================================================================
-// Settings — small persisted user-preference store (mouse sensitivity, master
-// and music volume, last-selected CPU difficulty). Written to localStorage on
-// every change and re-applied at startup so a reload/return visit keeps the
-// player's preferences instead of resetting to defaults every match.
+// Settings — persisted user-preference store. Alongside display/input/audio
+// preferences it remembers the last title-screen battle setup so returning
+// players can jump straight back into the loadout they were using.
 // ============================================================================
 export class Settings {
   constructor() {
@@ -121,7 +132,27 @@ export class Settings {
   }
 
   setDifficultyId(id) {
-    this.values.difficultyId = id;
+    this.values.difficultyId = stringValue(id, DEFAULTS.difficultyId);
+    this._save();
+  }
+
+  setStageId(id) {
+    this.values.stageId = stringValue(id, DEFAULTS.stageId);
+    this._save();
+  }
+
+  setRuleId(id) {
+    this.values.ruleId = stringValue(id, DEFAULTS.ruleId);
+    this._save();
+  }
+
+  setSubWeaponId(id) {
+    this.values.subWeaponId = stringValue(id, DEFAULTS.subWeaponId);
+    this._save();
+  }
+
+  setSpecialId(id) {
+    this.values.specialId = stringValue(id, DEFAULTS.specialId);
     this._save();
   }
 
