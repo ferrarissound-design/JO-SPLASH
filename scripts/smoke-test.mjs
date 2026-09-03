@@ -96,7 +96,12 @@ try {
   await page.waitForFunction(() => window.__game.state === 'playing');
   await page.locator('#screen-pause').waitFor({ state: 'hidden' });
 
-  await page.evaluate(() => window.__game._endMatch());
+  // Use the production judging transition before accelerating into results so
+  // its pointer-lock/audio/UI cleanup also gets exercised.
+  await page.evaluate(() => {
+    window.__game._beginJudging();
+    window.__game._endMatch();
+  });
   await page.waitForFunction(() => window.__game.state === 'result');
   await page.locator('#screen-result').waitFor({ state: 'visible' });
   assert.match(await page.locator('#result-loadout').innerText(), /インクマイン/);
